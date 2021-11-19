@@ -6,6 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
+# IDE settings
+*.idea
+
+# models
+trained_models
+
 # Distribution / packaging
 .Python
 env/

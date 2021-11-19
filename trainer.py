@@ -14,7 +14,7 @@ Transition = namedtuple('Transition', ('state', 'action', 'action_out', 'value',
 
 
 class Trainer(object):
-    def __init__(self, args, policy_net, env):
+    def __init__(self, args, policy_net, env, multi=False):
         self.args = args
         self.policy_net = policy_net
         self.env = env
@@ -23,7 +23,10 @@ class Trainer(object):
         self.optimizer = optim.RMSprop(policy_net.parameters(),
             lr = args.lrate, alpha=0.97, eps=1e-6)
         self.params = [p for p in self.policy_net.parameters()]
-
+        self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        if multi:
+            self.device = torch.device('cpu')
+        print("Device:", self.device)
 
     def get_episode(self, epoch):
         episode = []
@@ -162,11 +165,10 @@ class Trainer(object):
 
         n = self.args.nagents
         batch_size = len(batch.state)
-
-        rewards = torch.Tensor(batch.reward)
-        episode_masks = torch.Tensor(batch.episode_mask)
-        episode_mini_masks = torch.Tensor(batch.episode_mini_mask)
-        actions = torch.Tensor(batch.action)
+        rewards = torch.Tensor(np.array(batch.reward)).to(self.device)
+        episode_masks = torch.Tensor(np.array(batch.episode_mask)).to(self.device)
+        episode_mini_masks = torch.Tensor(np.array(batch.episode_mini_mask)).to(self.device)
+        actions = torch.Tensor(np.array(batch.action)).to(self.device)
         actions = actions.transpose(1, 2).view(-1, n, dim_actions)
 
         # old_actions = torch.Tensor(np.concatenate(batch.action, 0))
@@ -174,24 +176,24 @@ class Trainer(object):
         # print(old_actions == actions)
 
         # can't do batch forward.
-        values = torch.cat(batch.value, dim=0)
+        values = torch.cat(batch.value, dim=0).to(self.device)
         action_out = list(zip(*batch.action_out))
-        action_out = [torch.cat(a, dim=0) for a in action_out]
+        action_out = [torch.cat(a, dim=0).to(self.device) for a in action_out]
 
-        alive_masks = torch.Tensor(np.concatenate([item['alive_mask'] for item in batch.misc])).view(-1)
+        alive_masks = torch.Tensor(np.concatenate([item['alive_mask'] for item in batch.misc])).view(-1).to(self.device)
 
-        coop_returns = torch.Tensor(batch_size, n)
-        ncoop_returns = torch.Tensor(batch_size, n)
-        returns = torch.Tensor(batch_size, n)
-        deltas = torch.Tensor(batch_size, n)
-        advantages = torch.Tensor(batch_size, n)
+        coop_returns = torch.Tensor(batch_size, n).to(self.device)
+        ncoop_returns = torch.Tensor(batch_size, n).to(self.device)
+        returns = torch.Tensor(batch_size, n).to(self.device)
+        deltas = torch.Tensor(batch_size, n).to(self.device)
+        advantages = torch.Tensor(batch_size, n).to(self.device)
         values = values.view(batch_size, n)
 
         prev_coop_return = 0
         prev_ncoop_return = 0
         prev_value = 0
         prev_advantage = 0
-
+        '''
         for i in reversed(range(rewards.size(0))):
             coop_returns[i] = rewards[i] + self.args.gamma * prev_coop_return * episode_masks[i]
             ncoop_returns[i] = rewards[i] + self.args.gamma * prev_ncoop_return * episode_masks[i] * episode_mini_masks[i]
@@ -201,10 +203,21 @@ class Trainer(object):
 
             returns[i] = (self.args.mean_ratio * coop_returns[i].mean()) \
                         + ((1 - self.args.mean_ratio) * ncoop_returns[i])
+        '''
+        coop_returns = rewards + self.args.gamma * prev_coop_return * episode_masks
+        ncoop_returns = rewards + self.args.gamma * prev_ncoop_return * episode_masks * episode_mini_masks
 
+        prev_coop_return = coop_returns.clone()
+        prev_ncoop_return = ncoop_returns.clone()
 
+        returns = (self.args.mean_ratio * coop_returns.mean()) \
+                    + ((1 - self.args.mean_ratio) * ncoop_returns)
+
+        '''
         for i in reversed(range(rewards.size(0))):
             advantages[i] = returns[i] - values.data[i]
+        '''
+        advantages = returns - values.data
 
         if self.args.normalize_rewards:
             advantages = (advantages - advantages.mean()) / advantages.std()
@@ -248,7 +261,6 @@ class Trainer(object):
             stat['entropy'] = entropy.item()
             if self.args.entr > 0:
                 loss -= self.args.entr * entropy
-
 
         loss.backward()
 

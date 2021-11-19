@@ -1,9 +1,9 @@
+import numpy as np
 import sys, os
 import time, shutil
 import signal
 import argparse
 from tensorboardX import SummaryWriter
-import numpy as np
 import torch
 # import visdom
 import data
@@ -14,6 +14,9 @@ from action_utils import parse_action_args
 from trainer import Trainer
 from multi_processing import MultiProcessTrainer
 from collections import defaultdict
+
+# fixed for multiprocessing
+os.environ["OMP_NUM_THREADS"] = "1"
 
 # note for adding a new env: Add it in the data.py. Might involve righting a file in ic3net_envs.
 
@@ -222,7 +225,7 @@ for p in policy_net.parameters():
 if args.nprocesses > 1:
 
     # this is the main trainer. This is where the environment is being passed.
-    trainer = MultiProcessTrainer(args, lambda: Trainer(args, policy_net, data.init(args.env_name, args)))
+    trainer = MultiProcessTrainer(args, lambda: Trainer(args, policy_net, data.init(args.env_name, args), multi=True))
 
 else:
     trainer = Trainer(args, policy_net, data.init(args.env_name, args))
