@@ -4,7 +4,8 @@ import os
 env = "predator_prey"
 
 # specify all the seeds you want to run the experiment on.
-seeds = [1, 2, 3]
+# seeds = [1, 2, 3]
+seeds = [777]
 
 # for predator-prey there are 3 modes: cooperative, competitive and mixed.
 mode = "cooperative"
@@ -49,7 +50,7 @@ comm_dim = 16
 use_protos = True
 
 # whether prey can comunication or not.
-enemy_comm = True
+enemy_comm = False
 
 # g=1. If this is set to true agents will communicate at every step.
 comm_action_one = True
