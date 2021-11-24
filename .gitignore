@@ -8,6 +8,7 @@ __pycache__/
 
 # IDE settings
 *.idea
+.DS_Store
 
 # models
 trained_models

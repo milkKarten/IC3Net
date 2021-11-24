@@ -11,7 +11,7 @@ seeds = [777]
 mode = "cooperative"
 
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
-exp_name = "proto_fixed"
+exp_name = "proto_fixed1"
 
 # specify the number of predators.
 nagents = 3

@@ -1,22 +1,13 @@
-import os, sys
-
-os.environ["OMP_NUM_THREADS"] = "1" # push this to repo
+import os
 
 # TODO: Run proto version
-# explicity add to reward function to brake before intersection?
-# does it make sense to have two way communication before action
-# interleave a small amount of supervised data with some self-play
-# send email to dana to setup box
-# try keeping spawning rate constant
+
 env = "traffic_junction"
 # seeds = [1, 2]
 seeds = [777]
 
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
-# methods = ["fixed"]
-methods = [sys.argv[1]]
-print(methods)
-# methods = ["fixed_proto", "G_Proto"]
+methods = ["G", "fixed", "fixed_proto", "G_Proto"]
 # G - IC3net with learned gating function
 # exp_name = "tj_g0.01_test"
 for method in methods:
@@ -40,10 +31,9 @@ for method in methods:
         gating_head_cost_factor = 0
         comm_action_one = True
     # specify the number of prototypes you wish to use.
-    # num_proto = 25  # try to increase prototypes
-    num_proto = 50  # try to increase prototypes
+    num_proto = 25
     # dimension of the communication vector.
-    comm_dim = 32
+    comm_dim = 16
     if not discrete_comm:
         comm_dim = hid_size
 
@@ -61,8 +51,6 @@ for method in methods:
         run_str += f"--discrete_comm "
     if comm_action_one:
         run_str += f"--comm_action_one  "
-    if False:
-        run_str += f"--restore  "
 
     # Important: If you want to restore training just use the --restore tag
     # run for all seeds

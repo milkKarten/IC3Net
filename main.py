@@ -1,11 +1,12 @@
 import numpy as np
 import sys, os
-import time, shutil
+import time#, shutil
 import signal
 import argparse
 from tensorboardX import SummaryWriter
 import torch
 # import visdom
+
 import data
 from models import *
 from comm import CommNetMLP
@@ -183,7 +184,10 @@ print("num inputs is: ", num_inputs)
 if args.hard_attn and args.commnet:
     # add comm_action as last dim in actions
     # so communication has been made part of the action now
-    args.num_actions = [*args.num_actions, 2]
+    print(args.num_actions)
+    # args.num_actions = [*args.num_actions, 2]
+    args.num_actions.append(2)
+    print(args.num_actions)
     args.dim_actions = env.dim_actions + 1
 
 
@@ -258,9 +262,11 @@ log['entropy'] = LogField(list(), True, 'epoch', 'num_steps')
 # TODO: For loading similar arrangements need to be made.
 if not args.restore:
     save_path = os.path.join(args.save, args.env_name, args.exp_name, "seed" + str(args.seed), "models")
-    print(f"save directory is {save_path}")
+    # print(f"save directory is {save_path}")
+    print("save directory is "+str(save_path))
     log_path = os.path.join(args.save, args.env_name, args.exp_name, "seed" + str(args.seed), "logs")
-    print(f"log dir directory is {log_path}")
+    # print(f"log dir directory is {log_path}")
+    print("log dir directory is "+str(log_path))
     os.makedirs(save_path, exist_ok=True)
 
     # if os.path.exists(log_path):
@@ -312,8 +318,10 @@ def run(num_epochs):
         for k, v in stat.items():
             if k == "comm_action" or k == "reward":
                 for i, val in enumerate(v):
-                    logger.add_scalar(f"agent{i}/{k}" , val, epoch)
-                    history[f"agent{i}_{k}"].append(val)
+                    # logger.add_scalar(f"agent{i}/{k}" , val, epoch)
+                    logger.add_scalar("agent"+str(i)+"/"+str(k) , val, epoch)
+                    # history[f"agent{i}_{k}"].append(val)
+                    history["agent"+str(i)+"_"+str(k)].append(val)
 
             elif k != "epoch":
                 logger.add_scalar(k, v, epoch)
@@ -357,7 +365,8 @@ def run(num_epochs):
             # also save history periodically.
             for k, v in history.items():
                 value = np.array(v)
-                np.save(f"{log_path}/{k}.npy", value)
+                # np.save(f"{log_path}/{k}.npy", value)
+                np.save(str(log_path)+"/"+str(k)+".npy", value)
 
         if args.save != '':
             # save(args.save)
@@ -367,7 +376,8 @@ def run(num_epochs):
         # save history to the relevant path
         for k, v in history.items():
             value = np.array(v)
-            np.save(f"{log_path}/{k}.npy", value)
+            # np.save(f"{log_path}/{k}.npy", value)
+            np.save(str(log_path)+"/"+str(k)+".npy", value)
 
 def save(path):
     d = dict()
@@ -406,9 +416,10 @@ signal.signal(signal.SIGINT, signal_handler)
 
 if args.restore:
     load_path = os.path.join(args.load, args.env_name, args.exp_name, "seed" + str(args.seed), "models")
-    print(f"load directory is {load_path}")
+    # print(f"load directory is {load_path}")
+    print("load directory is "+str(load_path))
     log_path = os.path.join(args.load, args.env_name, args.exp_name, "seed" + str(args.seed), "logs")
-    print(f"log dir directory is {log_path}")
+    print("log directory is "+str(load_path))
     logger = SummaryWriter(log_path)
 
     save_path = load_path
@@ -418,7 +429,7 @@ if args.restore:
 
     else:
         all_models = sort([int(f.split('.pt')[0]) for f in os.listdir(load_path)])
-        model_path = os.path.join(load_path, f"{all_models[-1]}.pt")
+        model_path = os.path.join(load_path, str(all_models[-1])+".pt")
 
     d = torch.load(model_path)
     policy_net.load_state_dict(d['policy_net'])
@@ -427,7 +438,7 @@ if args.restore:
     for f in os.listdir(log_path):
         if f.endswith(".npy"):
             k = f.split('.npy')[0]
-            history[k] = list(np.load(f"{log_path}/{k}.npy"))
+            history[k] = list(np.load(str(log_path)+"/"+str(k)+".npy"))
             start_epoch = len(history[k])
 
     trainer.load_state_dict(d['trainer'])
