@@ -253,7 +253,7 @@ log['value_loss'] = LogField(list(), True, 'epoch', 'num_steps')
 log['action_loss'] = LogField(list(), True, 'epoch', 'num_steps')
 log['entropy'] = LogField(list(), True, 'epoch', 'num_steps')
 
-# define save dirctory
+# define save directory
 # logs will also be saved under the same directory
 # TODO: For loading similar arrangements need to be made.
 if not args.restore:

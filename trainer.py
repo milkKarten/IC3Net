@@ -23,10 +23,12 @@ class Trainer(object):
         self.optimizer = optim.RMSprop(policy_net.parameters(),
             lr = args.lrate, alpha=0.97, eps=1e-6)
         self.params = [p for p in self.policy_net.parameters()]
-        self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        # self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        self.device = torch.device('cpu')
         if multi:
             self.device = torch.device('cpu')
         print("Device:", self.device)
+        self.first_print = True
 
     def get_episode(self, epoch):
         episode = []
@@ -78,9 +80,12 @@ class Trainer(object):
                 log_p_a = action_out
                 p_a = [[z.exp() for z in x] for x in log_p_a]
                 gating_probs = p_a[1][0].detach().numpy()
-
+                # if self.first_print:
+                #     print(f"Gating probabilities are {gating_probs}")
+                #     self.first_print = False
                 # since we treat this as reward so probability of 0 being high is rewarded
                 gating_head_rew = np.array([p[0] for p in gating_probs]) * self.args.gating_head_cost_factor
+                # print(gating_head_rew)
 
             # this converts stuff to numpy
             action, actual = translate_action(self.args, self.env, action)
@@ -91,7 +96,9 @@ class Trainer(object):
             # import time
             # time.sleep(10)
             if not self.args.continuous and self.args.gating_head_cost_factor != 0:
-                # print(f"gating head reward is {gating_head_rew}, general reward {reward}")
+                # if self.first_print:
+                #     print(f"gating head reward is {gating_head_rew}, general reward {reward}")
+                #     self.first_print = False
                 reward += gating_head_rew
 
             # store comm_action in info for next step
@@ -157,7 +164,7 @@ class Trainer(object):
         # print("stat are ", stat)
         return (episode, stat)
 
-    # TODO: Here you might be able make use of GPU.
+
     def compute_grad(self, batch):
         stat = dict()
         num_actions = self.args.num_actions

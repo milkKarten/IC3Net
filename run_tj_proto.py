@@ -12,13 +12,17 @@ seeds = [777]
 
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 # methods = ["fixed"]
-methods = [sys.argv[1]]
-print(methods)
-# methods = ["fixed_proto", "G_Proto"]
+# methods = sys.argv[1:]
+# print(methods)
+# methods = ["fixed_proto", "G_Proto", "G", "fixed", "G_proto_bigproto",
+#             "fixed_proto_bigproto", "G_proto_bigproto_bigcomm", "fixed_proto_bigproto_bigcomm"]
+# methods = ["G_proto_bigproto_bigcomm", "G_proto_bigcomm"]
+methods = ["G_Proto", "G", "baseline"]
+# run baseline with no reward on the gating function
 # G - IC3net with learned gating function
 # exp_name = "tj_g0.01_test"
 for method in methods:
-    exp_name = "tj_" + method
+    exp_name = "tj_" + method + "_NEG"
     nagents = 5
     # discrete comm is true if you want to use learnable prototype based communication.
     discrete_comm = False
@@ -33,19 +37,24 @@ for method in methods:
     # g=1. If this is set to true agents will communicate at every step.
     comm_action_one = False
     # weight of the gating penalty. 0 means no penalty.
-    gating_head_cost_factor = 0.01
+    gating_head_cost_factor = -.01
+    if "baseline" in method:
+        gating_head_cost_factor = 0
     if "fixed" in method:
         gating_head_cost_factor = 0
         comm_action_one = True
     # specify the number of prototypes you wish to use.
-    # num_proto = 25  # try to increase prototypes
-    num_proto = 50  # try to increase prototypes
+    num_proto = 25  # try to increase prototypes
+    if "bigproto" in method:
+        num_proto = 50  # try to increase prototypes
     # dimension of the communication vector.
-    comm_dim = 32
+    comm_dim = 16
+    if "bigcomm" in method:
+        comm_dim = 32
     if not discrete_comm:
         comm_dim = hid_size
 
-    run_str = f"python main.py --env_name {env} --nagents {nagents} --nprocesses 1 "+\
+    run_str = f"python main.py --env_name {env} --nagents {nagents} --nprocesses 11 "+\
               f"--num_epochs {num_epochs} "+\
               f"--gating_head_cost_factor {gating_head_cost_factor} "+\
               f"--hid_size {hid_size} "+\
@@ -59,12 +68,13 @@ for method in methods:
         run_str += f"--discrete_comm "
     if comm_action_one:
         run_str += f"--comm_action_one  "
-    if False:
-        run_str += f"--restore  "
 
     # Important: If you want to restore training just use the --restore tag
     # run for all seeds
     for seed in seeds:
+        log_path = os.path.join("trained_models", env, exp_name, "seed" + str(seed), "logs")
+        if os.path.exists(log_path):
+            run_str += f"--restore  "
         os.system(run_str + f"--seed {seed}")
 
     # plot the avg and error graphs using multiple seeds.
