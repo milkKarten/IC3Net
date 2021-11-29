@@ -20,8 +20,8 @@ history_path = os.path.join(args.save, args.env_name, args.exp_name)  # args.see
 def plot(hist_path, num_agents):
     keys = ["entropy", "num_episodes", "num_steps", "step_taken", "success", "value_loss"]
     for i in range(num_agents):
-        keys.append(f"agent{i}_comm_action")
-        keys.append(f"agent{i}_reward")
+        keys.append("agent"+str(i)+"_comm_action")
+        keys.append("agent"+str(i)+"_reward")
 
     keys = set(keys)
     history = defaultdict(list)
@@ -30,15 +30,18 @@ def plot(hist_path, num_agents):
 
     for seed_dir in os.listdir(hist_path):
         if seed_dir.startswith('seed'):
-            for f in os.listdir(f"{hist_path}/{seed_dir}/logs"):
+            for f in os.listdir(str(hist_path)+"/"+str(seed_dir)+"/logs"):
+            # for f in os.listdir(f"{hist_path}/{seed_dir}/logs"):
                 if f.endswith('.npy') and f.split('.npy')[0] in keys:
-                    val = np.load(f"{hist_path}/{seed_dir}/logs/{f}")
+                    # val = np.load(f"{hist_path}/{seed_dir}/logs/{f}")
+                    val = np.load(str(hist_path)+"/"+str(seed_dir)+"/logs/"+str(f))
                     if len(val) < min_steps:
                     	min_steps = len(val)
                     history[f.split('.npy')[0]].append(val)
 
 
-    plot_path = f"{hist_path}/graphs"
+    plot_path = str(hist_path)+"/graphs"
+    print(plot_path)
     os.makedirs(plot_path, exist_ok=True)
     for k, v in history.items():
         fig, ax = plt.subplots()
@@ -56,6 +59,6 @@ def plot(hist_path, num_agents):
         x = np.arange(len(mean))
         ax.plot(x, mean)
         ax.fill_between(x, minimum, maximum, alpha=0.2)
-        fig.savefig(f"{plot_path}/{k}.png")
+        fig.savefig(str(plot_path)+"/"+str(k)+".png")
 
 plot(history_path, args.nagents)
