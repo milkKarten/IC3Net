@@ -88,8 +88,9 @@ for reward_curr_start, reward_curr_end in zip([1500, 1250, 1800],[1900, 2000, 20
             log_path = os.path.join("trained_models", env, exp_name, "seed" + str(seed), "logs")
             if os.path.exists(log_path):
                 run_str += f"--restore  "
-            run_str += "> runLogs/" + exp_name + "Log.txt 2>&1 &"
-            subprocess.Popen(run_str.split(" "))
+            # run_str += "> runLogs/" + exp_name + "Log.txt 2>&1 &"
+            with open("runLogs/" + exp_name + "Log.txt","wb") as out:
+                subprocess.Popen(run_str.split(" "), stdout=out, stderr=out)
             # os.system(run_str + f"--seed {seed}")
 
         # plot the avg and error graphs using multiple seeds.
