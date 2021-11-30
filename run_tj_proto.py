@@ -78,9 +78,9 @@ for reward_curr_start, reward_curr_end in zip([1500, 1250, 1800],[1900, 2000, 20
             run_str += f"--discrete_comm "
         if comm_action_one:
             run_str += f"--comm_action_one  "
-        # if reward_curriculum:
-        #     run_str += f"--gate_reward_curriculum --gate_reward_max {gate_reward_max} --gate_reward_min {gate_reward_min} "+\
-        #                 f"--reward_curr_start {reward_curr_start} --reward_curr_end {reward_curr_end} "
+        if reward_curriculum:
+            run_str += f"--gate_reward_curriculum --gate_reward_max {gate_reward_max} --gate_reward_min {gate_reward_min} "+\
+                        f"--reward_curr_start {reward_curr_start} --reward_curr_end {reward_curr_end} "
 
         # Important: If you want to restore training just use the --restore tag
         # run for all seeds
@@ -93,7 +93,7 @@ for reward_curr_start, reward_curr_end in zip([1500, 1250, 1800],[1900, 2000, 20
             # print(cmd_args)
             with open("runLogs/" + exp_name + "Log.txt","wb") as out:
                 # subprocess.Popen(run_str, stdout=out)
-                subprocess.run(run_str, shell=True, stdout=out, stderr=out)
+                subprocess.run(run_str + f"--seed {seed}", shell=True, stdout=out, stderr=out)
                 # subprocess.Popen(run_str[:-1].split(" "), stdout=out, stderr=out)
             # os.system(run_str + f"--seed {seed}")
         # sys.exit(0)
