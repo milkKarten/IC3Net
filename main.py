@@ -15,7 +15,6 @@ from action_utils import parse_action_args
 from trainer import Trainer
 from multi_processing import MultiProcessTrainer
 from collections import defaultdict
-
 # fixed for multiprocessing
 os.environ["OMP_NUM_THREADS"] = "1"
 
@@ -138,6 +137,18 @@ parser.add_argument('--gating_head_cost_factor', type=float, default=0.0,
                     help='discount factor')
 parser.add_argument('--restore', action='store_true', default=False,
                     help='plot training progress')
+
+# gating reward curriculum
+parser.add_argument('--gate_reward_curriculum', action='store_true', default=False,
+                    help='use gated reward curriculum')
+parser.add_argument('--gate_reward_max', type=float, default=-0.01,
+                    help='max gate reward for curriculum')
+parser.add_argument('--gate_reward_min', type=float, default=0.01,
+                    help='min gate reward for curriculum')
+parser.add_argument('--reward_curr_start', type=int, default=1500,
+                    help='starting epoch for reward curriculum')
+parser.add_argument('--reward_curr_end', type=int, default=1900,
+                    help='ending epoch for reward curriculum')
 
 # first add environment specific args to the parser
 init_args_for_env(parser)

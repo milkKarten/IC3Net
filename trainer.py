@@ -28,9 +28,21 @@ class Trainer(object):
         if multi:
             self.device = torch.device('cpu')
         print("Device:", self.device)
-        self.first_print = True
+        print("DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA")
+        self.first_print = False
+        # self.gate_reward_max = -0.01
+        # self.gate_reward_min = 0.01
+        # self.reward_curr_start = 1500
+        # self.reward_curr_end = 1900
+
+    def curriculum(self, epoch):
+        if self.args.reward_curr_start <= epoch < self.args.reward_curr_end:
+            step = (self.args.gate_reward_max - self.args.gate_reward_min) / (self.args.reward_curr_end - self.args.reward_curr_start)
+            self.args.gating_head_cost_factor += step
 
     def get_episode(self, epoch):
+        if self.args.gate_reward_curriculum:
+            self.curriculum(epoch)
         episode = []
         reset_args = getargspec(self.env.reset).args
         if 'epoch' in reset_args:
