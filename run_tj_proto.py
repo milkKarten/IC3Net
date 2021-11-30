@@ -62,8 +62,8 @@ for reward_curr_start, reward_curr_end in zip([1500, 1250, 1800],[1900, 2000, 20
         gate_reward_min = 0.01
         if reward_curriculum:
             gating_head_cost_factor = gate_reward_min
-        reward_curr_start = 1500
-        reward_curr_end = 1900
+        # reward_curr_start = 1500
+        # reward_curr_end = 1900
         run_str = f"python main.py --env_name {env} --nagents {nagents} --nprocesses 11 "+\
                   f"--num_epochs {num_epochs} "+\
                   f"--gating_head_cost_factor {gating_head_cost_factor} "+\
@@ -78,9 +78,9 @@ for reward_curr_start, reward_curr_end in zip([1500, 1250, 1800],[1900, 2000, 20
             run_str += f"--discrete_comm "
         if comm_action_one:
             run_str += f"--comm_action_one  "
-        if reward_curriculum:
-            run_str += f"--gate_reward_curriculum --gate_reward_max {gate_reward_max} --gate_reward_min {gate_reward_min} "+\
-                        f"--reward_curr_start {reward_curr_start} --reward_curr_end {reward_curr_end} "
+        # if reward_curriculum:
+        #     run_str += f"--gate_reward_curriculum --gate_reward_max {gate_reward_max} --gate_reward_min {gate_reward_min} "+\
+        #                 f"--reward_curr_start {reward_curr_start} --reward_curr_end {reward_curr_end} "
 
         # Important: If you want to restore training just use the --restore tag
         # run for all seeds
@@ -89,9 +89,13 @@ for reward_curr_start, reward_curr_end in zip([1500, 1250, 1800],[1900, 2000, 20
             if os.path.exists(log_path):
                 run_str += f"--restore  "
             # run_str += "> runLogs/" + exp_name + "Log.txt 2>&1 &"
+            # cmd_args = run_str[:-1].split(" ")
+            # print(cmd_args)
             with open("runLogs/" + exp_name + "Log.txt","wb") as out:
-                subprocess.Popen(run_str.split(" "), stdout=out, stderr=out)
+                # subprocess.Popen(run_str, stdout=out)
+                subprocess.run(run_str, shell=True, stdout=out, stderr=out)
+                # subprocess.Popen(run_str[:-1].split(" "), stdout=out, stderr=out)
             # os.system(run_str + f"--seed {seed}")
-
+        # sys.exit(0)
         # plot the avg and error graphs using multiple seeds.
         # os.system(f"python plot.py --env_name {env} --exp_name {exp_name} --nagents {nagents}")
