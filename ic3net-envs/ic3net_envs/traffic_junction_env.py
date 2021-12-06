@@ -192,12 +192,12 @@ class TrafficJunctionEnv(gym.Env):
         # stat - like success ratio
         self.stat = dict()
 
-        # set add rate according to the curriculum
-        epoch_range = (self.curr_end - self.curr_start)
-        add_rate_range = (self.add_rate_max - self.add_rate_min)
-        if epoch is not None and epoch_range > 0 and add_rate_range > 0 and epoch > self.epoch_last_update:
-            self.curriculum(epoch)
-            self.epoch_last_update = epoch
+        # # set add rate according to the curriculum
+        # epoch_range = (self.curr_end - self.curr_start)
+        # add_rate_range = (self.add_rate_max - self.add_rate_min)
+        # if epoch is not None and epoch_range > 0 and add_rate_range > 0 and epoch > self.epoch_last_update:
+        #     self.curriculum(epoch)
+        #     self.epoch_last_update = epoch
 
         # Observation will be ncar * vision * vision ndarray
         obs = self._get_obs()
@@ -617,10 +617,20 @@ class TrafficJunctionEnv(gym.Env):
         # random choice of idx from dead ones.
         return np.random.choice(car_idx[self.alive_mask == 0])
 
+    def curriculum_wrapper(epoch):
+        # set add rate according to the curriculum
+        epoch_range = (self.curr_end - self.curr_start)
+        add_rate_range = (self.add_rate_max - self.add_rate_min)
+        if epoch is not None and epoch_range > 0 and add_rate_range > 0 and epoch > self.epoch_last_update:
+            self.curriculum(epoch)
+            self.epoch_last_update = epoch
+
     def curriculum(self, epoch):
         step_size = 0.01
         step = (self.add_rate_max - self.add_rate_min) / (self.curr_end - self.curr_start)
 
         if self.curr_start <= epoch < self.curr_end:
+            print("curric working")
             self.exact_rate = self.exact_rate + step
-            self.add_rate = step_size * (self.exact_rate // step_size)
+            self.add_rate = self.exact_rate
+            # self.add_rate = s tep_size * (self.exact_rate // step_size)
