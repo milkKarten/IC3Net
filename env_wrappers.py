@@ -65,7 +65,7 @@ class GymWrapper(object):
             obs = self.env.reset(epoch)
         else:
             #print(epoch, "reset epoch oops")
-            obs = self.env.reset()
+            obs = self.env.reset(epoch=epoch)
 
         obs = self._flatten_obs(obs)
         return obs
