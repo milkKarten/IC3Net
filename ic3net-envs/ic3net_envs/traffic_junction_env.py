@@ -620,6 +620,14 @@ class TrafficJunctionEnv(gym.Env):
         # random choice of idx from dead ones.
         return np.random.choice(car_idx[self.alive_mask == 0])
 
+    def curriculum_wrapper(epoch):
+        # set add rate according to the curriculum
+        epoch_range = (self.curr_end - self.curr_start)
+        add_rate_range = (self.add_rate_max - self.add_rate_min)
+        if epoch is not None and epoch_range > 0 and add_rate_range > 0 and epoch > self.epoch_last_update:
+            self.curriculum(epoch)
+            self.epoch_last_update = epoch
+
     def curriculum(self, epoch):
         step_size = 0.01
         step = (self.add_rate_max - self.add_rate_min) / (self.curr_end - self.curr_start)
