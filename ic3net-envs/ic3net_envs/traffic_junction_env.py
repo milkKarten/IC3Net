@@ -638,4 +638,4 @@ class TrafficJunctionEnv(gym.Env):
             print("tj curriculum", self.add_rate)
             # self.add_rate = step_size * (self.exact_rate // step_size)
         else:
-            print("not updating curriculum for tj")
+            print("not updating curriculum for tj for epoch", epoch)
