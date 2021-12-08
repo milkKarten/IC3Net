@@ -25,7 +25,7 @@ import gym
 import numpy as np
 from gym import spaces
 from ic3net_envs.traffic_helper import *
-
+from inspect import getargspec
 
 def nPr(n,r):
     f = math.factorial
@@ -36,7 +36,7 @@ class TrafficJunctionEnv(gym.Env):
 
     def __init__(self,):
         self.__version__ = "0.0.1"
-
+        #print("init traffic junction", getargspec(self.reset).args)
         # TODO: better config handling
         self.OUTSIDE_CLASS = 0
         self.ROAD_CLASS = 1
@@ -78,6 +78,7 @@ class TrafficJunctionEnv(gym.Env):
 
 
     def multi_agent_init(self, args):
+        #print("init tj")
         # General variables defining the environment : CONFIG
         params = ['dim', 'vision', 'add_rate_min', 'add_rate_max', 'curr_start', 'curr_end',
                   'difficulty', 'vocab_type']
@@ -195,7 +196,9 @@ class TrafficJunctionEnv(gym.Env):
         # set add rate according to the curriculum
         epoch_range = (self.curr_end - self.curr_start)
         add_rate_range = (self.add_rate_max - self.add_rate_min)
+        # print("reached first step", epoch, epoch_range, add_rate_range, self.epoch_last_update)
         if epoch is not None and epoch_range > 0 and add_rate_range > 0 and epoch > self.epoch_last_update:
+            # print("running curriculum now")
             self.curriculum(epoch)
             self.epoch_last_update = epoch
 
@@ -623,4 +626,8 @@ class TrafficJunctionEnv(gym.Env):
 
         if self.curr_start <= epoch < self.curr_end:
             self.exact_rate = self.exact_rate + step
-            self.add_rate = step_size * (self.exact_rate // step_size)
+            self.add_rate = self.exact_rate
+            print("tj curriculum", self.add_rate)
+            # self.add_rate = step_size * (self.exact_rate // step_size)
+        else:
+            print("not updating curriculum for tj")

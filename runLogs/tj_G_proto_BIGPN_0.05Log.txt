@@ -1,0 +1,614 @@
+env action space is:  Discrete(2)
+num inputs is:  17
+[2]
+[2, 2]
+Namespace(action_scale=1.0, add_rate_max=0.3, add_rate_min=0.1, advantages_per_action=False, batch_size=500, comm_action_one=False, comm_dim=16, comm_init='uniform', comm_mask_zero=False, comm_mode='avg', comm_passes=1, commnet=1, continuous=False, curr_end=1250.0, curr_start=250.0, detach_gap=10, difficulty='easy', dim=6, dim_actions=2, discrete_comm=True, display=False, entr=0, env_name='traffic_junction', epoch_size=10, exp_name='tj_G_proto_BIGPN_0.05', gamma=1.0, gate_reward_curriculum=False, gate_reward_max=-0.01, gate_reward_min=0.01, gating_head_cost_factor=0.05, hard_attn=1, hid_size=128, ic3net=True, load='trained_models', log_dir='tb_logs', lrate=0.001, max_steps=20, mean_ratio=0, naction_heads=[2, 2], nactions='1', nagents=5, nfriendly=5, normalize_rewards=False, nprocesses=11, num_actions=[2, 2], num_epochs=2000, num_inputs=17, num_proto=25, plot=False, plot_env='main', random=False, recurrent=True, restore=False, reward_curr_end=1900, reward_curr_start=1500, rnn_type='LSTM', save='trained_models', save_every=100, seed=20, share_weights=False, tau=1.0, use_proto=True, value_coeff=0.01, vision=0, vocab_type='bool')
+using commnet
+====================================================================================================
+Model log:
+
+CommNetMLP(
+  (proto_layer): ProtoNetwork(
+    (layers): ModuleList(
+      (0): Linear(in_features=128, out_features=64, bias=True)
+      (1): Linear(in_features=64, out_features=25, bias=True)
+    )
+    (prototype_layer): ProtoLayer()
+  )
+  (heads): ModuleList(
+    (0): Linear(in_features=128, out_features=2, bias=True)
+    (1): Linear(in_features=128, out_features=2, bias=True)
+  )
+  (encoder): Linear(in_features=17, out_features=16, bias=True)
+  (hidd_encoder): Linear(in_features=128, out_features=128, bias=True)
+  (f_module): LSTMCell(16, 128)
+  (C_modules): ModuleList(
+    (0): Linear(in_features=16, out_features=16, bias=True)
+  )
+  (tanh): Tanh()
+  (value_head): Linear(in_features=128, out_features=1, bias=True)
+)
+====================================================================================================
+
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+save directory is trained_models/traffic_junction/tj_G_proto_BIGPN_0.05/seed20/models
+log dir directory is trained_models/traffic_junction/tj_G_proto_BIGPN_0.05/seed20/logs
+Epoch 0	Reward [-3.85 -3.69 -3.69 -3.84 -3.76]	Time 39.44s
+Add-Rate: 0.10
+Success: 0.68
+Steps-taken: 20.00
+Comm-Action: [0.59 0.59 0.59 0.59 0.59]
+Epoch 1	Reward [-0.38 -0.42 -0.25 -0.36 -0.2 ]	Time 27.56s
+Add-Rate: 0.10
+Success: 0.83
+Steps-taken: 20.00
+Comm-Action: [0.22 0.22 0.22 0.22 0.22]
+Epoch 2	Reward [-0.15 -0.07 -0.08 -0.02 -0.1 ]	Time 28.20s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.17 0.16 0.16 0.16 0.16]
+Epoch 3	Reward [-0.31 -0.12 -0.15 -0.22 -0.04]	Time 28.91s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.24 0.24 0.24 0.24 0.24]
+Epoch 4	Reward [-0.08 -0.04  0.03 -0.05  0.09]	Time 28.06s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.18 0.18 0.18 0.18 0.18]
+Epoch 5	Reward [-0.03 -0.08 -0.05 -0.08  0.01]	Time 27.62s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.22 0.22 0.22 0.22 0.22]
+Epoch 6	Reward [-0.05 -0.   -0.16 -0.01 -0.1 ]	Time 27.68s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.22 0.22 0.22 0.22 0.22]
+Epoch 7	Reward [-0.06 -0.1   0.08 -0.02 -0.05]	Time 28.90s
+Add-Rate: 0.10
+Success: 0.83
+Steps-taken: 20.00
+Comm-Action: [0.15 0.15 0.15 0.15 0.15]
+Epoch 8	Reward [ 0.04 -0.02 -0.    0.02 -0.01]	Time 28.37s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.16 0.16 0.16 0.16 0.16]
+Epoch 9	Reward [ 0.08 -0.01  0.    0.12  0.01]	Time 26.84s
+Add-Rate: 0.10
+Success: 0.83
+Steps-taken: 20.00
+Comm-Action: [0.11 0.11 0.11 0.11 0.11]
+Epoch 10	Reward [0.09 0.04 0.06 0.06 0.09]	Time 26.80s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.1 0.1 0.1 0.1 0.1]
+Epoch 11	Reward [0.13 0.11 0.11 0.18 0.16]	Time 28.49s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.11 0.11 0.11 0.11 0.11]
+Epoch 12	Reward [0.15 0.03 0.06 0.07 0.05]	Time 28.61s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.09 0.09 0.09 0.09 0.09]
+Epoch 13	Reward [0.14 0.04 0.19 0.12 0.14]	Time 27.57s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.07 0.07 0.07 0.07 0.07]
+Epoch 14	Reward [0.25 0.2  0.23 0.18 0.12]	Time 28.58s
+Add-Rate: 0.10
+Success: 0.86
+Steps-taken: 20.00
+Comm-Action: [0.06 0.05 0.06 0.06 0.05]
+Epoch 15	Reward [0.19 0.14 0.11 0.19 0.11]	Time 28.33s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.06 0.06 0.06 0.06 0.05]
+Epoch 16	Reward [0.03 0.17 0.15 0.11 0.15]	Time 27.43s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.05 0.05 0.05 0.06 0.05]
+Epoch 17	Reward [0.15 0.04 0.14 0.2  0.13]	Time 28.16s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.05 0.05 0.05 0.05 0.05]
+Epoch 18	Reward [0.08 0.18 0.15 0.08 0.15]	Time 28.27s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.06 0.06 0.06 0.06 0.06]
+Epoch 19	Reward [0.17 0.12 0.08 0.12 0.12]	Time 29.33s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.06 0.06 0.06 0.06 0.06]
+Epoch 20	Reward [0.19 0.18 0.22 0.2  0.21]	Time 28.17s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.04 0.05 0.04 0.05 0.05]
+Epoch 21	Reward [0.14 0.13 0.18 0.1  0.19]	Time 28.81s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.05 0.05 0.05 0.05 0.05]
+Epoch 22	Reward [0.2  0.19 0.18 0.19 0.17]	Time 28.66s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.04 0.05 0.04 0.04 0.04]
+Epoch 23	Reward [0.15 0.14 0.14 0.14 0.18]	Time 27.10s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.05 0.05 0.05 0.05 0.05]
+Epoch 24	Reward [0.15 0.12 0.15 0.12 0.1 ]	Time 27.82s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.07 0.07 0.07 0.07 0.07]
+Epoch 25	Reward [ 0.01 -0.07 -0.   -0.03 -0.  ]	Time 28.09s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.22 0.22 0.22 0.22 0.22]
+Epoch 26	Reward [0.08 0.07 0.05 0.08 0.07]	Time 28.50s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.14 0.14 0.14 0.14 0.14]
+Epoch 27	Reward [ 0.   -0.02  0.06  0.02 -0.1 ]	Time 27.82s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.18 0.18 0.19 0.18 0.18]
+Epoch 28	Reward [-0.1  -0.17 -0.06 -0.11 -0.11]	Time 28.11s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.34 0.34 0.34 0.34 0.34]
+Epoch 29	Reward [-0.08 -0.17 -0.16 -0.18 -0.17]	Time 27.49s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.37 0.37 0.36 0.37 0.36]
+Epoch 30	Reward [-0.08 -0.12 -0.06 -0.15 -0.13]	Time 28.26s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.33 0.33 0.33 0.33 0.33]
+Epoch 31	Reward [-0.21 -0.19 -0.28 -0.24 -0.24]	Time 27.58s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.43 0.43 0.42 0.43 0.43]
+Epoch 32	Reward [-0.09 -0.02 -0.03 -0.    0.02]	Time 27.86s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.23 0.23 0.23 0.23 0.23]
+Epoch 33	Reward [0.11 0.14 0.14 0.08 0.11]	Time 28.58s
+Add-Rate: 0.10
+Success: 0.86
+Steps-taken: 20.00
+Comm-Action: [0.15 0.15 0.15 0.15 0.15]
+Epoch 34	Reward [-0.09 -0.06 -0.09 -0.09  0.  ]	Time 27.94s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.26 0.26 0.26 0.26 0.26]
+Epoch 35	Reward [-0.11 -0.23 -0.19 -0.19 -0.21]	Time 27.69s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.41 0.41 0.41 0.41 0.41]
+Epoch 36	Reward [-0.12 -0.13 -0.09 -0.13 -0.14]	Time 28.87s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.35 0.34 0.34 0.34 0.34]
+Epoch 37	Reward [-0.13 -0.26 -0.24 -0.33 -0.33]	Time 28.32s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.43 0.42 0.42 0.43 0.42]
+Epoch 38	Reward [-0.07 -0.17 -0.11 -0.02 -0.17]	Time 27.71s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.32 0.32 0.32 0.32 0.32]
+Epoch 39	Reward [-0.23 -0.23 -0.09 -0.16 -0.2 ]	Time 27.07s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.4 0.4 0.4 0.4 0.4]
+Epoch 40	Reward [-0.1  -0.09 -0.   -0.02 -0.03]	Time 27.58s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.27 0.27 0.27 0.27 0.27]
+Epoch 41	Reward [-0.07 -0.04  0.   -0.03 -0.02]	Time 27.62s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.22 0.22 0.22 0.23 0.22]
+Epoch 42	Reward [-0.01  0.12 -0.03  0.08  0.06]	Time 28.97s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.18 0.18 0.19 0.19 0.19]
+Epoch 43	Reward [ 0.05  0.14  0.01  0.05 -0.02]	Time 28.93s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.16 0.16 0.17 0.16 0.16]
+Epoch 44	Reward [-0.08  0.04 -0.01 -0.12 -0.03]	Time 28.17s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.2 0.2 0.2 0.2 0.2]
+Epoch 45	Reward [ 0.    0.03 -0.06 -0.04 -0.05]	Time 28.25s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.17 0.17 0.17 0.17 0.17]
+Epoch 46	Reward [0.02 0.06 0.11 0.04 0.05]	Time 28.27s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.17 0.17 0.17 0.17 0.17]
+Epoch 47	Reward [0.02 0.04 0.05 0.05 0.05]	Time 28.42s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.15 0.15 0.15 0.15 0.15]
+Epoch 48	Reward [0.16 0.09 0.25 0.01 0.1 ]	Time 27.70s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.11 0.11 0.11 0.11 0.11]
+Epoch 49	Reward [ 0.08 -0.03  0.06  0.07  0.06]	Time 27.24s
+Add-Rate: 0.10
+Success: 0.83
+Steps-taken: 20.00
+Comm-Action: [0.11 0.1  0.11 0.11 0.1 ]
+Epoch 50	Reward [0.17 0.17 0.13 0.22 0.14]	Time 27.55s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.07 0.07 0.07 0.07 0.07]
+Epoch 51	Reward [0.14 0.09 0.2  0.14 0.17]	Time 28.37s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.07 0.07 0.07 0.07 0.07]
+Epoch 52	Reward [0.09 0.12 0.1  0.13 0.05]	Time 27.88s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.1 0.1 0.1 0.1 0.1]
+Epoch 53	Reward [0.01 0.09 0.04 0.12 0.1 ]	Time 29.08s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.14 0.14 0.14 0.14 0.14]
+Epoch 54	Reward [0.17 0.03 0.05 0.05 0.02]	Time 27.84s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.16 0.16 0.15 0.16 0.16]
+Epoch 55	Reward [0.03 0.03 0.12 0.1  0.11]	Time 28.64s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.11 0.11 0.11 0.11 0.11]
+Epoch 56	Reward [0.07 0.1  0.2  0.11 0.13]	Time 28.84s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.1 0.1 0.1 0.1 0.1]
+Epoch 57	Reward [0.16 0.14 0.08 0.04 0.15]	Time 29.24s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.09 0.09 0.09 0.09 0.09]
+Epoch 58	Reward [0.13 0.13 0.17 0.1  0.16]	Time 27.97s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.07 0.06 0.07 0.07 0.07]
+Epoch 59	Reward [0.11 0.1  0.11 0.08 0.14]	Time 27.98s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.07 0.07 0.07 0.07 0.07]
+Epoch 60	Reward [0.16 0.18 0.12 0.   0.05]	Time 28.20s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.11 0.11 0.1  0.1  0.1 ]
+Epoch 61	Reward [0.09 0.18 0.12 0.08 0.11]	Time 28.32s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.09 0.09 0.09 0.09 0.09]
+Epoch 62	Reward [0.1  0.1  0.11 0.06 0.14]	Time 27.60s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.09 0.1  0.1  0.1  0.1 ]
+Epoch 63	Reward [0.11 0.11 0.08 0.13 0.13]	Time 27.37s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.11 0.11 0.11 0.11 0.11]
+Epoch 64	Reward [ 0.01  0.07  0.01  0.   -0.02]	Time 27.57s
+Add-Rate: 0.10
+Success: 0.83
+Steps-taken: 20.00
+Comm-Action: [0.12 0.12 0.12 0.12 0.12]
+Epoch 65	Reward [0.12 0.11 0.07 0.12 0.1 ]	Time 27.56s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.11 0.1  0.11 0.11 0.11]
+Epoch 66	Reward [0.12 0.09 0.1  0.16 0.07]	Time 27.74s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.09 0.09 0.09 0.09 0.09]
+Epoch 67	Reward [0.01 0.07 0.04 0.09 0.08]	Time 27.95s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.14 0.14 0.14 0.14 0.14]
+Epoch 68	Reward [0.07 0.08 0.19 0.18 0.08]	Time 28.21s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.13 0.13 0.13 0.13 0.13]
+Epoch 69	Reward [0.11 0.15 0.12 0.08 0.11]	Time 28.41s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.1 0.1 0.1 0.1 0.1]
+Epoch 70	Reward [0.06 0.05 0.07 0.1  0.08]	Time 27.59s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.13 0.13 0.13 0.13 0.13]
+Epoch 71	Reward [0.04 0.05 0.09 0.08 0.06]	Time 27.74s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.09 0.09 0.09 0.09 0.09]
+Epoch 72	Reward [0.17 0.12 0.24 0.15 0.18]	Time 28.28s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.06 0.06 0.06 0.06 0.06]
+Epoch 73	Reward [0.19 0.14 0.12 0.12 0.14]	Time 28.60s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.05 0.05 0.05 0.05 0.05]
+Epoch 74	Reward [0.14 0.14 0.17 0.14 0.12]	Time 27.79s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.05 0.05 0.05 0.05 0.05]
+Epoch 75	Reward [0.16 0.04 0.11 0.1  0.09]	Time 28.53s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.06 0.06 0.06 0.06 0.06]
+Epoch 76	Reward [0.17 0.1  0.15 0.08 0.08]	Time 27.80s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.07 0.07 0.07 0.07 0.07]
+Epoch 77	Reward [0.16 0.12 0.18 0.14 0.12]	Time 28.92s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.06 0.06 0.06 0.06 0.06]
+Epoch 78	Reward [0.13 0.17 0.09 0.11 0.18]	Time 28.47s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.05 0.04 0.04 0.04 0.05]
+Epoch 79	Reward [0.17 0.12 0.13 0.19 0.22]	Time 28.45s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.04 0.04 0.04 0.04 0.04]
+Epoch 80	Reward [0.18 0.21 0.23 0.18 0.17]	Time 28.73s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.05 0.05 0.04 0.05 0.05]
+Epoch 81	Reward [0.14 0.1  0.1  0.17 0.1 ]	Time 28.68s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.09 0.09 0.09 0.09 0.09]
+Epoch 82	Reward [ 0.03  0.07  0.09 -0.01  0.04]	Time 27.35s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.14 0.14 0.15 0.14 0.15]
+Epoch 83	Reward [-0.08 -0.02 -0.02 -0.01 -0.05]	Time 27.67s
+Add-Rate: 0.10
+Success: 0.83
+Steps-taken: 20.00
+Comm-Action: [0.2 0.2 0.2 0.2 0.2]
+Epoch 84	Reward [-0.01  0.02  0.01 -0.03  0.03]	Time 29.04s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.21 0.21 0.21 0.21 0.21]
+Epoch 85	Reward [-0.05 -0.    0.01 -0.    0.06]	Time 27.61s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.2  0.21 0.2  0.2  0.2 ]
+Epoch 86	Reward [-0.14 -0.   -0.19 -0.17 -0.25]	Time 27.70s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.38 0.38 0.38 0.38 0.38]
+Epoch 87	Reward [-0.4  -0.47 -0.5  -0.43 -0.48]	Time 28.10s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.7 0.7 0.7 0.7 0.7]
+Epoch 88	Reward [-0.46 -0.43 -0.5  -0.49 -0.42]	Time 28.30s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.66 0.66 0.66 0.66 0.66]
+Epoch 89	Reward [-0.33 -0.42 -0.38 -0.28 -0.33]	Time 29.12s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.54 0.55 0.54 0.54 0.54]
+Epoch 90	Reward [-0.28 -0.31 -0.25 -0.28 -0.23]	Time 29.07s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.49 0.49 0.49 0.49 0.49]
+Epoch 91	Reward [-0.14 -0.12 -0.11 -0.14 -0.11]	Time 28.10s
+Add-Rate: 0.10
+Success: 0.86
+Steps-taken: 20.00
+Comm-Action: [0.36 0.36 0.37 0.36 0.36]
+Epoch 92	Reward [-0.16 -0.12 -0.11 -0.   -0.03]	Time 28.57s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.26 0.25 0.26 0.26 0.26]
+Epoch 93	Reward [ 0.06 -0.   -0.05 -0.07 -0.06]	Time 29.15s
+Add-Rate: 0.10
+Success: 0.86
+Steps-taken: 20.00
+Comm-Action: [0.27 0.27 0.27 0.27 0.27]
+Epoch 94	Reward [-0.13 -0.04 -0.11 -0.11 -0.14]	Time 27.40s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.29 0.29 0.29 0.29 0.28]
+Epoch 95	Reward [ 0.05  0.   -0.04 -0.04  0.02]	Time 28.47s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.18 0.19 0.19 0.19 0.19]
+Epoch 96	Reward [0.05 0.04 0.03 0.03 0.09]	Time 27.60s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.14 0.14 0.15 0.14 0.14]
+Epoch 97	Reward [-0.04  0.08  0.11  0.05 -0.02]	Time 27.55s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.16 0.16 0.16 0.15 0.16]
+Epoch 98	Reward [-0.04 -0.04 -0.07 -0.07 -0.05]	Time 28.89s
+Add-Rate: 0.10
+Success: 0.83
+Steps-taken: 20.00
+Comm-Action: [0.19 0.19 0.19 0.19 0.19]
+Epoch 99	Reward [-0.11 -0.05 -0.15 -0.08 -0.07]	Time 28.52s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.3 0.3 0.3 0.3 0.3]
+Epoch 100	Reward [-0.29 -0.34 -0.26 -0.23 -0.25]	Time 28.37s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.45 0.45 0.45 0.45 0.45]
+Epoch 101	Reward [-0.28 -0.2  -0.22 -0.26 -0.22]	Time 28.04s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.43 0.43 0.43 0.43 0.43]
+Epoch 102	Reward [-0.29 -0.23 -0.25 -0.36 -0.28]	Time 27.74s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.45 0.45 0.45 0.45 0.45]
+Epoch 103	Reward [-0.14 -0.12 -0.15 -0.18 -0.14]	Time 27.85s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.37 0.37 0.37 0.37 0.37]
+Epoch 104	Reward [-0.13 -0.05 -0.12 -0.01 -0.06]	Time 28.70s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.25 0.25 0.25 0.25 0.24]
+Epoch 105	Reward [-0.03 -0.04 -0.02 -0.   -0.06]	Time 27.25s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.24 0.25 0.24 0.25 0.24]
+Epoch 106	Reward [ 0.02  0.11  0.07 -0.01  0.04]	Time 28.40s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.18 0.18 0.18 0.18 0.18]
+Epoch 107	Reward [0.17 0.07 0.06 0.09 0.1 ]	Time 28.17s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.11 0.11 0.11 0.11 0.11]
+Epoch 108	Reward [0.03 0.08 0.01 0.11 0.08]	Time 28.18s
+Add-Rate: 0.10
+Success: 0.83
+Steps-taken: 20.00
+Comm-Action: [0.09 0.09 0.09 0.09 0.09]
+Epoch 109	Reward [0.16 0.16 0.12 0.1  0.15]	Time 29.22s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.09 0.09 0.09 0.09 0.09]
+Epoch 110	Reward [0.03 0.08 0.09 0.   0.1 ]	Time 27.62s
+Add-Rate: 0.10
+Success: 0.83
+Steps-taken: 20.00
+Comm-Action: [0.07 0.07 0.07 0.07 0.07]
+Terminated

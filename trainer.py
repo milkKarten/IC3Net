@@ -18,10 +18,14 @@ class Trainer(object):
         self.args = args
         self.policy_net = policy_net
         self.env = env
+        # print("1trainer", getargspec(self.env.reset).args, self.env.reset)
         self.display = False
         self.last_step = False
-        self.optimizer = optim.RMSprop(policy_net.parameters(),
-            lr = args.lrate, alpha=0.97, eps=1e-6)
+        if self.args.optim_name == "RMSprop":
+            self.optimizer = optim.RMSprop(policy_net.parameters(),
+                lr = args.lrate, alpha=0.97, eps=1e-6)
+        elif self.args.optim_name == "Adadelta":
+            self.optimizer = optim.Adadelta(policy_net.parameters())#, lr = args.lrate)
         self.params = [p for p in self.policy_net.parameters()]
         # self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.device = torch.device('cpu')
@@ -36,15 +40,19 @@ class Trainer(object):
         # self.reward_curr_end = 1900
 
     def curriculum(self, epoch):
-        if self.args.reward_curr_start <= epoch < self.args.reward_curr_end:
+        if self.args.variable_gate and epoch >= self.args.variable_gate_start:
+            self.args.comm_action_one = False
+        elif self.args.variable_gate and epoch < self.args.variable_gate_start:
+            self.args.comm_action_one = True
+        if self.args.gate_reward_curriculum and (self.args.reward_curr_start <= epoch < self.args.reward_curr_end):
             step = (self.args.gate_reward_max - self.args.gate_reward_min) / (self.args.reward_curr_end - self.args.reward_curr_start)
             self.args.gating_head_cost_factor += step
 
     def get_episode(self, epoch):
-        if self.args.gate_reward_curriculum:
-            self.curriculum(epoch)
+        self.curriculum(epoch)
         episode = []
         reset_args = getargspec(self.env.reset).args
+        # print(reset_args, " trainer", self.env.reset)
         if 'epoch' in reset_args:
             state = self.env.reset(epoch)
         else:
@@ -86,7 +94,6 @@ class Trainer(object):
 
             # this is actually giving you actions from logits
             action = select_action(self.args, action_out)
-
             # this is for the gating head penalty
             if not self.args.continuous and self.args.gating_head_cost_factor != 0:
                 log_p_a = action_out
@@ -111,12 +118,15 @@ class Trainer(object):
                 # if self.first_print:
                 #     print(f"gating head reward is {gating_head_rew}, general reward {reward}")
                 #     self.first_print = False
-                reward += gating_head_rew
+                if not (self.args.variable_gate and epoch < self.args.variable_gate_start):
+                    reward += gating_head_rew
 
             # store comm_action in info for next step
             if self.args.hard_attn and self.args.commnet:
                 info['comm_action'] = action[-1] if not self.args.comm_action_one else np.ones(self.args.nagents, dtype=int)
 
+                if self.args.comm_action_zero:
+                    info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
                 stat['comm_action'] = stat.get('comm_action', 0) + info['comm_action'][:self.args.nfriendly]
                 if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
                     stat['enemy_comm']  = stat.get('enemy_comm', 0)  + info['comm_action'][self.args.nfriendly:]
@@ -175,7 +185,6 @@ class Trainer(object):
         # print(stat['comm_'])
         # print("stat are ", stat)
         return (episode, stat)
-
 
     def compute_grad(self, batch):
         stat = dict()

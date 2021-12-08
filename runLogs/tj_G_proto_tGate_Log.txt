@@ -1,0 +1,226 @@
+env action space is:  Discrete(2)
+num inputs is:  17
+[2]
+[2, 2]
+Namespace(num_epochs=2000, epoch_size=10, batch_size=500, nprocesses=16, hid_size=128, recurrent=True, gamma=1.0, tau=1.0, seed=20, normalize_rewards=False, lrate=0.001, entr=0, value_coeff=0.01, env_name='traffic_junction', max_steps=20, nactions='1', action_scale=1.0, plot=False, plot_env='main', save='trained_models', save_every=100, load='trained_models', display=False, random=False, commnet=1, ic3net=True, nagents=5, comm_mode='avg', comm_passes=1, comm_mask_zero=False, mean_ratio=0, rnn_type='LSTM', detach_gap=10, comm_init='uniform', hard_attn=1, comm_action_one=False, comm_action_zero=False, advantages_per_action=False, share_weights=False, log_dir='tb_logs', exp_name='tj_G_proto_tGate_', use_proto=True, discrete_comm=True, num_proto=25, comm_dim=16, gating_head_cost_factor=-0.1, restore=True, gate_reward_curriculum=False, gate_reward_max=-0.01, gate_reward_min=0.01, reward_curr_start=1500, reward_curr_end=1900, variable_gate=False, variable_gate_start=500, dim=6, vision=0, add_rate_min=0.1, add_rate_max=0.3, curr_start=250.0, curr_end=1250.0, difficulty='easy', vocab_type='bool', nfriendly=5, num_actions=[2, 2], dim_actions=2, num_inputs=17, continuous=False, naction_heads=[2, 2])
+using commnet
+====================================================================================================
+Model log:
+
+CommNetMLP(
+  (proto_layer): ProtoNetwork(
+    (layers): ModuleList(
+      (0): Linear(in_features=128, out_features=64, bias=True)
+      (1): Linear(in_features=64, out_features=25, bias=True)
+    )
+    (prototype_layer): ProtoLayer()
+  )
+  (heads): ModuleList(
+    (0): Linear(in_features=128, out_features=2, bias=True)
+    (1): Linear(in_features=128, out_features=2, bias=True)
+  )
+  (encoder): Linear(in_features=17, out_features=16, bias=True)
+  (hidd_encoder): Linear(in_features=128, out_features=128, bias=True)
+  (f_module): LSTMCell(16, 128)
+  (C_modules): ModuleList(
+    (0): Linear(in_features=16, out_features=16, bias=True)
+  )
+  (tanh): Tanh()
+  (value_head): Linear(in_features=128, out_features=1, bias=True)
+)
+====================================================================================================
+
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+DDevice: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETADDevice: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETADDevice: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+Device: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+DDevice: cpu
+DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA
+save directory is trained_models/traffic_junction/tj_G_proto_tGate_/seed777/models
+log dir directory is trained_models/traffic_junction/tj_G_proto_tGate_/seed777/logs
+Epoch 0	Reward [-6.43 -6.37 -6.01 -6.04 -5.98]	Time 67.76s
+Add-Rate: 0.10
+Success: 0.68
+Steps-taken: 20.00
+Comm-Action: [0.29 0.28 0.28 0.28 0.29]
+Epoch 1	Reward [-2.32 -2.1  -2.2  -2.05 -2.04]	Time 63.61s
+Add-Rate: 0.10
+Success: 0.82
+Steps-taken: 20.00
+Comm-Action: [0.5  0.5  0.51 0.51 0.51]
+Epoch 2	Reward [-1.31 -1.32 -1.29 -1.34 -1.28]	Time 63.47s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.84 0.84 0.84 0.84 0.84]
+Epoch 3	Reward [-1.27 -1.24 -1.28 -1.16 -1.21]	Time 69.36s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.83 0.83 0.83 0.83 0.83]
+Epoch 4	Reward [-1.15 -1.08 -1.09 -1.14 -1.07]	Time 82.62s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.88 0.89 0.88 0.88 0.88]
+Epoch 5	Reward [-1.   -1.03 -1.03 -1.03 -1.05]	Time 86.13s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.92 0.92 0.92 0.92 0.92]
+Epoch 6	Reward [-1.03 -1.11 -1.06 -1.02 -1.05]	Time 84.54s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.91 0.92 0.92 0.91 0.91]
+Epoch 7	Reward [-0.97 -0.99 -1.   -0.98 -0.97]	Time 84.94s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.93 0.93 0.93 0.93 0.93]
+Epoch 8	Reward [-0.98 -0.93 -0.95 -0.98 -0.9 ]	Time 83.75s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.94 0.94 0.94 0.94 0.94]
+Epoch 9	Reward [-0.93 -0.93 -0.93 -0.92 -0.85]	Time 83.17s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.94 0.94 0.94 0.94 0.94]
+Epoch 10	Reward [-0.95 -0.98 -1.01 -0.97 -0.99]	Time 81.85s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.92 0.92 0.92 0.92 0.92]
+Epoch 11	Reward [-0.98 -1.   -1.09 -0.97 -1.05]	Time 86.09s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.9 0.9 0.9 0.9 0.9]
+Epoch 12	Reward [-0.98 -0.94 -1.01 -1.04 -0.98]	Time 81.76s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.92 0.92 0.92 0.92 0.92]
+Epoch 13	Reward [-0.94 -0.89 -0.94 -0.98 -0.98]	Time 82.47s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.93 0.94 0.93 0.94 0.93]
+Epoch 14	Reward [-0.86 -0.94 -0.94 -0.93 -0.91]	Time 83.29s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.94 0.94 0.94 0.94 0.94]
+Epoch 15	Reward [-0.86 -0.89 -0.89 -0.88 -0.87]	Time 85.48s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.95 0.95 0.95 0.95 0.95]
+Epoch 16	Reward [-0.95 -0.89 -0.92 -0.85 -0.86]	Time 85.90s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.95 0.95 0.95 0.95 0.95]
+Epoch 17	Reward [-0.89 -0.87 -0.88 -0.91 -0.9 ]	Time 84.37s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.94 0.94 0.94 0.94 0.94]
+Epoch 18	Reward [-0.88 -0.84 -0.83 -0.89 -0.88]	Time 81.81s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.96 0.96 0.96 0.95 0.95]
+Epoch 19	Reward [-0.96 -0.93 -0.95 -0.93 -0.92]	Time 85.22s
+Add-Rate: 0.10
+Success: 0.83
+Steps-taken: 20.00
+Comm-Action: [0.95 0.95 0.95 0.95 0.95]
+Epoch 20	Reward [-0.98 -0.82 -0.89 -0.87 -0.91]	Time 85.27s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.95 0.95 0.96 0.95 0.95]
+Epoch 21	Reward [-0.88 -0.9  -0.91 -0.87 -0.86]	Time 83.67s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.95 0.95 0.95 0.95 0.95]
+Epoch 22	Reward [-0.91 -0.95 -0.84 -0.88 -0.83]	Time 84.61s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.96 0.96 0.96 0.96 0.96]
+Epoch 23	Reward [-0.92 -0.87 -0.93 -0.82 -0.82]	Time 85.26s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.96 0.96 0.96 0.96 0.96]
+Epoch 24	Reward [-0.87 -0.87 -0.88 -0.86 -0.86]	Time 85.81s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.96 0.97 0.96 0.97 0.97]
+Epoch 25	Reward [-0.85 -0.83 -0.88 -0.83 -0.81]	Time 85.28s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.97 0.97 0.97 0.97 0.97]
+Epoch 26	Reward [-0.86 -0.85 -0.93 -0.9  -0.9 ]	Time 82.98s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.97 0.97 0.97 0.97 0.97]
+Epoch 27	Reward [-0.87 -0.93 -0.86 -0.86 -0.84]	Time 86.15s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.97 0.97 0.97 0.97 0.97]
+Epoch 28	Reward [-0.73 -0.82 -0.85 -0.83 -0.86]	Time 83.33s
+Add-Rate: 0.10
+Success: 0.85
+Steps-taken: 20.00
+Comm-Action: [0.98 0.98 0.98 0.98 0.98]
+Epoch 29	Reward [-0.84 -0.9  -0.96 -0.78 -0.85]	Time 84.82s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.98 0.98 0.98 0.98 0.98]
+Epoch 30	Reward [-0.92 -0.78 -0.86 -0.9  -0.85]	Time 80.71s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.98 0.98 0.98 0.98 0.98]
+Epoch 31	Reward [-0.88 -0.85 -0.86 -0.83 -0.88]	Time 78.14s
+Add-Rate: 0.10
+Success: 0.84
+Steps-taken: 20.00
+Comm-Action: [0.97 0.97 0.97 0.97 0.97]

@@ -10,8 +10,8 @@ os.environ["OMP_NUM_THREADS"] = "1" # push this to repo
 # try keeping spawning rate constant
 env = "traffic_junction"
 # seeds = [1, 2]
-seeds = [777]
-#seeds = [20,777]
+# seeds = [777]
+seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 # methods = ["fixed"]
 # methods = sys.argv[1:]
@@ -20,17 +20,16 @@ seeds = [777]
 #             "fixed_proto_bigproto", "G_proto_bigproto_bigcomm", "fixed_proto_bigproto_bigcomm"]
 # methods = ["G_proto_bigproto_bigcomm", "G_proto_bigcomm"]
 #methods = ["G_Proto", "G", "G_proto_bigproto_bigcomm"]
-methods = ["G_proto"]
+methods = ["G_proto_var", "G_proto_bigproto_bigcomm_var", "G_proto_bigproto_bigcomm32"]
 # run baseline with no reward on the gating function
 # G - IC3net with learned gating function
 # exp_name = "tj_g0.01_test"
 # for reward_curr_start, reward_curr_end in zip([1500, 1250, 1800],[1900, 2000, 2000]):
-# for rew in [-.05, -.1, -.5]:
-if True:
+#for rew in [-.05, -.1, -.5]:
+for rew in [-.1]:
     for method in methods:
-        # exp_name = "tj_" + method + "_NEG_" + str(reward_curr_start) + "_" + str(reward_curr_end)
-        # exp_name = "tj_" + method + "_BIGPN_" + str(rew)
-        exp_name = "tj_" + method + "_tGate2_"
+        #exp_name = "tj_" + method + "_NEG_" + str(reward_curr_start) + "_" + str(reward_curr_end)
+        exp_name = "tj_" + method + "_ADA_tGate3_" + str(rew)
         nagents = 5
         # discrete comm is true if you want to use learnable prototype based communication.
         discrete_comm = False
@@ -44,10 +43,8 @@ if True:
         save_every = 100
         # g=1. If this is set to true agents will communicate at every step.
         comm_action_one = False
-        comm_action_zero = False
         # weight of the gating penalty. 0 means no penalty.
-        # gating_head_cost_factor = rew
-        gating_head_cost_factor = -0.1
+        gating_head_cost_factor = rew
         if "baseline" in method:
             gating_head_cost_factor = 0
         if "fixed" in method:
@@ -71,15 +68,18 @@ if True:
             gating_head_cost_factor = gate_reward_min
         # reward_curr_start = 1500
         # reward_curr_end = 1900
-        variable_gate = True
+        if "var" in method:
+            variable_gate = True
         variable_gate_start = 500
         nprocesses = 16
+        if "32" in method:
+            nprocesses = 32
         run_str = f"python main.py --env_name {env} --nagents {nagents} --nprocesses {nprocesses} "+\
                   f"--num_epochs {num_epochs} "+\
                   f"--gating_head_cost_factor {gating_head_cost_factor} "+\
                   f"--hid_size {hid_size} "+\
                   f" --detach_gap 10 --lrate 0.001 --dim {dim} --max_steps {max_steps} --ic3net --vision {vision} "+\
-                  f"--recurrent "+\
+                  f"--recurrent --optim_name Adadelta "+\
                   f"--add_rate_min 0.1 --add_rate_max 0.3 --curr_start 250 --curr_end 1250 --difficulty easy "+\
                   f"--exp_name {exp_name} --save_every {save_every} "+\
                   f"--use_proto --comm_dim {comm_dim} --num_proto {num_proto} " # may need to change this to not use prototypes
@@ -90,8 +90,6 @@ if True:
             run_str += f"--comm_action_one  "
         if variable_gate:
             run_str += f"--variable_gate --variable_gate_start {variable_gate_start} "
-        if comm_action_zero:
-            run_str += f"--comm_action_zero "
         if reward_curriculum:
             run_str += f"--gate_reward_curriculum --gate_reward_max {gate_reward_max} --gate_reward_min {gate_reward_min} "+\
                         f"--reward_curr_start {reward_curr_start} --reward_curr_end {reward_curr_end} "

@@ -2,13 +2,17 @@ import time
 import numpy as np
 import torch
 from gym import spaces
-from inspect import getargspec
+from inspect import getfullargspec
 
 class GymWrapper(object):
     """
     for multi-agent
     """
     def __init__(self, env):
+        # print("gym init", getfullargspec(env.reset).args)
+        # import traceback
+        # for line in traceback.format_stack():
+        #    print(line.strip())
         self.env = env
 
     @property
@@ -54,10 +58,13 @@ class GymWrapper(object):
         return self.env.action_space
 
     def reset(self, epoch):
-        reset_args = getargspec(self.env.reset).args
+        reset_args = getfullargspec(self.env.reset).args
+        # print("reset args", reset_args, self.env.reset)
         if 'epoch' in reset_args:
+            #print(epoch, "reset epoch good")
             obs = self.env.reset(epoch)
         else:
+            #print(epoch, "reset epoch oops")
             obs = self.env.reset()
 
         obs = self._flatten_obs(obs)

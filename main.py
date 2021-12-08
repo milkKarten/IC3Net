@@ -109,6 +109,8 @@ parser.add_argument('--hard_attn', default=False, action='store_true',
                     help='Whether to use hard attention: action - talk|silent')
 parser.add_argument('--comm_action_one', default=False, action='store_true',
                     help='Whether to always talk, sanity check for hard attention.')
+parser.add_argument('--comm_action_zero', default=False, action='store_true',
+                    help='Whether to never talk.')
 parser.add_argument('--advantages_per_action', default=False, action='store_true',
                     help='Whether to multipy log porb for each chosen action with advantages')
 parser.add_argument('--share_weights', default=False, action='store_true',
@@ -150,6 +152,14 @@ parser.add_argument('--reward_curr_start', type=int, default=1500,
 parser.add_argument('--reward_curr_end', type=int, default=1900,
                     help='ending epoch for reward curriculum')
 
+# open gate / variable gate curriculum
+parser.add_argument('--variable_gate', action='store_true', default=False,
+                    help='use variable gate curriculum')
+parser.add_argument('--variable_gate_start', type=int, default=500,
+                    help='starting epoch for variable gate curriculum to turn off fixed gate')
+# optimizer
+parser.add_argument('--optim_name', default='RMSprop', type=str,
+                    help='pytorch optimizer')
 # first add environment specific args to the parser
 init_args_for_env(parser)
 
