@@ -27,6 +27,8 @@ from gym import spaces
 from ic3net_envs.traffic_helper import *
 from inspect import getargspec
 
+import pygame
+
 def nPr(n,r):
     f = math.factorial
     return f(n)//f(n-r)
@@ -258,6 +260,9 @@ class TrafficJunctionEnv(gym.Env):
 
         grid = self.grid.copy().astype(object)
         # grid = np.zeros(self.dims[0]*self.dims[1], dtypeobject).reshape(self.dims)
+        grid_2 = self.grid.copy().astype(np.int32)
+        grid_2[grid != self.OUTSIDE_CLASS] = 0
+        grid_2[grid != self.OUTSIDE_CLASS] = 255
         grid[grid != self.OUTSIDE_CLASS] = '_'
         grid[grid == self.OUTSIDE_CLASS] = ''
         self.stdscr.clear()
@@ -265,13 +270,31 @@ class TrafficJunctionEnv(gym.Env):
             if self.car_last_act[i] == 0: # GAS
                 if grid[p[0]][p[1]] != 0:
                     grid[p[0]][p[1]] = str(grid[p[0]][p[1]]).replace('_','') + '<>'
+                    grid_2[p[0]][p[1]] = 100
                 else:
                     grid[p[0]][p[1]] = '<>'
+                    grid_2[p[0]][p[1]] = 50
             else: # BRAKE
                 if grid[p[0]][p[1]] != 0:
                     grid[p[0]][p[1]] = str(grid[p[0]][p[1]]).replace('_','') + '<b>'
+                    grid_2[p[0]][p[1]] = 150
                 else:
                     grid[p[0]][p[1]] = '<b>'
+                    grid_2[p[0]][p[1]] = 200
+        pygame.init()
+        display = pygame.display.set_mode((500, 500))
+        surf = pygame.surfarray.make_surface(grid_2.T)
+        surf = pygame.transform.scale(surf, (500, 500))
+        display.blit(surf, (0, 0))
+        pygame.display.update()
+        #running = True
+        #while running:
+        #    for event in pygame.event.get():
+        #        if event.type == pygame.QUIT:
+        #            running = False
+        #    display.blit(surf, (0, 0))
+        #    pygame.display.update()
+        #pygame.quit()
 
         for row_num, row in enumerate(grid):
             for idx, item in enumerate(row):
@@ -296,6 +319,7 @@ class TrafficJunctionEnv(gym.Env):
 
     def exit_render(self):
         curses.endwin()
+        pygame.quit()
 
     def seed(self):
         return
