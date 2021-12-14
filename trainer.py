@@ -221,7 +221,6 @@ class Trainer(object):
         prev_ncoop_return = 0
         prev_value = 0
         prev_advantage = 0
-        '''
         for i in reversed(range(rewards.size(0))):
             coop_returns[i] = rewards[i] + self.args.gamma * prev_coop_return * episode_masks[i]
             ncoop_returns[i] = rewards[i] + self.args.gamma * prev_ncoop_return * episode_masks[i] * episode_mini_masks[i]
@@ -232,7 +231,7 @@ class Trainer(object):
             returns[i] = (self.args.mean_ratio * coop_returns[i].mean()) \
                         + ((1 - self.args.mean_ratio) * ncoop_returns[i])
         '''
-        coop_returns = rewards + self.args.gamma * prev_coop_return * episode_masks
+	coop_returns = rewards + self.args.gamma * prev_coop_return * episode_masks
         ncoop_returns = rewards + self.args.gamma * prev_ncoop_return * episode_masks * episode_mini_masks
 
         prev_coop_return = coop_returns.clone()
@@ -241,7 +240,6 @@ class Trainer(object):
         returns = (self.args.mean_ratio * coop_returns.mean()) \
                     + ((1 - self.args.mean_ratio) * ncoop_returns)
 
-        '''
         for i in reversed(range(rewards.size(0))):
             advantages[i] = returns[i] - values.data[i]
         '''

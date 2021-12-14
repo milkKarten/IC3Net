@@ -20,17 +20,17 @@ seeds = [777]
 #             "fixed_proto_bigproto", "G_proto_bigproto_bigcomm", "fixed_proto_bigproto_bigcomm"]
 # methods = ["G_proto_bigproto_bigcomm", "G_proto_bigcomm"]
 #methods = ["G_Proto", "G", "G_proto_bigproto_bigcomm"]
-methods = ["G_proto_var", "G_proto"]
+methods = ["G"]
 # run baseline with no reward on the gating function
 # G - IC3net with learned gating function
 # exp_name = "tj_g0.01_test"
 # for reward_curr_start, reward_curr_end in zip([1500, 1250, 1800],[1900, 2000, 2000]):
-for rew in [-.001, -.01, -.1]:
-# if True:
+# for rew in [-.05, -.1, -.5]:
+if True:
     for method in methods:
         # exp_name = "tj_" + method + "_NEG_" + str(reward_curr_start) + "_" + str(reward_curr_end)
         # exp_name = "tj_" + method + "_BIGPN_" + str(rew)
-        exp_name = "tj_" + method + "_tGate3_" + str(rew)
+        exp_name = "tj_" + method + "_ic3net_"
         nagents = 5
         # discrete comm is true if you want to use learnable prototype based communication.
         discrete_comm = False
@@ -46,8 +46,8 @@ for rew in [-.001, -.01, -.1]:
         comm_action_one = False
         comm_action_zero = False
         # weight of the gating penalty. 0 means no penalty.
-        gating_head_cost_factor = rew
-        # gating_head_cost_factor = -0.1
+        # gating_head_cost_factor = rew
+        gating_head_cost_factor = 0
         if "baseline" in method:
             gating_head_cost_factor = 0
         if "fixed" in method:
@@ -65,15 +65,13 @@ for rew in [-.001, -.01, -.1]:
             comm_dim = hid_size
         # use reward curriculum
         reward_curriculum = False
-        if "rew_cur" in method:
-            reward_curriculum = True
-        gate_reward_min = gating_head_cost_factor
-        gate_reward_max = -gate_reward_min
-        reward_curr_start = 1500
-        reward_curr_end = 1900
+        gate_reward_max = -0.01
+        gate_reward_min = 0.01
+        if reward_curriculum:
+            gating_head_cost_factor = gate_reward_min
+        # reward_curr_start = 1500
+        # reward_curr_end = 1900
         variable_gate = False
-        if "var" in method:
-            variable_gate = True
         variable_gate_start = 500
         nprocesses = 16
         run_str = f"python main.py --env_name {env} --nagents {nagents} --nprocesses {nprocesses} "+\
@@ -82,9 +80,8 @@ for rew in [-.001, -.01, -.1]:
                   f"--hid_size {hid_size} "+\
                   f" --detach_gap 10 --lrate 0.001 --dim {dim} --max_steps {max_steps} --ic3net --vision {vision} "+\
                   f"--recurrent "+\
-                  f"--add_rate_min 0.1 --add_rate_max 0.3 --curr_start 250 --curr_end 1250 --difficulty easy "+\
-                  f"--exp_name {exp_name} --save_every {save_every} "+\
-                  f"--use_proto --comm_dim {comm_dim} --num_proto {num_proto} " # may need to change this to not use prototypes
+                  f"--add_rate_min 0.1 --add_rate_max 0.1 --curr_start 2250 --curr_end 2260 --difficulty easy "+\
+                  f"--exp_name {exp_name} --save_every {save_every} "
 
         if discrete_comm:
             run_str += f"--discrete_comm "
