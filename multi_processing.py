@@ -98,6 +98,12 @@ class MultiProcessTrainer(object):
             merge_stat(s, stat)
         # print(f"other merge stat completed")
 
+
+        # Check if success has converged for curriculum learning
+        for comm in self.comms:
+            comm.send(['success_curriculum', stat['success'], stat['num_episodes']])
+        self.trainer.success_curriculum(stat['success'], stat['num_episodes'])
+
         # add gradients of workers
         self.obtain_grad_pointers()
         for i in range(len(self.grads)):

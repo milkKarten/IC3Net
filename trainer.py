@@ -34,22 +34,38 @@ class Trainer(object):
         print("Device:", self.device)
         print("DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA")
         self.first_print = False
+        self.success_metric = 0
+        self.epoch_success = 0
+        self.cur_epoch_i = 0
+        self.success_thresh = .95
         # self.gate_reward_max = -0.01
         # self.gate_reward_min = 0.01
         # self.reward_curr_start = 1500
         # self.reward_curr_end = 1900
 
-    def curriculum(self, epoch):
-        if self.args.variable_gate and epoch >= self.args.variable_gate_start:
+    def success_curriculum(self, success_rate, num_episodes):
+        self.cur_epoch_i += 1
+        self.epoch_success += success_rate
+        print("cur i", self.cur_epoch_i, self.success_metric, num_episodes, success_rate)
+        if self.cur_epoch_i >= self.args.epoch_size:
+            self.cur_epoch_i = 0
+            if self.epoch_success / float(num_episodes*self.args.epoch_size) > self.success_thresh:
+                print(self.epoch_success / float(num_episodes*self.args.epoch_size), self.success_thresh)
+                self.success_metric += 1
+            else:
+                self.success_metric = 0
+            self.epoch_success = 0
+
+        print("success curriculum", self.success_metric / max(1, self.args.nprocesses))
+        if self.args.variable_gate and self.success_metric / max(1, self.args.nprocesses) >= 20:
             self.args.comm_action_one = False
-        elif self.args.variable_gate and epoch < self.args.variable_gate_start:
-            self.args.comm_action_one = True
+
+    def reward_curriculum(self, epoch):
         if self.args.gate_reward_curriculum and (self.args.reward_curr_start <= epoch < self.args.reward_curr_end):
             step = (self.args.gate_reward_max - self.args.gate_reward_min) / (self.args.reward_curr_end - self.args.reward_curr_start)
             self.args.gating_head_cost_factor += step
 
     def get_episode(self, epoch):
-        self.curriculum(epoch)
         episode = []
         reset_args = getargspec(self.env.reset).args
         # print(reset_args, " trainer", self.env.reset)
@@ -231,7 +247,7 @@ class Trainer(object):
             returns[i] = (self.args.mean_ratio * coop_returns[i].mean()) \
                         + ((1 - self.args.mean_ratio) * ncoop_returns[i])
         '''
-	coop_returns = rewards + self.args.gamma * prev_coop_return * episode_masks
+	    coop_returns = rewards + self.args.gamma * prev_coop_return * episode_masks
         ncoop_returns = rewards + self.args.gamma * prev_ncoop_return * episode_masks * episode_mini_masks
 
         prev_coop_return = coop_returns.clone()
@@ -293,6 +309,7 @@ class Trainer(object):
         return stat
 
     def run_batch(self, epoch):
+        self.reward_curriculum(epoch)
         batch = []
         self.stats = dict()
         self.stats['num_episodes'] = 0
@@ -324,6 +341,10 @@ class Trainer(object):
         # print(f"time taken for grad computation {time.time() - grad_st_time}")
 
         merge_stat(s, stat)
+
+        # Check if success has converged for curriculum learning
+        self.success_curriculum(self.stats['success'], self.stats['num_episodes'])
+
         for p in self.params:
             if p._grad is not None:
                 p._grad.data /= stat['num_steps']
