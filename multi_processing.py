@@ -19,7 +19,10 @@ class MultiProcessWorker(mp.Process):
         while True:
             task = self.comm.recv()
             if type(task) == list:
-                task, epoch = task
+                if len(list) == 2:
+                    task, epoch = task
+                elif len(list) == 3:
+                    task, success, num_episodes = task
 
             if task == 'quit':
                 return
@@ -36,6 +39,8 @@ class MultiProcessWorker(mp.Process):
                         grads.append(p._grad.data)
 
                 self.comm.send(grads)
+            elif task == 'success_curriculum':
+                self.success_curriculum(success, num_episodes)
 
 
 class MultiProcessTrainer(object):
