@@ -10,8 +10,8 @@ os.environ["OMP_NUM_THREADS"] = "1" # push this to repo
 # try keeping spawning rate constant
 env = "traffic_junction"
 # seeds = [1, 2]
-seeds = [777]
-#seeds = [20,777]
+# seeds = [777]
+seeds = [20,777]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 # methods = ["fixed"]
 # methods = sys.argv[1:]
@@ -20,23 +20,24 @@ seeds = [777]
 #             "fixed_proto_bigproto", "G_proto_bigproto_bigcomm", "fixed_proto_bigproto_bigcomm"]
 # methods = ["G_proto_bigproto_bigcomm", "G_proto_bigcomm"]
 #methods = ["G_Proto", "G", "G_proto_bigproto_bigcomm"]
-methods = ["G_proto_var", "G_proto"]
+methods = ["fixed_proto_var_zebra"]
 # run baseline with no reward on the gating function
 # G - IC3net with learned gating function
 # exp_name = "tj_g0.01_test"
 # for reward_curr_start, reward_curr_end in zip([1500, 1250, 1800],[1900, 2000, 2000]):
-for rew in [-.001, -.01, -.1]:
-# if True:
+# for rew in [-.01, -.1]:
+if True:
     for method in methods:
         # exp_name = "tj_" + method + "_NEG_" + str(reward_curr_start) + "_" + str(reward_curr_end)
         # exp_name = "tj_" + method + "_BIGPN_" + str(rew)
-        exp_name = "tj_" + method + "_tGate3_" + str(rew)
+        # exp_name = "tj_" + method + "_tGate3_" + str(rew)
+        exp_name = "tj_" + method
         nagents = 5
         # discrete comm is true if you want to use learnable prototype based communication.
         discrete_comm = False
         if "proto" in method:
             discrete_comm = True
-        num_epochs = 2000
+        num_epochs = 10000
         hid_size= 128
         dim = 6
         max_steps = 20
@@ -46,8 +47,8 @@ for rew in [-.001, -.01, -.1]:
         comm_action_one = False
         comm_action_zero = False
         # weight of the gating penalty. 0 means no penalty.
-        gating_head_cost_factor = rew
-        # gating_head_cost_factor = -0.1
+        # gating_head_cost_factor = rew
+        gating_head_cost_factor = -0.1
         if "baseline" in method:
             gating_head_cost_factor = 0
         if "fixed" in method:
@@ -74,18 +75,22 @@ for rew in [-.001, -.01, -.1]:
         variable_gate = False
         if "var" in method:
             variable_gate = True
+        ada = "ada" in method
+        print(ada, "ada")
         variable_gate_start = 500
         nprocesses = 16
         run_str = f"python main.py --env_name {env} --nagents {nagents} --nprocesses {nprocesses} "+\
                   f"--num_epochs {num_epochs} "+\
                   f"--gating_head_cost_factor {gating_head_cost_factor} "+\
                   f"--hid_size {hid_size} "+\
-                  f" --detach_gap 10 --lrate 0.001 --dim {dim} --max_steps {max_steps} --ic3net --vision {vision} "+\
+                  f" --detach_gap 10 --lrate 0.003 --dim {dim} --max_steps {max_steps} --ic3net --vision {vision} "+\
                   f"--recurrent "+\
-                  f"--add_rate_min 0.1 --add_rate_max 0.3 --curr_start 250 --curr_end 1250 --difficulty easy "+\
+                  f"--add_rate_min 0.1 --add_rate_max 0.1 --curr_start 12250 --curr_end 21250 --difficulty easy "+\
                   f"--exp_name {exp_name} --save_every {save_every} "+\
                   f"--use_proto --comm_dim {comm_dim} --num_proto {num_proto} " # may need to change this to not use prototypes
 
+        if ada:
+            run_str += f"--optim_name Adadelta "
         if discrete_comm:
             run_str += f"--discrete_comm "
         if comm_action_one:

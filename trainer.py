@@ -46,17 +46,17 @@ class Trainer(object):
     def success_curriculum(self, success_rate, num_episodes):
         self.cur_epoch_i += 1
         self.epoch_success += success_rate
-        print("cur i", self.cur_epoch_i, self.success_metric, num_episodes, success_rate)
+        # print("cur i", self.cur_epoch_i, self.success_metric, num_episodes, success_rate)
         if self.cur_epoch_i >= self.args.epoch_size:
             self.cur_epoch_i = 0
             if self.epoch_success / float(num_episodes*self.args.epoch_size) > self.success_thresh:
-                print(self.epoch_success / float(num_episodes*self.args.epoch_size), self.success_thresh)
+                # print(self.epoch_success / float(num_episodes*self.args.epoch_size), self.success_thresh)
                 self.success_metric += 1
             else:
                 self.success_metric = 0
             self.epoch_success = 0
 
-        print("success curriculum", self.success_metric / max(1, self.args.nprocesses))
+        # print("success curriculum", self.success_metric / max(1, self.args.nprocesses))
         if self.args.variable_gate and self.success_metric / max(1, self.args.nprocesses) >= 20:
             self.args.comm_action_one = False
 
