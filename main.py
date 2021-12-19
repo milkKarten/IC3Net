@@ -463,6 +463,7 @@ if args.restore:
             start_epoch = len(history[k])
 
     trainer.load_state_dict(d['trainer'])
+    trainer.load_scheduler(start_epoch)
 
 
 run(args.num_epochs)
