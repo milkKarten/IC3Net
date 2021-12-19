@@ -41,6 +41,7 @@ class MultiProcessWorker(mp.Process):
                 self.comm.send(grads)
             elif task == 'success_curriculum':
                 self.trainer.success_curriculum(success, num_episodes)
+                self.trainer.scheduler.step()
 
 
 class MultiProcessTrainer(object):
@@ -103,12 +104,6 @@ class MultiProcessTrainer(object):
             merge_stat(s, stat)
         # print(f"other merge stat completed")
 
-
-        # Check if success has converged for curriculum learning
-        for comm in self.comms:
-            comm.send(['success_curriculum', stat['success'], stat['num_episodes']])
-        self.trainer.success_curriculum(stat['success'], stat['num_episodes'])
-
         # add gradients of workers
         self.obtain_grad_pointers()
         for i in range(len(self.grads)):
@@ -119,6 +114,12 @@ class MultiProcessTrainer(object):
         # print(f"calling step")
         op_st = time.time()
         self.trainer.optimizer.step()
+        self.trainer.scheduler.step()
+
+        # Check if success has converged for curriculum learning
+        for comm in self.comms:
+            comm.send(['success_curriculum', stat['success'], stat['num_episodes']])
+        self.trainer.success_curriculum(stat['success'], stat['num_episodes'])
         # print(f"time taken for step {time.time() - op_st}")
 
         return stat
@@ -128,3 +129,6 @@ class MultiProcessTrainer(object):
 
     def load_state_dict(self, state):
         self.trainer.load_state_dict(state)
+
+    def load_scheduler(self, start_epoch):
+        self.trainer.load_scheduler(start_epoch)

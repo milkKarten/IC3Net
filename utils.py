@@ -16,6 +16,8 @@ def merge_stat(src, dest):
     for k, v in src.items():
         if not k in dest:
             dest[k] = v
+        elif k == "learning_rate":
+            dest[k] = v
         elif isinstance(v, numbers.Number):
             dest[k] = dest.get(k, 0) + v
         elif isinstance(v, np.ndarray): # for rewards in case of multi-agent

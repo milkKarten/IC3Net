@@ -26,6 +26,10 @@ class Trainer(object):
                 lr = args.lrate, alpha=0.97, eps=1e-6)
         elif self.args.optim_name == "Adadelta":
             self.optimizer = optim.Adadelta(policy_net.parameters())#, lr = args.lrate)
+        self.scheduler1 = optim.lr_scheduler.CyclicLR(self.optimizer, args.lrate / 2, args.lrate * 2, step_size_up=50*self.args.epoch_size, verbose=True)
+        self.scheduler2 = optim.lr_scheduler.CyclicLR(self.optimizer, 0.1 * args.lrate / 2, 0.1 * args.lrate * 2, step_size_up=50*self.args.epoch_size)
+        self.scheduler3 = optim.lr_scheduler.CyclicLR(self.optimizer, 0.01 * args.lrate / 2, 0.01 * args.lrate * 2, step_size_up=50*self.args.epoch_size)
+        self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2, self.scheduler3], milestones=[2000,3000])
         self.params = [p for p in self.policy_net.parameters()]
         # self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.device = torch.device('cpu')
@@ -44,21 +48,23 @@ class Trainer(object):
         # self.reward_curr_end = 1900
 
     def success_curriculum(self, success_rate, num_episodes):
-        self.cur_epoch_i += 1
-        self.epoch_success += success_rate
-        # print("cur i", self.cur_epoch_i, self.success_metric, num_episodes, success_rate)
-        if self.cur_epoch_i >= self.args.epoch_size:
-            self.cur_epoch_i = 0
-            if self.epoch_success / float(num_episodes*self.args.epoch_size) > self.success_thresh:
-                # print(self.epoch_success / float(num_episodes*self.args.epoch_size), self.success_thresh)
-                self.success_metric += 1
-            else:
-                self.success_metric = 0
-            self.epoch_success = 0
+        if self.args.variable_gate:
+            self.cur_epoch_i += 1
+            self.epoch_success += success_rate
+            # print("cur i", self.cur_epoch_i, self.success_metric, num_episodes, success_rate)
+            if self.cur_epoch_i >= self.args.epoch_size:
+                self.cur_epoch_i = 0
+                if self.epoch_success / float(num_episodes*self.args.epoch_size) > self.success_thresh:
+                    # print(self.epoch_success / float(num_episodes*self.args.epoch_size), self.success_thresh)
+                    self.success_metric += 1
+                else:
+                    self.success_metric = 0
+                self.epoch_success = 0
 
-        # print("success curriculum", self.success_metric / max(1, self.args.nprocesses))
-        if self.args.variable_gate and self.success_metric / max(1, self.args.nprocesses) >= 20:
-            self.args.comm_action_one = False
+            # print("success curriculum", self.success_metric / max(1, self.args.nprocesses))
+            if self.success_metric  >= 20: #/ max(1, self.args.nprocesses) >= 20:
+                self.args.comm_action_one = False
+                self.args.variable_gate = False
 
     def reward_curriculum(self, epoch):
         if self.args.gate_reward_curriculum and (self.args.reward_curr_start <= epoch < self.args.reward_curr_end):
@@ -134,7 +140,7 @@ class Trainer(object):
                 # if self.first_print:
                 #     print(f"gating head reward is {gating_head_rew}, general reward {reward}")
                 #     self.first_print = False
-                if not (self.args.variable_gate and epoch < self.args.variable_gate_start):
+                if not self.args.variable_gate:
                     reward += gating_head_rew
 
             # store comm_action in info for next step
@@ -323,6 +329,7 @@ class Trainer(object):
 
         self.last_step = False
         self.stats['num_steps'] = len(batch)
+        self.stats['learning_rate'] = self.get_lr(self.optimizer)
         batch = Transition(*zip(*batch))
         return batch, self.stats
 
@@ -349,11 +356,18 @@ class Trainer(object):
             if p._grad is not None:
                 p._grad.data /= stat['num_steps']
         self.optimizer.step()
-
+        self.scheduler.step()
         return stat
+
+    def get_lr(self, optimizer):
+        for param_group in optimizer.param_groups:
+            return param_group['lr']
 
     def state_dict(self):
         return self.optimizer.state_dict()
 
     def load_state_dict(self, state):
         self.optimizer.load_state_dict(state)
+
+    def load_scheduler(self, start_epoch):
+        self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2, self.scheduler3], milestones=[1500*self.args.epoch_size,2500*self.args.epoch_size],last_epoch=start_epoch)
