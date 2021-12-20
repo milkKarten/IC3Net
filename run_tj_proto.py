@@ -20,7 +20,7 @@ seeds = [20,777]
 #             "fixed_proto_bigproto", "G_proto_bigproto_bigcomm", "fixed_proto_bigproto_bigcomm"]
 # methods = ["G_proto_bigproto_bigcomm", "G_proto_bigcomm"]
 #methods = ["G_Proto", "G", "G_proto_bigproto_bigcomm"]
-methods = ["fixed_proto_var_zebra"]
+methods = ["fixed_proto_var_zebra_cycle"]
 # run baseline with no reward on the gating function
 # G - IC3net with learned gating function
 # exp_name = "tj_g0.01_test"

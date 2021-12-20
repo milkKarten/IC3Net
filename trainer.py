@@ -370,4 +370,7 @@ class Trainer(object):
         self.optimizer.load_state_dict(state)
 
     def load_scheduler(self, start_epoch):
-        self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2, self.scheduler3], milestones=[1500*self.args.epoch_size,2500*self.args.epoch_size],last_epoch=start_epoch)
+        if self.args.nprocesses > 1:
+            self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2, self.scheduler3], milestones=[1500,2500],last_epoch=start_epoch)
+        else:
+            self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2, self.scheduler3], milestones=[1500*self.args.epoch_size,2500*self.args.epoch_size],last_epoch=start_epoch)
