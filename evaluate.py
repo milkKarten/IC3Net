@@ -19,12 +19,12 @@ import matplotlib.pyplot as plt
 
 # Given some data, runs 2D PCA on it and plots the results.
 def plot_comms(_data):
-    if data.shape[1] > 2:
+    if _data.shape[1] > 2:
         pca = PCA(n_components=2)
-        pca.fit(data)
-        transformed = pca.transform(data)
+        pca.fit(_data)
+        transformed = pca.transform(_data)
     else:
-        transformed = data
+        transformed = _data
     x = transformed[:, 0]
     y = transformed[:, 1]
     fig, ax = plt.subplots()
@@ -148,6 +148,7 @@ for key in all_stats[0].keys():
 print("average stats is: ", average_stat)
 print("time taken per step ", total_episode_time/stat['num_steps'])
 
+protos_np = None
 try:
     # A bit gross, but first get proto network and then proto layer
     protos = policy_net.proto_layer.prototype_layer.prototypes
@@ -157,6 +158,8 @@ try:
     print("Prototypes", protos_np)
 except AttributeError:
     print("No prototypes in policy net, so not analyzing that.")
+if protos_np is not None:
+    plot_comms(protos_np)
 
 all_comms = np.array(all_comms)
 num_agents = len(all_comms[0])
