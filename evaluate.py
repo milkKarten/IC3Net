@@ -133,7 +133,9 @@ print("time taken per step ", total_episode_time/stat['num_steps'])
 try:
     # A bit gross, but first get proto network and then proto layer
     protos = policy_net.proto_layer.prototype_layer.prototypes
-    protos_np = protos.detach().cpu().numpy()
+    # Pass the prototypes through sigmoid to get the actual values.
+    constrained_protos = torch.sigmoid(protos)
+    protos_np = constrained_protos.detach().cpu().numpy()
     print("Prototypes", protos_np)
 except AttributeError:
     print("No prototypes in policy net, so not analyzing that.")
