@@ -26,10 +26,12 @@ class Trainer(object):
                 lr = args.lrate, alpha=0.97, eps=1e-6)
         elif self.args.optim_name == "Adadelta":
             self.optimizer = optim.Adadelta(policy_net.parameters())#, lr = args.lrate)
-        self.scheduler1 = optim.lr_scheduler.CyclicLR(self.optimizer, args.lrate / 2, args.lrate * 2, step_size_up=50*self.args.epoch_size, verbose=True)
-        self.scheduler2 = optim.lr_scheduler.CyclicLR(self.optimizer, 0.1 * args.lrate / 2, 0.1 * args.lrate * 2, step_size_up=50*self.args.epoch_size)
-        self.scheduler3 = optim.lr_scheduler.CyclicLR(self.optimizer, 0.01 * args.lrate / 2, 0.01 * args.lrate * 2, step_size_up=50*self.args.epoch_size)
-        self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2, self.scheduler3], milestones=[2000,3000])
+        if self.args.scheduleLR:
+            self.scheduler1 = optim.lr_scheduler.CyclicLR(self.optimizer, args.lrate / 2, args.lrate * 2, step_size_up=50*self.args.epoch_size, verbose=True)
+            self.scheduler2 = optim.lr_scheduler.CyclicLR(self.optimizer, 0.1 * args.lrate / 2, 0.1 * args.lrate * 2, step_size_up=50*self.args.epoch_size)
+            self.scheduler3 = optim.lr_scheduler.CyclicLR(self.optimizer, 0.01 * args.lrate / 2, 0.01 * args.lrate * 2, step_size_up=50*self.args.epoch_size)
+            self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2, self.scheduler3], milestones=[1500*self.args.epoch_size,2500*self.args.epoch_size])
+
         self.params = [p for p in self.policy_net.parameters()]
         # self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.device = torch.device('cpu')
@@ -356,7 +358,8 @@ class Trainer(object):
             if p._grad is not None:
                 p._grad.data /= stat['num_steps']
         self.optimizer.step()
-        self.scheduler.step()
+        if self.args.scheduleLR:
+            self.scheduler.step()
         return stat
 
     def get_lr(self, optimizer):

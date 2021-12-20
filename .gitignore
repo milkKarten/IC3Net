@@ -12,6 +12,7 @@ __pycache__/
 
 # models
 trained_models
+runLogs
 
 # Distribution / packaging
 .Python

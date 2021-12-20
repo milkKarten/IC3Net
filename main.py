@@ -160,6 +160,9 @@ parser.add_argument('--variable_gate_start', type=int, default=500,
 # optimizer
 parser.add_argument('--optim_name', default='RMSprop', type=str,
                     help='pytorch optimizer')
+# learning rate scheduler
+parser.add_argument('--scheduleLR', action='store_true', default=False,
+                    help='Cyclic learning rate scheduler')
 # first add environment specific args to the parser
 init_args_for_env(parser)
 
@@ -422,6 +425,8 @@ def load(path):
     #         history[k] = list(np.load(f"{log_path}/{k}.npy"))
 
     trainer.load_state_dict(d['trainer'])
+    if self.args.scheduleLR:
+        trainer.load_scheduler(start_epoch)
 
 def signal_handler(signal, frame):
         print('You pressed Ctrl+C! Exiting gracefully.')
@@ -463,7 +468,8 @@ if args.restore:
             start_epoch = len(history[k])
 
     trainer.load_state_dict(d['trainer'])
-    trainer.load_scheduler(start_epoch)
+    if self.args.scheduleLR:
+        trainer.load_scheduler(start_epoch)
 
 
 run(args.num_epochs)

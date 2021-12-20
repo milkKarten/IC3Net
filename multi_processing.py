@@ -41,7 +41,6 @@ class MultiProcessWorker(mp.Process):
                 self.comm.send(grads)
             elif task == 'success_curriculum':
                 self.trainer.success_curriculum(success, num_episodes)
-                self.trainer.scheduler.step()
 
 
 class MultiProcessTrainer(object):
@@ -114,7 +113,9 @@ class MultiProcessTrainer(object):
         # print(f"calling step")
         op_st = time.time()
         self.trainer.optimizer.step()
-        self.trainer.scheduler.step()
+        if self.trainer.args.scheduleLR:
+            self.trainer.scheduler.step()
+        stat['learning_rate'] = self.trainer.get_lr(self.trainer.optimizer)
 
         # Check if success has converged for curriculum learning
         for comm in self.comms:
