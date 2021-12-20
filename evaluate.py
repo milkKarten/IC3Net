@@ -13,6 +13,24 @@ from action_utils import parse_action_args
 from evaluator import Evaluator
 from args import get_args
 
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+
+
+# Given some data, runs 2D PCA on it and plots the results.
+def plot_comms(_data):
+    if data.shape[1] > 2:
+        pca = PCA(n_components=2)
+        pca.fit(data)
+        transformed = pca.transform(data)
+    else:
+        transformed = data
+    x = transformed[:, 0]
+    y = transformed[:, 1]
+    fig, ax = plt.subplots()
+    pcm = ax.scatter(x, y, s=20, marker='o', c='gray')
+    plt.show()
+
 
 torch.utils.backcompat.broadcast_warning.enabled = True
 torch.utils.backcompat.keepdim_warning.enabled = True
