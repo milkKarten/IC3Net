@@ -117,16 +117,26 @@ evaluator = Evaluator(args, policy_net, data.init(args.env_name, args))
 
 st_time = time.time()
 
-# TODO: Run for miltiple episodes.
+all_stats = []
 for i in range(10):
     ep, stat, all_comms = evaluator.run_episode()
+    all_stats.append(stat)
     print(stat)
 
 total_episode_time = time.time() - st_time
-
-print("stat is: ", stat)
-print("avg comm ", stat['comm_action'] / stat['num_steps'])
+average_stat = {}
+for key in all_stats[0].keys():
+    average_stat[key] = np.mean([stat.get(key) for stat in all_stats])
+print("average stats is: ", average_stat)
 print("time taken per step ", total_episode_time/stat['num_steps'])
+
+try:
+    # A bit gross, but first get proto network and then proto layer
+    protos = policy_net.proto_layer.prototype_layer.prototypes
+    protos_np = protos.detach().cpu().numpy()
+    print("Prototypes", protos_np)
+except AttributeError:
+    print("No prototypes in policy net, so not analyzing that.")
 
 all_comms = np.array(all_comms)
 num_agents = len(all_comms[0])

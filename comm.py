@@ -12,7 +12,7 @@ class CommNetMLP(nn.Module):
     MLP based CommNet. Uses communication vector to communicate info
     between agents
     """
-    def __init__(self, args, num_inputs, train_mode=True):
+    def __init__(self, args, num_inputs, train_mode=True, add_comm_noise=False):
         """Initialization method for this class, setup various internal networks
         and weights
 
@@ -29,6 +29,7 @@ class CommNetMLP(nn.Module):
         self.comm_passes = args.comm_passes
         self.recurrent = args.recurrent
         self.continuous = args.continuous
+        self.add_comm_noise = add_comm_noise  # TODO: add feature where we add noise to communication if this is on.
 
         # TODO: remove this is just for debugging purposes just to verify that the communication is happening in a
         #  disrete manner
@@ -265,6 +266,10 @@ class CommNetMLP(nn.Module):
                     #     if list(c.detach().numpy()) not in self.unique_comms:
                     #         self.unique_comms.append(list(c.detach().numpy()))
 
+                if self.add_comm_noise:
+                    print("Original comms")
+                    noise = torch.randn_like(comm)
+                    print("Noise", noise)
 
             else:
                 # print(f"inside else {hidden_state.size()}")
