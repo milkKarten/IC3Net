@@ -13,6 +13,8 @@ from action_utils import parse_action_args
 from evaluator import Evaluator
 from args import get_args
 
+import pygame
+
 
 torch.utils.backcompat.broadcast_warning.enabled = True
 torch.utils.backcompat.keepdim_warning.enabled = True
@@ -121,6 +123,7 @@ st_time = time.time()
 for i in range(10):
     ep, stat, all_comms = evaluator.run_episode()
     print(stat)
+    pygame.quit()
 
 total_episode_time = time.time() - st_time
 

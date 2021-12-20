@@ -70,8 +70,8 @@ class GymWrapper(object):
         obs = self._flatten_obs(obs)
         return obs
 
-    def display(self):
-        self.env.render()
+    def display(self, info):
+        self.env.render(info)
         time.sleep(0.5)
 
     def end_display(self):

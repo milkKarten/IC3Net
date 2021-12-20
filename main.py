@@ -7,6 +7,8 @@ from tensorboardX import SummaryWriter
 import torch
 # import visdom
 
+import pygame
+
 import data
 from models import *
 from comm import CommNetMLP
@@ -349,6 +351,7 @@ def run(num_epochs):
                 history[k].append(v)
 
         # print(stat)
+        pygame.quit()
         np.set_printoptions(precision=2)
 
         print('Epoch {}\tReward {}\tTime {:.2f}s'.format(

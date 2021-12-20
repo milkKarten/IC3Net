@@ -59,11 +59,11 @@ class Trainer(object):
             state = self.env.reset()
         should_display = self.display and self.last_step
 
-        if should_display:
-            self.env.display()
         stat = dict()
         info = dict()
         switch_t = -1
+        if should_display:
+            self.env.display(info)
 
         # one is used because of the batch size.
         prev_hid = torch.zeros(1, self.args.nagents, self.args.hid_size)
@@ -156,7 +156,7 @@ class Trainer(object):
                     episode_mini_mask = 1 - info['is_completed'].reshape(-1)
 
             if should_display:
-                self.env.display()
+                self.env.display(info)
 
             trans = Transition(state, action, action_out, value, episode_mask, episode_mini_mask,
                                next_state, reward, misc)

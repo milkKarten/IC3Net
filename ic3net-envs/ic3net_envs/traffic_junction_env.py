@@ -28,6 +28,7 @@ from ic3net_envs.traffic_helper import *
 from inspect import getargspec
 
 import pygame
+import time
 
 def nPr(n,r):
     f = math.factorial
@@ -256,37 +257,88 @@ class TrafficJunctionEnv(gym.Env):
 
         return obs, reward, self.episode_over, debug
 
-    def render(self, mode='human', close=False):
+    def render(self, info, mode='human', close=False):
 
         grid = self.grid.copy().astype(object)
+        grid_no_changes = self.grid.copy().astype(object)
         # grid = np.zeros(self.dims[0]*self.dims[1], dtypeobject).reshape(self.dims)
         grid_2 = self.grid.copy().astype(np.int32)
-        grid_2[grid != self.OUTSIDE_CLASS] = 0
-        grid_2[grid != self.OUTSIDE_CLASS] = 255
+        grid_2 = np.dstack((grid_2, grid_2, grid_2))
+        grid_2[grid == self.OUTSIDE_CLASS] = [0, 0, 0]
+        grid_2[grid != self.OUTSIDE_CLASS] = [255, 255, 255]
         grid[grid != self.OUTSIDE_CLASS] = '_'
         grid[grid == self.OUTSIDE_CLASS] = ''
         self.stdscr.clear()
+        #print(info)
+        #print(grid_2[5])
+        grid_2[5][3] = 255
+        comm_act = None
+        if info:
+            comm_act = info['comm_action']
+        else:
+             comm_act = np.zeros(self.ncar, dtype=int)
         for i, p in enumerate(self.car_loc):
-            if self.car_last_act[i] == 0: # GAS
+            #print(comm_act[i])
+            if comm_act[i] == 0:
+                grid_2[p[0]][p[1]] = [250, 250, 0]
+            else:
+                grid_2[p[0]][p[1]] = [0, 100, 100]
+        #print(self.car_loc)
+        grid_2[0][0] = [0, 0, 0]
+        pygame.init()
+        font = pygame.font.Font(pygame.font.get_default_font(), 20)
+        display = pygame.display.set_mode((500, 500))
+        surf = pygame.surfarray.make_surface(grid_2.swapaxes(0, 1))
+        surf = pygame.transform.scale(surf, (500, 400))
+        display.blit(surf, (0, 0))
+        #display.fill((0, 0, 0), rect=(0, 400, 500, 410))
+        display.fill((200, 200, 200), rect=(0, 410, 500, 500))
+        text_no_comm = font.render("no_comm", True, (250, 250, 0))
+        text_comm = font.render("comm", True, (0, 100, 100))
+        display.blit(text_no_comm, (250, 420))
+        display.blit(text_comm, (250, 480))
+        pygame.display.flip()
+        time.sleep(1)
+        grid_2[grid_no_changes == self.OUTSIDE_CLASS] = [0, 0, 0]
+        grid_2[grid_no_changes != self.OUTSIDE_CLASS] = [255, 255, 255]
+        grid_2[5][3] = 255
+        for i, p in enumerate(self.car_loc):
+            if (grid_2[p[0]][p[1]] == [255, 255, 255]).all() == False:
+                grid_2[p[0]][p[1]] = [0, 0, 255]
+            elif self.car_last_act[i] == 0: # GAS
                 if grid[p[0]][p[1]] != 0:
                     grid[p[0]][p[1]] = str(grid[p[0]][p[1]]).replace('_','') + '<>'
-                    grid_2[p[0]][p[1]] = 100
+                    grid_2[p[0]][p[1]] = [0, 100, 0]
+                    #print('1')
                 else:
                     grid[p[0]][p[1]] = '<>'
-                    grid_2[p[0]][p[1]] = 50
+                    grid_2[p[0]][p[1]] = [0, 50, 0]
+                    #print('2')
             else: # BRAKE
                 if grid[p[0]][p[1]] != 0:
                     grid[p[0]][p[1]] = str(grid[p[0]][p[1]]).replace('_','') + '<b>'
-                    grid_2[p[0]][p[1]] = 150
+                    grid_2[p[0]][p[1]] = [150, 0, 0]
+                    #print('3')
                 else:
                     grid[p[0]][p[1]] = '<b>'
-                    grid_2[p[0]][p[1]] = 200
+                    grid_2[p[0]][p[1]] = [200, 0, 0]
+                    #print('4')
+        grid_2[0][0] = [0, 0, 0]
         pygame.init()
+        font = pygame.font.Font(pygame.font.get_default_font(), 20)
         display = pygame.display.set_mode((500, 500))
-        surf = pygame.surfarray.make_surface(grid_2.T)
-        surf = pygame.transform.scale(surf, (500, 500))
+        surf = pygame.surfarray.make_surface(grid_2.swapaxes(0, 1))
+        surf = pygame.transform.scale(surf, (500, 400))
         display.blit(surf, (0, 0))
+        display.fill((200, 200, 200), rect=(0, 410, 500, 500))
+        text_no_comm = font.render("go", True, (0, 100, 0))
+        text_comm = font.render("stop", True, (200, 0, 0))
+        text_stop = font.render("coll", True, (0, 0, 255))
+        display.blit(text_no_comm, (250, 420))
+        display.blit(text_comm, (250, 480))
+        display.blit(text_stop, (250, 450))
         pygame.display.update()
+        time.sleep(1)
         #running = True
         #while running:
         #    for event in pygame.event.get():
@@ -316,6 +368,7 @@ class TrafficJunctionEnv(gym.Env):
 
         self.stdscr.addstr(len(grid), 0, '\n')
         self.stdscr.refresh()
+        #pygame.quit()
 
     def exit_render(self):
         curses.endwin()
