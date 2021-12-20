@@ -29,7 +29,7 @@ class Trainer(object):
         self.scheduler1 = optim.lr_scheduler.CyclicLR(self.optimizer, args.lrate / 2, args.lrate * 2, step_size_up=50*self.args.epoch_size, verbose=True)
         self.scheduler2 = optim.lr_scheduler.CyclicLR(self.optimizer, 0.1 * args.lrate / 2, 0.1 * args.lrate * 2, step_size_up=50*self.args.epoch_size)
         self.scheduler3 = optim.lr_scheduler.CyclicLR(self.optimizer, 0.01 * args.lrate / 2, 0.01 * args.lrate * 2, step_size_up=50*self.args.epoch_size)
-        self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2, self.scheduler3], milestones=[2000,3000])
+        self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2, self.scheduler3], milestones=[self.args.epoch_size*1500,self.args.epoch_size*2500])
         self.params = [p for p in self.policy_net.parameters()]
         # self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.device = torch.device('cpu')
@@ -370,7 +370,4 @@ class Trainer(object):
         self.optimizer.load_state_dict(state)
 
     def load_scheduler(self, start_epoch):
-        if self.args.nprocesses > 1:
-            self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2, self.scheduler3], milestones=[1500,2500],last_epoch=start_epoch)
-        else:
-            self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2, self.scheduler3], milestones=[1500*self.args.epoch_size,2500*self.args.epoch_size],last_epoch=start_epoch)
+        self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2, self.scheduler3], milestones=[1500*self.args.epoch_size,2500*self.args.epoch_size],last_epoch=start_epoch)
