@@ -20,7 +20,7 @@ seeds = [20,777]
 #             "fixed_proto_bigproto", "G_proto_bigproto_bigcomm", "fixed_proto_bigproto_bigcomm"]
 # methods = ["G_proto_bigproto_bigcomm", "G_proto_bigcomm"]
 #methods = ["G_Proto", "G", "G_proto_bigproto_bigcomm"]
-methods = ["fixed_proto_var_zebra_cycle"]
+methods = ["fixed_proto_var_dLR500"]
 # run baseline with no reward on the gating function
 # G - IC3net with learned gating function
 # exp_name = "tj_g0.01_test"
@@ -37,7 +37,7 @@ if True:
         discrete_comm = False
         if "proto" in method:
             discrete_comm = True
-        num_epochs = 10000
+        num_epochs = 5000
         hid_size= 128
         dim = 6
         max_steps = 20
@@ -79,11 +79,12 @@ if True:
         print(ada, "ada")
         variable_gate_start = 500
         nprocesses = 16
+        lr = 0.003
         run_str = f"python main.py --env_name {env} --nagents {nagents} --nprocesses {nprocesses} "+\
                   f"--num_epochs {num_epochs} "+\
                   f"--gating_head_cost_factor {gating_head_cost_factor} "+\
                   f"--hid_size {hid_size} "+\
-                  f" --detach_gap 10 --lrate 0.003 --dim {dim} --max_steps {max_steps} --ic3net --vision {vision} "+\
+                  f" --detach_gap 10 --lrate {lr} --dim {dim} --max_steps {max_steps} --ic3net --vision {vision} "+\
                   f"--recurrent "+\
                   f"--add_rate_min 0.1 --add_rate_max 0.1 --curr_start 12250 --curr_end 21250 --difficulty easy "+\
                   f"--exp_name {exp_name} --save_every {save_every} "+\

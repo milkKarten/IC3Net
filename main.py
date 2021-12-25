@@ -425,7 +425,7 @@ def load(path):
     #         history[k] = list(np.load(f"{log_path}/{k}.npy"))
 
     trainer.load_state_dict(d['trainer'])
-    if self.args.scheduleLR:
+    if args.scheduleLR:
         trainer.load_scheduler(start_epoch)
 
 def signal_handler(signal, frame):
@@ -468,7 +468,7 @@ if args.restore:
             start_epoch = len(history[k])
 
     trainer.load_state_dict(d['trainer'])
-    if self.args.scheduleLR:
+    if args.scheduleLR:
         trainer.load_scheduler(start_epoch)
 
 
