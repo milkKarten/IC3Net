@@ -1,0 +1,47 @@
+<html>
+<title>Login Interface</title>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+    <title>Insert title here</title>
+    <style>
+      .top{
+        margin-top: 15%;
+        background-color: white;
+      }
+    </style>
+ </head>
+<body>
+<div class="top"> 
+        <center> 
+          <h1>Team Space Fortress Experiments</h1>
+          
+ 
+          {% if error %}
+            <span style="color: red">Error: {{ error }}</span><p />
+          {% end %}
+
+
+          <form action="/login" method="post">
+            {% module xsrf_form_html() %}        
+            <p>Please first enter your ID: <input id="name" name="name" type="text" /></p>
+            <input type="submit" value="Log in with your ID">
+          </form>
+ <!--         <p>Then press: <button  id=start>Log in with your ID</button></p> -->       
+        </center>        
+</div>
+
+<script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
+<script>
+//function login(){
+//	var name = document.getElementById("name").value;
+//    window.location.href='index.html?name='+name;
+//}
+</script>
+<script type="text/javascript">
+$("#start").click(function(){
+          login();
+});
+</script>
+</body>
+</html>
