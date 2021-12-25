@@ -39,6 +39,10 @@ class Trainer(object):
         self.epoch_success = 0
         self.cur_epoch_i = 0
         self.success_thresh = .95
+
+        self.reward_epoch_success = 0
+        self.reward_success = 0
+        self.cur_reward_epoch_i = 0
         # self.gate_reward_max = -0.01
         # self.gate_reward_min = 0.01
         # self.reward_curr_start = 1500
@@ -63,10 +67,26 @@ class Trainer(object):
                 self.args.comm_action_one = False
                 self.args.variable_gate = False
 
-    def reward_curriculum(self, epoch):
-        if self.args.gate_reward_curriculum and (self.args.reward_curr_start <= epoch < self.args.reward_curr_end):
-            step = (self.args.gate_reward_max - self.args.gate_reward_min) / (self.args.reward_curr_end - self.args.reward_curr_start)
-            self.args.gating_head_cost_factor += step
+    # def reward_curriculum(self, epoch):
+    #     if self.args.gate_reward_curriculum and (self.args.reward_curr_start <= epoch < self.args.reward_curr_end):
+    #         step = (self.args.gate_reward_max - self.args.gate_reward_min) / (self.args.reward_curr_end - self.args.reward_curr_start)
+    #         self.args.gating_head_cost_factor += step
+
+    def reward_curriculum(self, success_rate):
+        if self.args.gate_reward_curriculum:
+            self.cur_reward_epoch_i += 1
+            self.reward_epoch_success += success_rate
+            if self.cur_reward_epoch_i >= self.args.epoch_size:
+                self.cur_reward_epoch_i = 0
+                if self.reward_epoch_success / float(num_episodes*self.args.epoch_size) > self.success_thresh:
+                    self.reward_success += 1
+                else:
+                    self.reward_success = 0
+                self.reward_epoch_success = 0
+            if self.reward_success >= 20:
+                self.args.gating_head_cost_factor *= -1
+                self.args.gate_reward_curriculum = False
+
 
     def get_episode(self, epoch):
         episode = []
@@ -312,7 +332,7 @@ class Trainer(object):
         return stat
 
     def run_batch(self, epoch):
-        self.reward_curriculum(epoch)
+        # self.reward_curriculum(epoch)
         batch = []
         self.stats = dict()
         self.stats['num_episodes'] = 0
@@ -348,6 +368,8 @@ class Trainer(object):
 
         # Check if success has converged for curriculum learning
         self.success_curriculum(self.stats['success'], self.stats['num_episodes'])
+        # check if time to introduce reward to decrease communication
+        self.reward_curriculum(self.stats['success'], self.stats['num_episodes'])
 
         for p in self.params:
             if p._grad is not None:

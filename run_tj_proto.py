@@ -20,7 +20,7 @@ seeds = [777]
 #             "fixed_proto_bigproto", "G_proto_bigproto_bigcomm", "fixed_proto_bigproto_bigcomm"]
 # methods = ["G_proto_bigproto_bigcomm", "G_proto_bigcomm"]
 #methods = ["G_Proto", "G", "G_proto_bigproto_bigcomm"]
-methods = ["fixed_proto_var_dLR500"]
+methods = ["fixed_proto_var_dLR500_rew_cur"]
 # run baseline with no reward on the gating function
 # G - IC3net with learned gating function
 # exp_name = "tj_g0.01_test"
@@ -79,7 +79,7 @@ if True:
         print(ada, "ada")
         variable_gate_start = 500
         nprocesses = 16
-        lr = 0.001
+        lr = 0.003
         run_str = f"python main.py --env_name {env} --nagents {nagents} --nprocesses {nprocesses} "+\
                   f"--num_epochs {num_epochs} "+\
                   f"--gating_head_cost_factor {gating_head_cost_factor} "+\
