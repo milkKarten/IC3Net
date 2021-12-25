@@ -306,6 +306,8 @@ if not args.restore:
     # vis = visdom.Visdom(env=args.plot_env)
     # logger = SummaryWriter(str(os.path.join(args.env_name, args.log_dir)))
 
+if args.variable_gate and args.restore:
+    trainer.setup_var_reload()
 
 # this is used for getting that multiple seed plot in the end.
 history = defaultdict(list)

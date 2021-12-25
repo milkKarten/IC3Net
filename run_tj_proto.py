@@ -10,8 +10,8 @@ os.environ["OMP_NUM_THREADS"] = "1" # push this to repo
 # try keeping spawning rate constant
 env = "traffic_junction"
 # seeds = [1, 2]
-# seeds = [777]
-seeds = [20,777]
+seeds = [777]
+# seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 # methods = ["fixed"]
 # methods = sys.argv[1:]
@@ -37,7 +37,7 @@ if True:
         discrete_comm = False
         if "proto" in method:
             discrete_comm = True
-        num_epochs = 5000
+        num_epochs = 10000
         hid_size= 128
         dim = 6
         max_steps = 20
@@ -79,7 +79,7 @@ if True:
         print(ada, "ada")
         variable_gate_start = 500
         nprocesses = 16
-        lr = 0.003
+        lr = 0.001
         run_str = f"python main.py --env_name {env} --nagents {nagents} --nprocesses {nprocesses} "+\
                   f"--num_epochs {num_epochs} "+\
                   f"--gating_head_cost_factor {gating_head_cost_factor} "+\

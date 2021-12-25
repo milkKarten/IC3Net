@@ -27,16 +27,13 @@ class Trainer(object):
         elif self.args.optim_name == "Adadelta":
             self.optimizer = optim.Adadelta(policy_net.parameters())#, lr = args.lrate)
         if self.args.scheduleLR:
-            self.scheduler1 = optim.lr_scheduler.ConstantLR(self.optimizer, factor=1)
-            self.scheduler2 = optim.lr_scheduler.StepLR(self.optimizer, 500, gamma=0.1)
-            self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2], milestones=[3000*self.args.epoch_size])
+            self.load_scheduler(start_epoch=0)
         self.params = [p for p in self.policy_net.parameters()]
         # self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.device = torch.device('cpu')
         if multi:
             self.device = torch.device('cpu')
         print("Device:", self.device)
-        print("DO NOT RUN THIS: AUTO REWARD CURRICULUM IN BETA")
         self.first_print = False
         self.success_metric = 0
         self.epoch_success = 0
@@ -370,6 +367,13 @@ class Trainer(object):
     def load_state_dict(self, state):
         self.optimizer.load_state_dict(state)
 
+    def setup_var_reload(self):
+        if self.args.variable_gate:
+            self.args.comm_action_one = False
+            self.args.variable_gate = False
+
     def load_scheduler(self, start_epoch):
-        self.success_metric = 20
-        self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2], milestones=[3000*self.args.epoch_size],last_epoch=start_epoch)
+        print("load_scheduler",start_epoch)
+        self.scheduler1 = optim.lr_scheduler.ConstantLR(self.optimizer, factor=1)
+        self.scheduler2 = optim.lr_scheduler.StepLR(self.optimizer, 500*self.args.epoch_size, gamma=0.1)
+        self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2], milestones=[2500*self.args.epoch_size])

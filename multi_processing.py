@@ -128,6 +128,9 @@ class MultiProcessTrainer(object):
     def state_dict(self):
         return self.trainer.state_dict()
 
+    def setup_var_reload(self):
+        return self.trainer.setup_var_reload()
+
     def load_state_dict(self, state):
         self.trainer.load_state_dict(state)
 
