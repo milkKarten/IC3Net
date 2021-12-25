@@ -29,7 +29,7 @@ class Trainer(object):
         if self.args.scheduleLR:
             self.scheduler1 = optim.lr_scheduler.ConstantLR(self.optimizer, factor=1)
             self.scheduler2 = optim.lr_scheduler.StepLR(self.optimizer, 500, gamma=0.1)
-            self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2], milestones=[2000*self.args.epoch_size])
+            self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2], milestones=[3000*self.args.epoch_size])
         self.params = [p for p in self.policy_net.parameters()]
         # self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.device = torch.device('cpu')
@@ -371,4 +371,4 @@ class Trainer(object):
         self.optimizer.load_state_dict(state)
 
     def load_scheduler(self, start_epoch):
-        self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2, self.scheduler3], milestones=[1500*self.args.epoch_size,2500*self.args.epoch_size],last_epoch=start_epoch)
+        self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2], milestones=[3000*self.args.epoch_size],last_epoch=start_epoch)

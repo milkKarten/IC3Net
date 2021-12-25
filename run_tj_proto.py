@@ -85,7 +85,7 @@ if True:
                   f"--gating_head_cost_factor {gating_head_cost_factor} "+\
                   f"--hid_size {hid_size} "+\
                   f" --detach_gap 10 --lrate {lr} --dim {dim} --max_steps {max_steps} --ic3net --vision {vision} "+\
-                  f"--recurrent "+\
+                  f"--recurrent --scheduleLR "+\
                   f"--add_rate_min 0.1 --add_rate_max 0.1 --curr_start 12250 --curr_end 21250 --difficulty easy "+\
                   f"--exp_name {exp_name} --save_every {save_every} "+\
                   f"--use_proto --comm_dim {comm_dim} --num_proto {num_proto} " # may need to change this to not use prototypes
