@@ -371,4 +371,5 @@ class Trainer(object):
         self.optimizer.load_state_dict(state)
 
     def load_scheduler(self, start_epoch):
+        self.success_metric = 20
         self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2], milestones=[3000*self.args.epoch_size],last_epoch=start_epoch)
