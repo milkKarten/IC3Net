@@ -72,7 +72,7 @@ class Trainer(object):
     #         step = (self.args.gate_reward_max - self.args.gate_reward_min) / (self.args.reward_curr_end - self.args.reward_curr_start)
     #         self.args.gating_head_cost_factor += step
 
-    def reward_curriculum(self, success_rate):
+    def reward_curriculum(self, success_rate, num_episodes):
         if self.args.gate_reward_curriculum and not self.args.variable_gate:
             self.cur_reward_epoch_i += 1
             self.reward_epoch_success += success_rate
@@ -143,6 +143,7 @@ class Trainer(object):
                 #     self.first_print = False
                 # since we treat this as reward so probability of 0 being high is rewarded
                 gating_head_rew = np.array([p[0] for p in gating_probs]) * self.args.gating_head_cost_factor
+                stat['gating_reward'] = stat.get('gating_reward', 0) + gating_head_rew
                 # print(gating_head_rew)
 
             # this converts stuff to numpy
@@ -153,6 +154,7 @@ class Trainer(object):
             # print(f"type of gating reward {type(gating_head_rew)}, type of reward {type(reward)}")
             # import time
             # time.sleep(10)
+            stat['env_reward'] = stat.get('env_reward', 0) + reward[:self.args.nfriendly]
             if not self.args.continuous and self.args.gating_head_cost_factor != 0:
                 # if self.first_print:
                 #     print(f"gating head reward is {gating_head_rew}, general reward {reward}")

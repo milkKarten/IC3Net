@@ -271,6 +271,8 @@ def disp():
 log = dict()
 log['epoch'] = LogField(list(), False, None, None)
 log['reward'] = LogField(list(), True, 'epoch', 'num_episodes')
+log['gating_reward'] = LogField(list(), True, 'epoch', 'num_episodes')
+log['env_reward'] = LogField(list(), True, 'epoch', 'num_episodes')
 log['enemy_reward'] = LogField(list(), True, 'epoch', 'num_episodes')
 log['success'] = LogField(list(), True, 'epoch', 'num_episodes')
 log['steps_taken'] = LogField(list(), True, 'epoch', 'num_episodes')
@@ -342,7 +344,7 @@ def run(num_epochs):
                 v.data.append(stat.get(k, 0))
 
         for k, v in stat.items():
-            if k == "comm_action" or k == "reward":
+            if k == "comm_action" or k == "reward" or k == "gating_reward" or k == "env_reward":
                 for i, val in enumerate(v):
                     # logger.add_scalar(f"agent{i}/{k}" , val, epoch)
                     logger.add_scalar("agent"+str(i)+"/"+str(k) , val, epoch)
