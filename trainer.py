@@ -73,7 +73,7 @@ class Trainer(object):
     #         self.args.gating_head_cost_factor += step
 
     def reward_curriculum(self, success_rate):
-        if self.args.gate_reward_curriculum:
+        if self.args.gate_reward_curriculum and not self.args.variable_gate:
             self.cur_reward_epoch_i += 1
             self.reward_epoch_success += success_rate
             if self.cur_reward_epoch_i >= self.args.epoch_size:

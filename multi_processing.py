@@ -41,6 +41,8 @@ class MultiProcessWorker(mp.Process):
                 self.comm.send(grads)
             elif task == 'success_curriculum':
                 self.trainer.success_curriculum(success, num_episodes)
+            elif task == 'reward_curriculum':
+                self.trainer.reward_curriculum(success, num_episodes)
 
 
 class MultiProcessTrainer(object):
@@ -121,6 +123,10 @@ class MultiProcessTrainer(object):
         for comm in self.comms:
             comm.send(['success_curriculum', stat['success'], stat['num_episodes']])
         self.trainer.success_curriculum(stat['success'], stat['num_episodes'])
+        # Check if success has converged for reward to start to punish communication
+        for comm in self.comms:
+            comm.send(['reward_curriculum', stat['success'], stat['num_episodes']])
+        self.trainer.reward_curriculum(stat['success'], stat['num_episodes'])
         # print(f"time taken for step {time.time() - op_st}")
 
         return stat
