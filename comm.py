@@ -29,6 +29,8 @@ class CommNetMLP(nn.Module):
         self.comm_passes = args.comm_passes
         self.recurrent = args.recurrent
         self.continuous = args.continuous
+        # If true, we add noise to the communication being output by each agent.
+        self.add_comm_noise = args.add_comm_noise
 
         # TODO: remove this is just for debugging purposes just to verify that the communication is happening in a
         #  disrete manner
@@ -251,20 +253,16 @@ class CommNetMLP(nn.Module):
 
                 if self.train_mode:
                     comm = self.proto_layer.step(raw_outputs, True, self.exploration_noise, 'cpu')
-
-                    # TODO: remove this, its for debug only
-                    # for c in comm:
-                    #     if list(c.detach().numpy()) not in self.unique_comms:
-                    #         self.unique_comms.append(list(c.detach().numpy()))
-
                 else:
                     comm = self.proto_layer.step(raw_outputs, False, self.exploration_noise, 'cpu')
 
-                    # TODO: Remove this is for debug only
-                    # for c in comm:
-                    #     if list(c.detach().numpy()) not in self.unique_comms:
-                    #         self.unique_comms.append(list(c.detach().numpy()))
-
+                if self.add_comm_noise:
+                    # Currently, just hardcoded. We want enough noise to have an effect but not too much to prevent
+                    # learning.
+                    std = 0.05
+                    # Generates samples from a zero-mean unit gaussian, which we rescale by the std parameter.
+                    noise = torch.randn_like(comm) * std
+                    comm += noise
 
             else:
                 # print(f"inside else {hidden_state.size()}")

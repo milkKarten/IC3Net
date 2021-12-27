@@ -5,7 +5,7 @@ env = "predator_prey"
 
 # specify all the seeds you want to run the experiment on.
 # seeds = [1, 2, 3]
-seeds = [777]
+seeds = [0]
 
 # for predator-prey there are 3 modes: cooperative, competitive and mixed.
 mode = "cooperative"
@@ -55,6 +55,8 @@ enemy_comm = False
 # g=1. If this is set to true agents will communicate at every step.
 comm_action_one = True
 
+add_comm_noise = True
+
 # Important: If you want to restore training just use the --restore tag
 
 # run for all seeds
@@ -65,7 +67,8 @@ for seed in seeds:
                   f"--nprocesses 1 --gating_head_cost_factor {gating_head_cost_factor} --num_epochs {num_epochs} "
                   f"--hid_size {hid_size} --detach_gap 10 --lrate 0.001 "
                   f"--dim {dim} --max_steps {max_steps} --ic3net --vision {vision} --recurrent "
-                  f"--save_every {save_every} --discrete_comm --use_proto --comm_dim {comm_dim} "
+                  f"--save_every {save_every} --discrete_comm --use_proto --comm_dim {comm_dim} " +\
+                  str("--add_comm_noise " if add_comm_noise else " ") +\
                   f"--num_proto {num_proto}")
     else:
         os.system(
@@ -73,7 +76,8 @@ for seed in seeds:
             f"--nprocesses 1 --gating_head_cost_factor {gating_head_cost_factor} --num_epochs {num_epochs} "
             f"--hid_size {hid_size} --detach_gap 10 --lrate 0.001 "
             f"--dim {dim} --max_steps {max_steps} --ic3net --vision {vision} --recurrent --save_every {save_every} "
-            f"--use_proto --comm_dim {comm_dim} "
+            f"--use_proto --comm_dim {comm_dim} " +\
+            str("--add_comm_noise " if add_comm_noise else " ") +\
             f"--num_proto {num_proto}")
 
 # plot the avg and error graphs using multiple seeds.

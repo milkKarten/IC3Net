@@ -129,6 +129,8 @@ parser.add_argument('--discrete_comm', default=False, action='store_true',
                     help='Whether to use discrete_comm')
 parser.add_argument('--num_proto', type=int, default=6,
                     help="Number of prototypes to use")
+parser.add_argument('--add_comm_noise', default=False, action='store_true',
+                    help='Whether to add noise to communication')
 
 parser.add_argument('--comm_dim', type=int, default=128,
                     help="Dimension of the communication vector")
