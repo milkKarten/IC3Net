@@ -10,7 +10,7 @@ os.environ["OMP_NUM_THREADS"] = "1" # push this to repo
 # try keeping spawning rate constant
 env = "traffic_junction"
 # seeds = [1, 2]
-seeds = [777]
+seeds = [777, 20]
 # seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 # methods = ["fixed"]
@@ -20,12 +20,13 @@ seeds = [777]
 #             "fixed_proto_bigproto", "G_proto_bigproto_bigcomm", "fixed_proto_bigproto_bigcomm"]
 # methods = ["G_proto_bigproto_bigcomm", "G_proto_bigcomm"]
 #methods = ["G_Proto", "G", "G_proto_bigproto_bigcomm"]
-methods = ["fixed_proto_var_dLR500_rew_cur"]
+# methods = ["fixed_proto_var_dLR500_rew_cur"]
+methods = ["proto_var_MIDCOM_Kpdi1"]
 # run baseline with no reward on the gating function
 # G - IC3net with learned gating function
 # exp_name = "tj_g0.01_test"
 # for reward_curr_start, reward_curr_end in zip([1500, 1250, 1800],[1900, 2000, 2000]):
-# for rew in [-.01, -.1]:
+# for rew in [1, .1, .01]:
 if True:
     for method in methods:
         # exp_name = "tj_" + method + "_NEG_" + str(reward_curr_start) + "_" + str(reward_curr_end)
@@ -37,7 +38,7 @@ if True:
         discrete_comm = False
         if "proto" in method:
             discrete_comm = True
-        num_epochs = 10000
+        num_epochs = 5000
         hid_size= 128
         dim = 6
         max_steps = 20
@@ -48,11 +49,12 @@ if True:
         comm_action_zero = False
         # weight of the gating penalty. 0 means no penalty.
         # gating_head_cost_factor = rew
-        gating_head_cost_factor = -0.1
+        gating_head_cost_factor = 0.1
         if "baseline" in method:
             gating_head_cost_factor = 0
         if "fixed" in method:
-            gating_head_cost_factor = 0
+            if not "var" in method:
+                gating_head_cost_factor = 0
             comm_action_one = True
         # specify the number of prototypes you wish to use.
         num_proto = 25  # try to increase prototypes
@@ -85,7 +87,7 @@ if True:
                   f"--gating_head_cost_factor {gating_head_cost_factor} "+\
                   f"--hid_size {hid_size} "+\
                   f" --detach_gap 10 --lrate {lr} --dim {dim} --max_steps {max_steps} --ic3net --vision {vision} "+\
-                  f"--recurrent --scheduleLR "+\
+                  f"--recurrent "+\
                   f"--add_rate_min 0.1 --add_rate_max 0.1 --curr_start 12250 --curr_end 21250 --difficulty easy "+\
                   f"--exp_name {exp_name} --save_every {save_every} "+\
                   f"--use_proto --comm_dim {comm_dim} --num_proto {num_proto} " # may need to change this to not use prototypes

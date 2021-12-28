@@ -40,9 +40,16 @@ class Trainer(object):
         self.cur_epoch_i = 0
         self.success_thresh = .95
 
+        # reward communication when false
+        self.args.gating_punish = False
+
         self.reward_epoch_success = 0
         self.reward_success = 0
         self.cur_reward_epoch_i = 0
+
+        # reward tuning
+        self.last_error = None
+        self.total_error = None
         # self.gate_reward_max = -0.01
         # self.gate_reward_min = 0.01
         # self.reward_curr_start = 1500
@@ -84,7 +91,7 @@ class Trainer(object):
                     self.reward_success = 0
                 self.reward_epoch_success = 0
             if self.reward_success >= 20:
-                self.args.gating_head_cost_factor *= -1
+                self.args.gating_punish = True
                 self.args.gate_reward_curriculum = False
 
 
@@ -137,12 +144,50 @@ class Trainer(object):
             if not self.args.continuous and self.args.gating_head_cost_factor != 0:
                 log_p_a = action_out
                 p_a = [[z.exp() for z in x] for x in log_p_a]
+                # print("p_a", p_a)
                 gating_probs = p_a[1][0].detach().numpy()
                 # if self.first_print:
                 #     print(f"Gating probabilities are {gating_probs}")
                 #     self.first_print = False
                 # since we treat this as reward so probability of 0 being high is rewarded
-                gating_head_rew = np.array([p[0] for p in gating_probs]) * self.args.gating_head_cost_factor
+                gating_head_rew = np.array([p[1] for p in gating_probs])
+                if self.args.gating_punish:
+                    # encourage communication to be between 5% to 10%, greatly discourage under 5%
+                    # thresh = 0.125
+                    thresh = 0.5
+                    Kp = 1.
+                    Kd = 3.2
+                    Ki = 0.26
+                    Kpdi = 1.
+                    # 0.05 is the minimum comm rate to ensure success
+                    # gating_head_rew[gating_head_rew < 0.05] = 10
+                    # error = (gating_head_rew - (0.5*(thresh_top+thresh_bot))) ** 2
+                    error = np.zeros_like(gating_head_rew)
+                    error[gating_head_rew < thresh] = (thresh - gating_head_rew[gating_head_rew < thresh]) / thresh
+                    error[gating_head_rew >= thresh] = (thresh - gating_head_rew[gating_head_rew >= thresh]) / (1. - thresh)
+                    if self.last_error is None:
+                        self.last_error = error
+                    derivative = error - self.last_error
+                    if self.total_error is None:
+                        self.total_error = np.zeros_like(error)
+                    gating_head_rew = Kpdi * np.abs(Kp * error + Kd * derivative + Ki * self.total_error)
+                    self.last_error = error
+                    self.total_error += error
+                    self.total_error = np.clip(self.total_error, -10, 10)
+                    # gating_head_rew[gating_head_rew < 0.05] = (gating_head_rew[gating_head_rew < 0.05] - (0.5*(thresh_top+thresh_bot))) ** 2
+                    # gating_head_rew[np.logical_and((gating_head_rew <= thresh_top), (gating_head_rew >= thresh_bot))] = 0
+                    # gating_head_rew[gating_head_rew > 0.05] = (gating_head_rew[gating_head_rew > 0.05] - (0.5*(thresh_top+thresh_bot))) ** 2
+                    # print("here punish", gating_head_rew, gating_probs)
+                else:
+                    # encourage communication to be high
+                    gating_head_rew = (gating_head_rew - 1) ** 2
+                    # print("here", gating_head_rew, gating_probs)
+                gating_head_rew *= -1 * np.abs(self.args.gating_head_cost_factor)
+                # try these methods:
+                    # A) negative reward when not rate expected
+                    # B) positive reward when <= comm rate expected, negative reward when > comm rate
+                    # C) adaptive
+                        # like A/B but comm rate is adaptive based on success rate
                 stat['gating_reward'] = stat.get('gating_reward', 0) + gating_head_rew
                 # print(gating_head_rew)
 
