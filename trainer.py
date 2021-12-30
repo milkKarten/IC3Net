@@ -123,7 +123,7 @@ class Trainer(object):
                 self.begin_tj_currich = True
 
     def communication_curriculum(self, success_rate, num_episodes):
-        if not self.end_comm_curric:
+        if not self.end_comm_curric and not self.args.variable_gate:
             self.comm_epoch_i += 1
             self.comm_epoch_success += success_rate
             if self.comm_epoch_i >= self.args.epoch_size:
