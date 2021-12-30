@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+
+<html lang="en-US">
+
+  <head>
+    <!-- Boilerplate -->
+    <meta charset="UTF-8" />
+    <title>Human Agent Communication Experiment</title>
+
+   <style>
+      .left {
+        float: left;
+        width:15%;
+        height: 620px;
+        margin-left:10px;
+        background-color: white;
+      }
+      .middleleft {
+        float:left;
+        width: 500px;
+        height: 500px;
+        margin-left:auto;
+        background-color: white;
+        text-align:center;
+      }
+    .middleright {
+        float:left;
+        width: 500px;
+        height: 500px;
+        margin-left:auto;
+        background-color: white;
+        text-align:center;
+      }
+      .right {
+        height: 570px;
+        width:15%;
+        margin-left: auto;
+        margin-top: 50px;
+        background-color: white;
+        text-align:left;
+      }
+    </style>
+
+
+  </head>
+
+<body>
+  <center>
+    <h1>Human Agent Communication Experiment</h1>
+  </center>
+<div class="left">
+    <h1>Instructions</h1>
+    <button  id=Help style="height:40px">View full instructions</button>
+</div>
+<div class="middleleft">
+    <h2>Task Environment</h2>
+    <canvas id="canvas" width="500" height="500"></canvas>
+
+</div>
+  <div class="middleright">
+      <h2>Communication Space</h2>
+    <canvas id="comm" width="500" height="500"></canvas>
+
+      <p>&nbsp; <button id=token1 style="height:40px" onclick="commUpdate('token1')">Token 1</button>
+      <button id=token2 style="height:40px" onclick="commUpdate('token2')">Token 2</button>
+      <button id=token3 style="height:40px" onclick="commUpdate('token3')">Token 3</button>
+      <button id=token4 style="height:40px" onclick="commUpdate('token4')">Token 4</button>
+      <button id=token5 style="height:40px" onclick="commUpdate('token5')">Token 5</button></p>
+</div>
+<div class="right">
+  <h1>Progress</h1>
+  <p> &nbsp; Session 1, Trail <span id="trial"></span></p>
+  <p> &nbsp; Step taken: <span id="step"></span> (steps)</p>
+    <p> &nbsp; Best performance: <span id="best"></span> (steps)</p>
+  <p>&nbsp; <button id=startGame style="height:40px">Start Game</button></p>
+</div>
+  <div style="display:none;">
+  <img id="child"
+       src="mbaby1.png">
+</div>
+    <div style="display:none;">
+  <img id="parent"
+       src="fgirl1.png">
+</div>
+<main>
+<h1>Brief Instructions</h1>
+In this 'Parent-Child' scenario, you will play the role of either a parent or a child. In this cooperative task, the parent with a limited vision need to find a stationary child. The goal of the child is to effectively communicate its location so that the parent can travel to the lost child. <p>
+
+A trial begins with the parent and child spawned at random locations, and ends when the parent reaches to the child. The child is allowed to send only one communication for each trial.<p>
+
+Parent control: D or right arrow - go right, A or left arrow - go left, W or up arrow - go up, S or down arrow - go down<p>
+
+Child control: select communication contents using buttons on the right side<p>
+</main>
+    <!-- Scripts to interact with game server -->
+    <script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
+<!--    <script src="{{ static_url("parent_child.js") }}" type="text/javascript"></script>-->
+      <script src="parent_child.js" type="text/javascript"></script>
+<script type="text/javascript">
+var keyflag = false;
+num_trail = 0
+$("#startGame").click(function(){
+  document.addEventListener('keydown',keyDownCheck,false);
+  var name =  getParams("name");
+<!--  info_send(name);-->
+  num_trail = num_trail + 1;
+  document.getElementById('trial').innerHTML = num_trail;
+});
+$("#Help").click(function(){
+  openwin();
+});
+</script>
+  </body>
+
+</html>
