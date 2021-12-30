@@ -65,8 +65,8 @@ if True:
             nagents = 10
             max_steps = 40
             dim = 14
-            add_rate_min = 0.02
-            add_rate_max = 0.05
+            add_rate_min = 0.05
+            add_rate_max = 0.2
             difficulty = 'medium'
         elif "hard" in method:
             nagents = 20
@@ -113,9 +113,9 @@ if True:
             # run_str += "> runLogs/" + exp_name + "Log.txt 2>&1 &"
             # cmd_args = run_str[:-1].split(" ")
             # print(cmd_args)
-            # with open("runLogs/" + exp_name + "Log.txt","wb") as out:
-                # subprocess.Popen(run_str + f"--seed {seed}", shell=True, stdout=out)#, stderr=out)
-            os.system(run_str + f"--seed {seed}")
+            with open("runLogs/" + exp_name + "Log.txt","wb") as out:
+                subprocess.Popen(run_str + f"--seed {seed}", shell=True, stdout=out)#, stderr=out)
+            # os.system(run_str + f"--seed {seed}")
         # sys.exit(0)
         # plot the avg and error graphs using multiple seeds.
         # os.system(f"python plot.py --env_name {env} --exp_name {exp_name} --nagents {nagents}")
