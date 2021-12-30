@@ -42,6 +42,7 @@ class Evaluator:
         comms_to_prey_loc = {}
         for t in range(self.args.max_steps):
             misc = dict()
+            info['step_t'] = t
             if t == 0 and self.args.hard_attn and self.args.commnet:
                 info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
             # Hardcoded to record communication for agent 1 (prey)

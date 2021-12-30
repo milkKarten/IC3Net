@@ -32,6 +32,7 @@ class PredatorPreyEnv(gym.Env):
 
     def __init__(self,):
         self.__version__ = "0.0.1"
+        self.name  = "PredatorPrey"
 
         # TODO: better config handling
         self.OUTSIDE_CLASS = 1
