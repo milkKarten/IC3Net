@@ -238,7 +238,8 @@ class CommNetMLP(nn.Module):
                 # reset communication budget at the beginning of the episode
                 self.comm_budget = self.budget * torch.tensor([self.args.max_steps] * self.nagents)
             self.comm_budget -= comm_action
-            comm_action[self.comm_budget <= 0] = 0
+            if self.budget != 1:
+                comm_action[self.comm_budget <= 0] = 0
             info['comm_budget'] = comm_action.detach().numpy()
             # print("comm action, budget", comm_action, self.comm_budget, info['step_t'])
             comm_action_mask = comm_action.expand(batch_size, n, n).unsqueeze(-1)

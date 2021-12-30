@@ -168,6 +168,7 @@ class Trainer(object):
                 info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
                 info['comm_budget'] = np.zeros(self.args.nagents, dtype=int)
                 info['step_t'] = t  # episode step for resetting communication budget
+                stat['comm_action'] = np.zeros(self.args.nagents, dtype=int)[:self.args.nfriendly]
 
             # recurrence over time
             if self.args.recurrent:
@@ -233,11 +234,21 @@ class Trainer(object):
                     # gating_head_rew = (gating_head_rew - 1) ** 2
                     # gating_head_rew = (gating_head_rew - self.policy_net.budget) ** 2
                     # punish trying to communicate over budget scaled to [0,1]
+                    # print(gating_head_rew, stat['comm_action'] / stat['num_steps'], info['comm_budget'])
                     if self.policy_net.budget != 1:
-                        gating_head_rew = (np.abs(info['comm_action'] - info['comm_budget']) / (1 - self.policy_net.budget)).astype(np.float64)
+                        # gating_head_rew = (np.abs(info['comm_action'] - info['comm_budget'])).astype(np.float64)
+                        # gating_head_rew = (np.abs(info['comm_action'] - info['comm_budget']) / (1 - self.policy_net.budget)).astype(np.float64)
+                        # punish excessive and strengthen current communication
+                        # gating_head_rew = (np.abs(gating_head_rew - info['comm_budget'])).astype(np.float64)
+                        # only punish excessive communication
+                        mask_rew = info['comm_action'] != info['comm_budget']
+                        error = np.zeros_like(gating_head_rew)
+                        error[mask_rew] = np.abs(gating_head_rew[mask_rew] - info['comm_budget'][mask_rew]).astype(np.float64)
+                        gating_head_rew = error
                     else:
-                        # this case is all zeros
-                        gating_head_rew = np.abs(info['comm_action'] - info['comm_budget']).astype(np.float64)
+                        # max communication when budget is full
+                        # gating_head_rew = np.abs(info['comm_action'] - 1).astype(np.float64)
+                        gating_head_rew = np.abs(gating_head_rew - 1).astype(np.float64)
                     # punish communication under budget scaled to [0,1]
                     # gating_head_rew += np.abs(info['comm_budget'] - self.policy_net.budget) / (self.policy_net.budget)
                     # print("here", gating_head_rew, gating_probs)
