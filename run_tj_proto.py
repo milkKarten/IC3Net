@@ -59,7 +59,7 @@ if True:
         variable_gate = False
         if "var" in method:
             variable_gate = True
-        nprocesses = 0
+        nprocesses = 16
         lr = 0.003
         if "medium" in method:
             nagents = 10

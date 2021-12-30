@@ -234,10 +234,10 @@ class Trainer(object):
                     # gating_head_rew = (gating_head_rew - self.policy_net.budget) ** 2
                     # punish trying to communicate over budget scaled to [0,1]
                     if self.policy_net.budget != 1:
-                        gating_head_rew = np.abs(info['comm_action'] - info['comm_budget']) / (1 - self.policy_net.budget)
+                        gating_head_rew = (np.abs(info['comm_action'] - info['comm_budget']) / (1 - self.policy_net.budget)).astype(np.float64)
                     else:
                         # this case is all zeros
-                        gating_head_rew = np.abs(info['comm_action'] - info['comm_budget'])
+                        gating_head_rew = np.abs(info['comm_action'] - info['comm_budget']).astype(np.float64)
                     # punish communication under budget scaled to [0,1]
                     # gating_head_rew += np.abs(info['comm_budget'] - self.policy_net.budget) / (self.policy_net.budget)
                     # print("here", gating_head_rew, gating_probs)
