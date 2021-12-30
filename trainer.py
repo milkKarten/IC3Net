@@ -66,6 +66,13 @@ class Trainer(object):
         self.tj_success = 0
         self.tj_epoch_i = 0
 
+        # communication curriculum with hard constraint
+        self.min_budget = 0.1
+        self.end_comm_curric = False
+        self.comm_epoch_i = 0
+        self.comm_epoch_success = 0
+        self.comm_success = 0
+
 
     def success_curriculum(self, success_rate, num_episodes):
         if self.args.variable_gate:
@@ -115,6 +122,27 @@ class Trainer(object):
             if self.tj_success >= 20:
                 self.begin_tj_currich = True
 
+    def communication_curriculum(self, success_rate, num_episodes):
+        if not self.begin_comm_curric:
+            self.comm_epoch_i += 1
+            self.comm_epoch_success += success_rate
+            if self.comm_epoch_i >= self.args.epoch_size:
+                self.comm_epoch_i = 0
+                if self.comm_epoch_success / float(num_episodes*self.args.epoch_size) > self.success_thresh:
+                    self.comm_success += 1
+                else:
+                    self.comm_success = 0
+                self.comm_epoch_success = 0
+            if self.comm_success >= 50:
+                # decrease budget, reset curriculum params
+                self.policy_net.budget -= 0.1
+                self.comm_epoch_i = 0
+                self.comm_epoch_success = 0
+                self.comm_success = 0
+            if self.policy_net.budget <= self.min_budget:
+                self.begin_comm_curric = True
+
+
     def get_episode(self, epoch):
         episode = []
         reset_args = getargspec(self.env.reset).args
@@ -138,6 +166,8 @@ class Trainer(object):
             misc = dict()
             if t == 0 and self.args.hard_attn and self.args.commnet:
                 info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
+                info['comm_budget'] = np.zeros(self.args.nagents, dtype=int)
+                info['step_t'] = t  # episode step for resetting communication budget
 
             # recurrence over time
             if self.args.recurrent:
@@ -172,7 +202,7 @@ class Trainer(object):
                 # since we treat this as reward so probability of 0 being high is rewarded
                 gating_head_rew = np.array([p[1] for p in gating_probs])
                 if self.args.gating_punish:
-                    # encourage communication to be between 5% to 10%, greatly discourage under 5%
+                    # encourage communication to be at thresh %
                     # thresh = 0.125
                     thresh = 0.5
                     Kp = 1.
@@ -200,7 +230,12 @@ class Trainer(object):
                     # print("here punish", gating_head_rew, gating_probs)
                 else:
                     # encourage communication to be high
-                    gating_head_rew = (gating_head_rew - 1) ** 2
+                    # gating_head_rew = (gating_head_rew - 1) ** 2
+                    # gating_head_rew = (gating_head_rew - self.policy_net.budget) ** 2
+                    # punish trying to communicate over budget scaled to [0,1]
+                    gating_head_rew = np.abs(info['comm_action'] - info['comm_budget']) / (1 - self.policy_net.budget)
+                    # punish communication under budget scaled to [0,1]
+                    # gating_head_rew += np.abs(info['comm_budget'] - self.policy_net.budget) / (self.policy_net.budget)
                     # print("here", gating_head_rew, gating_probs)
                 gating_head_rew *= -1 * np.abs(self.args.gating_head_cost_factor)
                 # try these methods:
@@ -213,7 +248,7 @@ class Trainer(object):
 
             # this converts stuff to numpy
             action, actual = translate_action(self.args, self.env, action)
-
+            comm_budget = info['comm_budget']
             next_state, reward, done, info = self.env.step(actual)
             # print(f"general reward is {reward}")
             # print(f"type of gating reward {type(gating_head_rew)}, type of reward {type(reward)}")
@@ -230,10 +265,11 @@ class Trainer(object):
             # store comm_action in info for next step
             if self.args.hard_attn and self.args.commnet:
                 info['comm_action'] = action[-1] if not self.args.comm_action_one else np.ones(self.args.nagents, dtype=int)
-
+                info['step_t'] = t
                 if self.args.comm_action_zero:
                     info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
                 stat['comm_action'] = stat.get('comm_action', 0) + info['comm_action'][:self.args.nfriendly]
+                stat['comm_budget'] = stat.get('comm_budget', 0) + comm_budget[:self.args.nfriendly]
                 if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
                     stat['enemy_comm']  = stat.get('enemy_comm', 0)  + info['comm_action'][self.args.nfriendly:]
 
@@ -437,6 +473,10 @@ class Trainer(object):
         self.success_curriculum(self.stats['success'], self.stats['num_episodes'])
         # check if time to introduce reward to decrease communication
         self.reward_curriculum(self.stats['success'], self.stats['num_episodes'])
+        # increase spawn rate in traffic junction
+        # self.tj_curriculum(self.stats['success'], self.stats['num_episodes'])
+        # decrease hard limit of communication over time
+        self.communication_curriculum(self.stats['success'], self.stats['num_episodes'])
 
         for p in self.params:
             if p._grad is not None:

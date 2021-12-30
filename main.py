@@ -268,6 +268,7 @@ log['success'] = LogField(list(), True, 'epoch', 'num_episodes')
 log['steps_taken'] = LogField(list(), True, 'epoch', 'num_episodes')
 log['add_rate'] = LogField(list(), True, 'epoch', 'num_episodes')
 log['comm_action'] = LogField(list(), True, 'epoch', 'num_steps')
+log['comm_budget'] = LogField(list(), True, 'epoch', 'num_steps')
 log['enemy_comm'] = LogField(list(), True, 'epoch', 'num_steps')
 log['value_loss'] = LogField(list(), True, 'epoch', 'num_steps')
 log['action_loss'] = LogField(list(), True, 'epoch', 'num_steps')
@@ -334,7 +335,7 @@ def run(num_epochs):
                 v.data.append(stat.get(k, 0))
 
         for k, v in stat.items():
-            if k == "comm_action" or k == "reward" or k == "gating_reward" or k == "env_reward":
+            if k == "comm_action" or k == "reward" or k == "gating_reward" or k == "env_reward" or k == "comm_budget":
                 for i, val in enumerate(v):
                     # logger.add_scalar(f"agent{i}/{k}" , val, epoch)
                     logger.add_scalar("agent"+str(i)+"/"+str(k) , val, epoch)

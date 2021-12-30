@@ -148,6 +148,10 @@ class CommNetMLP(nn.Module):
 
         self.value_head = nn.Linear(self.hid_size, 1)
 
+        # communication limit, default always allows communication
+        self.comm_budget = torch.tensor([self.args.max_steps] * self.nagents)
+        self.budget = 1.
+
 
     def get_agent_mask(self, batch_size, info):
         n = self.nagents
@@ -228,6 +232,15 @@ class CommNetMLP(nn.Module):
         # Hard Attention - action whether an agent communicates or not
         if self.args.hard_attn:
             comm_action = torch.tensor(info['comm_action'])
+            # not sure if this passes batch sizes larger than 1
+            assert batch_size == 1
+            if info['step_t'] == 0:
+                # reset communication budget at the beginning of the episode
+                self.comm_budget = self.budget * torch.tensor([self.args.max_steps] * self.nagents)
+            self.comm_budget -= comm_action
+            comm_action[self.comm_budget <= 0] = 0
+            info['comm_budget'] = comm_action.detach().numpy()
+            # print("comm action, budget", comm_action, self.comm_budget, info['step_t'])
             comm_action_mask = comm_action.expand(batch_size, n, n).unsqueeze(-1)
             # action 1 is talk, 0 is silent i.e. act as dead for comm purposes.
             agent_mask = agent_mask * comm_action_mask.double()
@@ -273,7 +286,6 @@ class CommNetMLP(nn.Module):
 
             # comm = hidden_state.view(batch_size, n, self.hid_size) if self.args.recurrent else hidden_state
             comm  = comm.view(batch_size, n, self.args.comm_dim) if self.args.recurrent else comm
-
             # Get the next communication vector based on next hidden state
             # comm = comm.unsqueeze(-2).expand(-1, n, n, self.hid_size)
 
@@ -353,4 +365,3 @@ class CommNetMLP(nn.Module):
         # dim 0 = num of layers * num of direction
         return tuple(( torch.zeros(batch_size * self.nagents, self.hid_size, requires_grad=True),
                        torch.zeros(batch_size * self.nagents, self.hid_size, requires_grad=True)))
-
