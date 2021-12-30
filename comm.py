@@ -29,6 +29,8 @@ class CommNetMLP(nn.Module):
         self.comm_passes = args.comm_passes
         self.recurrent = args.recurrent
         self.continuous = args.continuous
+        # If true, we add noise to the communication being output by each agent.
+        self.add_comm_noise = args.add_comm_noise
 
         # TODO: remove this is just for debugging purposes just to verify that the communication is happening in a
         #  disrete manner
@@ -39,6 +41,7 @@ class CommNetMLP(nn.Module):
 
         # Only really used when you're using prototypes
         self.exploration_noise = OUNoise(args.comm_dim)
+        self.explore_choose_proto_noise = OUNoise(args.num_proto)
 
         # see if you're using discrete communication and using prototypes
         self.discrete_comm = args.discrete_comm
@@ -247,38 +250,27 @@ class CommNetMLP(nn.Module):
             agent_mask = agent_mask * comm_action_mask.double()
 
         agent_mask_transpose = agent_mask.transpose(1, 2)
-
+        all_comms = []
         for i in range(self.comm_passes):
-            # Choose current or prev depending on recurrent
-
-            # TODO: this will change, basically a prototype layer should be taking in the hidden state.
-            #  and then return comm.
-            # print(f"doing forward hidden state is {hidden_state.size()}")
-
-            # TODO: Currently writing the prototype based method assuming batch size is 1.
-            #  Need to figure out what will happen when batch size isn't 1.
             if self.args.use_proto:
                 raw_outputs = self.proto_layer(hidden_state)
-
-                # TODO: for now we set explore to True and exploration_noise is also OU and device is also 'cpu'
-                #  During evalutation, set explore to False.
-
+                # raw_outputs is of shape (1, num_agents, num_protos). But we need to get rid of that first dimension.
+                raw_outputs = torch.squeeze(raw_outputs, 0)
                 if self.train_mode:
-                    comm = self.proto_layer.step(raw_outputs, True, self.exploration_noise, 'cpu')
-
-                    # TODO: remove this, its for debug only
-                    # for c in comm:
-                    #     if list(c.detach().numpy()) not in self.unique_comms:
-                    #         self.unique_comms.append(list(c.detach().numpy()))
-
+                    comm = self.proto_layer.step(raw_outputs, True, self.explore_choose_proto_noise, 'cpu')
                 else:
-                    comm = self.proto_layer.step(raw_outputs, False, self.exploration_noise, 'cpu')
+                    comm = self.proto_layer.step(raw_outputs, False, None, 'cpu')
+                    all_comms.append(comm.detach().clone())
+                # Comm assumes shape (1, num_agents, num_protos), so just add that dimension back in.
+                comm = torch.unsqueeze(comm, 0)
 
-                    # TODO: Remove this is for debug only
-                    # for c in comm:
-                    #     if list(c.detach().numpy()) not in self.unique_comms:
-                    #         self.unique_comms.append(list(c.detach().numpy()))
-
+                if self.add_comm_noise:
+                    # Currently, just hardcoded. We want enough noise to have an effect but not too much to prevent
+                    # learning.
+                    std = 0.05
+                    # Generates samples from a zero-mean unit gaussian, which we rescale by the std parameter.
+                    noise = torch.randn_like(comm) * std
+                    comm += noise
 
             else:
                 # print(f"inside else {hidden_state.size()}")
@@ -352,10 +344,18 @@ class CommNetMLP(nn.Module):
             # discrete actions
             action = [F.log_softmax(head(h), dim=-1) for head in self.heads]
             # print(f"uses discrete actions {action}")
-
         if self.args.recurrent:
+            if info.get('record_comms') is not None:
+                # Go through the all comms passes and only pick out comms for the agent you want.
+                filtered_comms = [c[info.get('record_comms')] for c in all_comms]
+                assert len(filtered_comms) == 1, "Only support one agent at a time"
+                return action, value_head, (hidden_state.clone(), cell_state.clone()), filtered_comms[0]
             return action, value_head, (hidden_state.clone(), cell_state.clone())
         else:
+            if info.get('record_comms') is not None:
+                filtered_comms = [c[info.get('record_comms')] for c in all_comms]
+                assert len(filtered_comms) == 1, "Only support one agent at a time"
+                return action, value_head, filtered_comms[0]
             return action, value_head
 
     def init_weights(self, m):

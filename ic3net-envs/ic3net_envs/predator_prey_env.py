@@ -262,7 +262,6 @@ class PredatorPreyEnv(gym.Env):
     def _get_reward(self):
         n = self.npredator if not self.enemy_comm else self.npredator + self.nprey
         reward = np.full(n, self.TIMESTEP_PENALTY)
-
         on_prey = np.where(np.all(self.predator_loc == self.prey_loc,axis=1))[0]
         nb_predator_on_prey = on_prey.size
 
@@ -294,8 +293,9 @@ class PredatorPreyEnv(gym.Env):
                 self.stat['success'] = 1
             else:
                 self.stat['success'] = 0
-
-        return reward
+        # Actually, forget the sparse reward of "are you on the prey or not" and just do negative distance.
+        reward = -1 * np.linalg.norm(self.predator_loc[0] - self.prey_loc[0])
+        return 0.01 * np.asarray([reward, -1 * reward])  # Rescale to match the normal scale of rewards.
 
     def reward_terminal(self):
         return np.zeros_like(self._get_reward())

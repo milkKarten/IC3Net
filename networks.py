@@ -12,16 +12,16 @@ class ProtoLayer(nn.Module):
         super(ProtoLayer, self).__init__()
         self.prototypes = nn.Parameter(data=torch.Tensor(num_prototypes, comm_dim))
         # Initialize by manually setting such that prototypes are close to I matrix.
-        # nn.init.uniform_(self.prototypes)
-        nn.init.zeros_(self.prototypes)
-
-        # some random initialisation has been given to the prototypes.
-        for i in range(num_prototypes):
-            for j in range(comm_dim):
-                if i == j:
-                    self.prototypes.data[i, j] = 5
-                else:
-                    self.prototypes.data[i, j] = -5
+        nn.init.uniform_(self.prototypes, -2, 2)
+        # nn.init.zeros_(self.prototypes)
+        #
+        # # some random initialisation has been given to the prototypes.
+        # for i in range(num_prototypes):
+        #     for j in range(comm_dim):
+        #         if i == j:
+        #             self.prototypes.data[i, j] = 5
+        #         else:
+        #             self.prototypes.data[i, j] = -5
 
     def forward(self, comm_vectors):
         """ Calculates L2 distances from each latent comm_vector to each prototype. Useful for computing loss.
@@ -95,11 +95,13 @@ class ProtoNetwork(nn.Module):
 
     def step(self, raw_output, explore, exploration, device):
         if self.discrete:
-            onehot_pred = gumbel_softmax(raw_output, hard=True) if explore else onehot_from_logits(raw_output)
+            # Having higher temperature seems to help encourage using more prototypes. But I'm not sure yet what's best.
+            onehot_pred = gumbel_softmax(raw_output, temperature=3, hard=True) if explore else onehot_from_logits(raw_output)
             # Multiply onehot by prototypes
             # print(onehot_pred)
-            prototypes = self.prototype_layer.prototypes
-            return torch.matmul(onehot_pred, torch.sigmoid(prototypes))
+            prototypes = torch.sigmoid(self.prototype_layer.prototypes)
+            multiplied = torch.matmul(onehot_pred, prototypes)
+            return multiplied
         if explore:
             return raw_output + Variable(Tensor(exploration.noise()), requires_grad=False).to(device)
         return self.__convert_to_prototype__(raw_output)

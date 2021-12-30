@@ -18,18 +18,23 @@ import matplotlib.pyplot as plt
 
 
 # Given some data, runs 2D PCA on it and plots the results.
-def plot_comms(_data):
-    if data.shape[1] > 2:
-        pca = PCA(n_components=2)
-        pca.fit(data)
-        transformed = pca.transform(data)
+def plot_comms(_data, special=None, _pca=None, _ax=None):
+    if _data.shape[1] > 2:
+        if _pca is None:
+            _pca = PCA(n_components=2)
+            _pca.fit(_data)
+        transformed = _pca.transform(_data)
     else:
-        transformed = data
+        transformed = _data
     x = transformed[:, 0]
     y = transformed[:, 1]
-    fig, ax = plt.subplots()
-    pcm = ax.scatter(x, y, s=20, marker='o', c='gray')
-    plt.show()
+    if _ax is None:
+        fig, _ax = plt.subplots()
+    pcm = _ax.scatter(x, y, s=20, marker='o', c='gray')
+    if special is not None:
+        special_transformed = _pca.transform(special)
+        _ax.scatter(special_transformed[:, 0], special_transformed[:, 1], s=30, c='red')
+    return _pca
 
 
 torch.utils.backcompat.broadcast_warning.enabled = True
@@ -135,18 +140,56 @@ evaluator = Evaluator(args, policy_net, data.init(args.env_name, args))
 
 st_time = time.time()
 
-# TODO: Run for miltiple episodes.
-for i in range(10):
-    ep, stat, all_comms = evaluator.run_episode()
+all_stats = []
+all_comms_to_loc = {}
+for i in range(100):
+    ep, stat, all_comms, comms_to_loc = evaluator.run_episode()
+    all_stats.append(stat)
+    for k, v in comms_to_loc.items():
+        np_k = k
+        if all_comms_to_loc.get(np_k) is None:
+            all_comms_to_loc[np_k] = {}
+        matching_vals = all_comms_to_loc.get(np_k)
+        for val in v:
+            if val not in matching_vals.keys():
+                matching_vals[val] = 0
+            matching_vals[val] += 1
     print(stat)
-
+print("All comms to loc", all_comms_to_loc)
 total_episode_time = time.time() - st_time
-
-print("stat is: ", stat)
-print("avg comm ", stat['comm_action'] / stat['num_steps'])
+average_stat = {}
+for key in all_stats[0].keys():
+    average_stat[key] = np.mean([stat.get(key) for stat in all_stats])
+print("average stats is: ", average_stat)
 print("time taken per step ", total_episode_time/stat['num_steps'])
+
+protos_np = None
+try:
+    # A bit gross, but first get proto network and then proto layer
+    protos = policy_net.proto_layer.prototype_layer.prototypes
+    # Pass the prototypes through sigmoid to get the actual values.
+    constrained_protos = torch.sigmoid(protos)
+    protos_np = constrained_protos.detach().cpu().numpy()
+    protos_list = [proto for proto in all_comms_to_loc.keys()]
+    protos_np = np.asarray(protos_list)
+    # print("Prototypes", protos_np)
+except AttributeError:
+    print("No prototypes in policy net, so not analyzing that.")
+if protos_np is not None:
+    pca_transform = plot_comms(protos_np)
+    plt.close()
 
 all_comms = np.array(all_comms)
 num_agents = len(all_comms[0])
 for i in range(num_agents):
     print(f"for agent{i} communication is: ", all_comms[:, i])
+
+# Plot the locations associated with each prototype recorded during executiong
+for proto, locs in all_comms_to_loc.items():
+    grid = np.zeros((7, 7))
+    for loc, count in locs.items():
+        grid[loc[0], loc[1]] = count
+    fig, ax = plt.subplots(1, 2)
+    plot_comms(protos_np, np.expand_dims(np.asarray(proto), 0), pca_transform, ax[0])
+    ax[1].imshow(grid, cmap='hot')
+    plt.show()

@@ -6,6 +6,7 @@ from torch import optim
 import torch.nn as nn
 from utils import *
 from action_utils import *
+from ic3net_envs import predator_prey_env
 
 Transition = namedtuple('Transition', ('state', 'action', 'action_out', 'value', 'episode_mask', 'episode_mini_mask', 'next_state',
                                        'reward', 'misc'))
@@ -16,7 +17,7 @@ class Evaluator:
         self.args = args
         self.policy_net = policy_net
         self.env = env
-        self.display = False
+        self.display = args.display
         self.last_step = False
 
 
@@ -29,7 +30,7 @@ class Evaluator:
             state = self.env.reset(epoch)
         else:
             state = self.env.reset()
-        should_display = self.display and self.last_step
+        should_display = self.display  # and self.last_step
 
         if should_display:
             self.env.display()
@@ -38,19 +39,25 @@ class Evaluator:
         switch_t = -1
 
         prev_hid = torch.zeros(1, self.args.nagents, self.args.hid_size)
-
+        comms_to_prey_loc = {}
         for t in range(self.args.max_steps):
             misc = dict()
             if t == 0 and self.args.hard_attn and self.args.commnet:
                 info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
-
+            # Hardcoded to record communication for agent 1 (prey)
+            info['record_comms'] = 0
             # recurrence over time
             if self.args.recurrent:
                 if self.args.rnn_type == 'LSTM' and t == 0:
                     prev_hid = self.policy_net.init_hidden(batch_size=state.shape[0])
 
                 x = [state, prev_hid]
-                action_out, value, prev_hid = self.policy_net(x, info)
+                action_out, value, prev_hid, proto_comms = self.policy_net(x, info)
+                if isinstance(self.env.env.env, predator_prey_env.PredatorPreyEnv):
+                    tuple_comms = tuple(proto_comms.detach().numpy())
+                    if comms_to_prey_loc.get(tuple_comms) is None:
+                        comms_to_prey_loc[tuple_comms] = []
+                    comms_to_prey_loc[tuple_comms].append(tuple(self.env.env.env.prey_loc[0]))
 
                 if (t + 1) % self.args.detach_gap == 0:
                     if self.args.rnn_type == 'LSTM':
@@ -59,7 +66,12 @@ class Evaluator:
                         prev_hid = prev_hid.detach()
             else:
                 x = state
-                action_out, value = self.policy_net(x, info)
+                action_out, value, proto_comms = self.policy_net(x, info)
+                if isinstance(self.env.env.env, predator_prey_env.PredatorPreyEnv):
+                    tuple_comms = tuple(proto_comms.detach().numpy())
+                    if comms_to_prey_loc.get(tuple_comms) is None:
+                        comms_to_prey_loc[tuple_comms] = []
+                    comms_to_prey_loc[tuple_comms].append(tuple(self.env.env.env.prey_loc[0]))
 
             action = select_action(self.args, action_out)
             action, actual = translate_action(self.args, self.env, action)
@@ -124,4 +136,4 @@ class Evaluator:
 
         if hasattr(self.env, 'get_stat'):
             merge_stat(self.env.get_stat(), stat)
-        return episode, stat, all_comms
+        return episode, stat, all_comms, comms_to_prey_loc
