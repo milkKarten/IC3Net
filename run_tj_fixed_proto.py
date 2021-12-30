@@ -13,7 +13,7 @@ env = "traffic_junction"
 seeds = [777]
 # seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
-methods = ["fixed_proto_battle", ]
+methods = ["fixed_proto_easy", "fixed_proto_medium", "fixed_proto_hard"]
 # run baseline with no reward on the gating function
 # G - IC3net with learned gating function
 # exp_name = "tj_g0.01_test"
@@ -22,16 +22,13 @@ methods = ["fixed_proto_battle", ]
 if True:
     for method in methods:
         exp_name = "tj_" + method
-        nagents = 5
+        vision = 0
         # discrete comm is true if you want to use learnable prototype based communication.
         discrete_comm = False
         if "proto" in method:
             discrete_comm = True
         num_epochs = 5000
         hid_size= 128
-        dim = 6
-        max_steps = 20
-        vision = 0
         save_every = 100
         # g=1. If this is set to true agents will communicate at every step.
         comm_action_one = False
@@ -62,15 +59,37 @@ if True:
         variable_gate = False
         if "var" in method:
             variable_gate = True
-        nprocesses = 0
+        nprocesses = 16
         lr = 0.003
-        run_str = f"python main.py --env_name {env} --nagents {nagents} --nprocesses {nprocesses} "+\
+        if "medium" in method:
+            nagents = 10
+            max_steps = 40
+            dim = 14
+            add_rate_min = 0.02
+            add_rate_max = 0.05
+            difficulty = 'medium'
+        elif "hard" in method:
+            nagents = 20
+            max_steps = 80
+            dim = 18
+            add_rate_min = 0.02
+            add_rate_max = 0.05
+            difficulty = 'hard'
+        else:
+            # easy
+            nagents = 5
+            max_steps = 20
+            dim = 6
+            add_rate_min = 0.1
+            add_rate_max = 0.3
+            difficulty = 'easy'
+        run_str = f"python main.py --env_name {env} --nprocesses {nprocesses} "+\
                   f"--num_epochs {num_epochs} "+\
                   f"--gating_head_cost_factor {gating_head_cost_factor} "+\
                   f"--hid_size {hid_size} "+\
-                  f" --detach_gap 10 --lrate {lr} --dim {dim} --max_steps {max_steps} --ic3net --vision {vision} "+\
+                  f" --detach_gap 10 --lrate {lr} --ic3net --vision {vision} "+\
                   f"--recurrent "+\
-                  f"--add_rate_min 0.1 --add_rate_max 0.3 --curr_epochs 2000 --difficulty easy "+\
+                  f"--max_steps {max_steps} --dim {dim} --nagents {nagents} --add_rate_min {add_rate_min} --add_rate_max {add_rate_max} --curr_epochs 2000 --difficulty {difficulty} "+\
                   f"--exp_name {exp_name} --save_every {save_every} "+\
                   f"--use_proto --comm_dim {comm_dim} --num_proto {num_proto} " # may need to change this to not use prototypes
 
