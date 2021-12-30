@@ -57,15 +57,18 @@ class GymWrapper(object):
     def action_space(self):
         return self.env.action_space
 
-    def reset(self, epoch):
+    # success means turn on the tj curriculum
+    def reset(self, epoch, success=False):
         reset_args = getfullargspec(self.env.reset).args
         # print("reset args", reset_args, self.env.reset)
-        if 'epoch' in reset_args:
+        if self.env.name == 'TrafficJunction':
+            # print("env_wrapper.py", epoch, success)
+            obs = self.env.reset(epoch=epoch, success=success)
+        elif 'epoch' in reset_args:
             #print(epoch, "reset epoch good")
             obs = self.env.reset(epoch)
         else:
-            #print(epoch, "reset epoch oops")
-            obs = self.env.reset(epoch=epoch)
+            obs = self.env.reset()
 
         obs = self._flatten_obs(obs)
         return obs

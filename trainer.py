@@ -38,7 +38,16 @@ class Trainer(object):
         self.success_metric = 0
         self.epoch_success = 0
         self.cur_epoch_i = 0
-        self.success_thresh = .95
+
+        # traffic junction success
+        if self.args.env_name == "traffic_junction":
+            if self.args.difficulty == 'easy':
+                self.success_thresh = .90
+            elif self.args.difficulty == 'medium':
+                self.success_thresh = .86
+            elif self.args.difficulty == 'hard':
+                self.success_thresh = .70
+
 
         # reward communication when false
         self.args.gating_punish = False
@@ -50,10 +59,13 @@ class Trainer(object):
         # reward tuning
         self.last_error = None
         self.total_error = None
-        # self.gate_reward_max = -0.01
-        # self.gate_reward_min = 0.01
-        # self.reward_curr_start = 1500
-        # self.reward_curr_end = 1900
+
+        # traffic junction curriculum
+        self.begin_tj_curric = False
+        self.tj_epoch_success = 0
+        self.tj_success = 0
+        self.tj_epoch_i = 0
+
 
     def success_curriculum(self, success_rate, num_episodes):
         if self.args.variable_gate:
@@ -74,11 +86,6 @@ class Trainer(object):
                 self.args.comm_action_one = False
                 self.args.variable_gate = False
 
-    # def reward_curriculum(self, epoch):
-    #     if self.args.gate_reward_curriculum and (self.args.reward_curr_start <= epoch < self.args.reward_curr_end):
-    #         step = (self.args.gate_reward_max - self.args.gate_reward_min) / (self.args.reward_curr_end - self.args.reward_curr_start)
-    #         self.args.gating_head_cost_factor += step
-
     def reward_curriculum(self, success_rate, num_episodes):
         if self.args.gate_reward_curriculum and not self.args.variable_gate:
             self.cur_reward_epoch_i += 1
@@ -94,13 +101,26 @@ class Trainer(object):
                 self.args.gating_punish = True
                 self.args.gate_reward_curriculum = False
 
+    def tj_curriculum(self, success_rate, num_episodes):
+        if not self.begin_tj_curric:
+            self.tj_epoch_i += 1
+            self.tj_epoch_success += success_rate
+            if self.tj_epoch_i >= self.args.epoch_size:
+                self.tj_epoch_i = 0
+                if self.tj_epoch_success / float(num_episodes*self.args.epoch_size) > self.success_thresh:
+                    self.tj_success += 1
+                else:
+                    self.tj_success = 0
+                self.tj_epoch_success = 0
+            if self.tj_success >= 20:
+                self.begin_tj_currich = True
 
     def get_episode(self, epoch):
         episode = []
         reset_args = getargspec(self.env.reset).args
         # print(reset_args, " trainer", self.env.reset)
         if 'epoch' in reset_args:
-            state = self.env.reset(epoch)
+            state = self.env.reset(epoch, success=self.begin_tj_curric)
         else:
             state = self.env.reset()
         should_display = self.display and self.last_step

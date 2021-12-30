@@ -143,20 +143,10 @@ parser.add_argument('--restore', action='store_true', default=False,
 # gating reward curriculum
 parser.add_argument('--gate_reward_curriculum', action='store_true', default=False,
                     help='use gated reward curriculum')
-parser.add_argument('--gate_reward_max', type=float, default=-0.01,
-                    help='max gate reward for curriculum')
-parser.add_argument('--gate_reward_min', type=float, default=0.01,
-                    help='min gate reward for curriculum')
-parser.add_argument('--reward_curr_start', type=int, default=1500,
-                    help='starting epoch for reward curriculum')
-parser.add_argument('--reward_curr_end', type=int, default=1900,
-                    help='ending epoch for reward curriculum')
 
 # open gate / variable gate curriculum
 parser.add_argument('--variable_gate', action='store_true', default=False,
                     help='use variable gate curriculum')
-parser.add_argument('--variable_gate_start', type=int, default=500,
-                    help='starting epoch for variable gate curriculum to turn off fixed gate')
 # optimizer
 parser.add_argument('--optim_name', default='RMSprop', type=str,
                     help='pytorch optimizer')

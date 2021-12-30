@@ -36,6 +36,7 @@ class TrafficJunctionEnv(gym.Env):
 
     def __init__(self,):
         self.__version__ = "0.0.1"
+        self.name  = "TrafficJunction"
         #print("init traffic junction", getargspec(self.reset).args)
         # TODO: better config handling
         self.OUTSIDE_CLASS = 0
@@ -67,20 +68,27 @@ class TrafficJunctionEnv(gym.Env):
                          help="rate at which to add car (till curr. start)")
         env.add_argument('--add_rate_max', type=float, default=0.2,
                          help=" max rate at which to add car")
-        env.add_argument('--curr_start', type=float, default=0,
-                         help="start making harder after this many epochs [0]")
-        env.add_argument('--curr_end', type=float, default=0,
-                         help="when to make the game hardest [0]")
+        # env.add_argument('--curr_start', type=float, default=0,
+        #                  help="start making harder after this many epochs [0]")
+        # env.add_argument('--curr_end', type=float, default=0,
+        #                  help="when to make the game hardest [0]")
         env.add_argument('--difficulty', type=str, default='easy',
                          help="Difficulty level, easy|medium|hard")
         env.add_argument('--vocab_type', type=str, default='bool',
                          help="Type of location vector to use, bool|scalar")
 
+        # updated curriculum parameters
+        env.add_argument('--curr_start_epoch', type=float, default=-1.,
+                         help="start making harder after this many epochs [0]")
+        env.add_argument('--curr_epochs', type=float, default=1000.,
+                         help="Number of epochs of curriculum for when to make the game hardest [0]")
+
+
 
     def multi_agent_init(self, args):
         #print("init tj")
         # General variables defining the environment : CONFIG
-        params = ['dim', 'vision', 'add_rate_min', 'add_rate_max', 'curr_start', 'curr_end',
+        params = ['dim', 'vision', 'add_rate_min', 'add_rate_max', 'curr_start_epoch', 'curr_epochs',
                   'difficulty', 'vocab_type']
 
         for key in params:
@@ -158,7 +166,7 @@ class TrafficJunctionEnv(gym.Env):
 
         return
 
-    def reset(self, epoch=None):
+    def reset(self, epoch=None, success=False):
         """
         Reset the state of the environment and returns an initial observation.
 
@@ -194,10 +202,12 @@ class TrafficJunctionEnv(gym.Env):
         self.stat = dict()
 
         # set add rate according to the curriculum
-        epoch_range = (self.curr_end - self.curr_start)
+        epoch_range = self.curr_epochs
         add_rate_range = (self.add_rate_max - self.add_rate_min)
         # print("reached first step", epoch, epoch_range, add_rate_range, self.epoch_last_update)
-        if epoch is not None and epoch_range > 0 and add_rate_range > 0 and epoch > self.epoch_last_update:
+        if success and self.curr_start_epoch == -1:
+            self.curr_start_epoch = epoch
+        if epoch is not None and epoch_range > 0 and add_rate_range > 0 and epoch > self.epoch_last_update and self.curr_start_epoch != -1:
             # print("running curriculum now")
             self.curriculum(epoch)
             self.epoch_last_update = epoch
@@ -620,20 +630,14 @@ class TrafficJunctionEnv(gym.Env):
         # random choice of idx from dead ones.
         return np.random.choice(car_idx[self.alive_mask == 0])
 
-    def curriculum_wrapper(epoch):
-        # set add rate according to the curriculum
-        epoch_range = (self.curr_end - self.curr_start)
-        add_rate_range = (self.add_rate_max - self.add_rate_min)
-        if epoch is not None and epoch_range > 0 and add_rate_range > 0 and epoch > self.epoch_last_update:
-            self.curriculum(epoch)
-            self.epoch_last_update = epoch
 
     def curriculum(self, epoch):
         step_size = 0.01
-        step = (self.add_rate_max - self.add_rate_min) / (self.curr_end - self.curr_start)
+        step = (self.add_rate_max - self.add_rate_min) / (self.curr_epochs)
         mod_val = int(step_size / step)
 
-        if self.curr_start <= epoch < self.curr_end and (epoch - self.curr_start) % mod_val == 0:
+        # if self.curr_start <= epoch < self.curr_end and (epoch - self.curr_start) % mod_val == 0:
+        if self.curr_start_epoch <= epoch < self.curr_start_epoch+self.curr_epochs and (epoch - self.curr_start_epoch) % mod_val == 0:
             self.exact_rate = self.exact_rate + step_size
             self.add_rate = self.exact_rate
             print("tj curriculum", self.add_rate)
