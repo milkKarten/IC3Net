@@ -161,6 +161,8 @@ class Trainer(object):
 
         # one is used because of the batch size.
         prev_hid = torch.zeros(1, self.args.nagents, self.args.hid_size)
+        if self.args.ic3net:
+            stat['budget'] = self.policy_net.budget
 
         for t in range(self.args.max_steps):
             misc = dict()

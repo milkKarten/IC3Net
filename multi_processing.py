@@ -43,6 +43,10 @@ class MultiProcessWorker(mp.Process):
                 self.trainer.success_curriculum(success, num_episodes)
             elif task == 'reward_curriculum':
                 self.trainer.reward_curriculum(success, num_episodes)
+            elif task == 'tj_curriculum':
+                self.trainer.tj_curriculum(success, num_episodes)
+            elif task == 'communication_curriculum':
+                self.trainer.communication_curriculum(success, num_episodes)
 
 
 class MultiProcessTrainer(object):
@@ -128,6 +132,14 @@ class MultiProcessTrainer(object):
             comm.send(['reward_curriculum', stat['success'], stat['num_episodes']])
         self.trainer.reward_curriculum(stat['success'], stat['num_episodes'])
         # print(f"time taken for step {time.time() - op_st}")
+        # increase spawn rate in traffic junction
+        for comm in self.comms:
+            comm.send(['tj_curriculum', stat['success'], stat['num_episodes']])
+        self.trainer.tj_curriculum(self.stats['success'], self.stats['num_episodes'])
+        # decrease hard limit of communication over time
+        for comm in self.comms:
+            comm.send(['communication_curriculum', stat['success'], stat['num_episodes']])
+        self.trainer.communication_curriculum(self.stats['success'], self.stats['num_episodes'])
 
         return stat
 

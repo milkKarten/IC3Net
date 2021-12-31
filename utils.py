@@ -16,7 +16,7 @@ def merge_stat(src, dest):
     for k, v in src.items():
         if not k in dest:
             dest[k] = v
-        elif k == "learning_rate":
+        elif k == "learning_rate" or k == "budget":
             dest[k] = v
         elif isinstance(v, numbers.Number):
             dest[k] = dest.get(k, 0) + v
