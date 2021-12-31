@@ -135,11 +135,11 @@ class MultiProcessTrainer(object):
         # increase spawn rate in traffic junction
         for comm in self.comms:
             comm.send(['tj_curriculum', stat['success'], stat['num_episodes']])
-        self.trainer.tj_curriculum(self.stats['success'], self.stats['num_episodes'])
+        self.trainer.tj_curriculum(stats['success'], stats['num_episodes'])
         # decrease hard limit of communication over time
         for comm in self.comms:
             comm.send(['communication_curriculum', stat['success'], stat['num_episodes']])
-        self.trainer.communication_curriculum(self.stats['success'], self.stats['num_episodes'])
+        self.trainer.communication_curriculum(stats['success'], stats['num_episodes'])
 
         return stat
 
