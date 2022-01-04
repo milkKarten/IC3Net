@@ -245,8 +245,9 @@ class CommNetMLP(nn.Module):
             # if self.budget != 1:
             #     comm_action[self.comm_budget <= 0] = 0
             # Add random masking according to the budget
-            comm_action = comm_action * np.random.choice([1.,0.], size=self.nagents, p=[self.budget, 1-self.budget])
-            info['comm_budget'] = comm_action.detach().numpy()
+            if self.train_mode:
+                info['comm_budget'] = np.random.choice([1.,0.], size=self.nagents, p=[self.budget, 1-self.budget])
+                comm_action = comm_action * info['comm_budget']
             # print("comm action, budget", comm_action, self.comm_budget, info['step_t'])
             comm_action_mask = comm_action.expand(batch_size, n, n).unsqueeze(-1)
             # action 1 is talk, 0 is silent i.e. act as dead for comm purposes.

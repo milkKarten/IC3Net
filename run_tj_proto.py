@@ -21,7 +21,7 @@ methods = ["fixed_proto_var_commLimMask", "proto_commLimMask"]
 for budget in [0.2, 0.5]:
 # if True:
     for method in methods:
-        exp_name = "tj_" + method
+        exp_name = "tj_" + method + "_budget" + str(budget)
         vision = 0
         # discrete comm is true if you want to use learnable prototype based communication.
         discrete_comm = False
