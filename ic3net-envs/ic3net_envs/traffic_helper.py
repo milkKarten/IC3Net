@@ -9,6 +9,9 @@ def get_road_blocks(w, h, difficulty):
         'easy':   [ np.s_[h//2, :],
                     np.s_[:, w//2]],
 
+        'longer_easy':   [ np.s_[h//2, :],
+                           np.s_[:, w//2]],
+
         'medium': [ np.s_[h//2 - 1 : h//2 + 1, :],
                     np.s_[:, w//2 - 1 : w//2 + 1]],
 

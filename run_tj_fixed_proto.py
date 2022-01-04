@@ -13,7 +13,7 @@ env = "traffic_junction"
 seeds = [777]
 # seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
-methods = ["fixed_proto_medium1"]
+methods = ["fixed_proto_longer_easy"]
 # run baseline with no reward on the gating function
 # G - IC3net with learned gating function
 # exp_name = "tj_g0.01_test"
@@ -75,6 +75,13 @@ if True:
             add_rate_min = 0.02
             add_rate_max = 0.05
             difficulty = 'hard'
+        elif "longer_easy" in method:
+            nagents = 10
+            max_steps = 30
+            dim = 14
+            add_rate_min = 0.1
+            add_rate_max = 0.3
+            difficulty = 'longer_easy'
         else:
             # easy
             nagents = 5

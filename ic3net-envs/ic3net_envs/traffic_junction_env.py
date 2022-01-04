@@ -73,7 +73,7 @@ class TrafficJunctionEnv(gym.Env):
         # env.add_argument('--curr_end', type=float, default=0,
         #                  help="when to make the game hardest [0]")
         env.add_argument('--difficulty', type=str, default='easy',
-                         help="Difficulty level, easy|medium|hard")
+                         help="Difficulty level, easy|medium|hard|longer_easy")
         env.add_argument('--vocab_type', type=str, default='bool',
                          help="Type of location vector to use, bool|scalar")
 
@@ -99,7 +99,7 @@ class TrafficJunctionEnv(gym.Env):
         difficulty = args.difficulty
         vision = args.vision
 
-        if difficulty in ['medium','easy']:
+        if difficulty in ['medium','easy','longer_easy']:
             assert dims[0]%2 == 0, 'Only even dimension supported for now.'
 
             assert dims[0] >= 4 + vision, 'Min dim: 4 + vision'
@@ -118,19 +118,21 @@ class TrafficJunctionEnv(gym.Env):
         self.action_space = spaces.Discrete(self.naction)
 
         # make no. of dims odd for easy case.
-        if difficulty == 'easy':
+        if difficulty == 'easy' or difficulty == 'longer_easy':
             self.dims = list(dims)
             for i in range(len(self.dims)):
                 self.dims[i] += 1
 
         nroad = {'easy':2,
                 'medium':4,
-                'hard':8}
+                'hard':8,
+                'longer_easy':6}
 
         dim_sum = dims[0] + dims[1]
         base = {'easy':   dim_sum,
                 'medium': 2 * dim_sum,
-                'hard':   4 * dim_sum}
+                'hard':   4 * dim_sum,
+                'longer_easy': dim_sum}
 
         self.npath = nPr(nroad[difficulty],2)
 
@@ -159,7 +161,7 @@ class TrafficJunctionEnv(gym.Env):
 
         self._set_grid()
 
-        if difficulty == 'easy':
+        if difficulty == 'easy' or difficulty == 'longer_easy':
             self._set_paths_easy()
         else:
             self._set_paths(difficulty)
