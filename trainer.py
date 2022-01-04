@@ -61,14 +61,14 @@ class Trainer(object):
         self.total_error = None
 
         # traffic junction curriculum
-        self.begin_tj_curric = False
+        self.begin_tj_curric = True
         self.tj_epoch_success = 0
         self.tj_success = 0
         self.tj_epoch_i = 0
 
         # communication curriculum with hard constraint
         self.min_budget = 0.1
-        self.end_comm_curric = False
+        self.end_comm_curric = True
         self.comm_epoch_i = 0
         self.comm_epoch_success = 0
         self.comm_success = 0
@@ -276,7 +276,7 @@ class Trainer(object):
                 # if self.first_print:
                 #     print(f"gating head reward is {gating_head_rew}, general reward {reward}")
                 #     self.first_print = False
-                if not self.args.variable_gate:
+                if not self.args.variable_gate or True: # TODO: remove or True later
                     reward += gating_head_rew
 
             # store comm_action in info for next step

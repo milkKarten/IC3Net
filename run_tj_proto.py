@@ -13,7 +13,7 @@ env = "traffic_junction"
 seeds = [777]
 # seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
-methods = ["fixed_proto_var_commLim", "proto_commLim"]
+methods = ["fixed_proto_var_commLimMask", "proto_commLimMask"]
 # run baseline with no reward on the gating function
 # G - IC3net with learned gating function
 # exp_name = "tj_g0.01_test"

@@ -152,8 +152,8 @@ class CommNetMLP(nn.Module):
         self.value_head = nn.Linear(self.hid_size, 1)
 
         # communication limit, default always allows communication
-        self.comm_budget = torch.tensor([self.args.max_steps] * self.nagents)
-        self.budget = 1.
+        self.comm_budget = torch.tensor([self.args.max_steps+1] * self.nagents)
+        self.budget = .2
 
 
     def get_agent_mask(self, batch_size, info):
@@ -236,13 +236,15 @@ class CommNetMLP(nn.Module):
         if self.args.hard_attn:
             comm_action = torch.tensor(info['comm_action'])
             # not sure if this passes batch sizes larger than 1
-            assert batch_size == 1
-            if info['step_t'] == 0:
-                # reset communication budget at the beginning of the episode
-                self.comm_budget = self.budget * torch.tensor([self.args.max_steps] * self.nagents)
-            self.comm_budget -= comm_action
-            if self.budget != 1:
-                comm_action[self.comm_budget <= 0] = 0
+            # assert batch_size == 1
+            # if info['step_t'] == 0:
+            #     # reset communication budget at the beginning of the episode
+            #     self.comm_budget = self.budget * torch.tensor([self.args.max_steps] * self.nagents
+            # # self.comm_budget -= comm_action
+            # if self.budget != 1:
+            #     comm_action[self.comm_budget <= 0] = 0
+            # Add random masking according to the budget
+            comm_action = comm_action * np.random.choice([1.,0.], size=self.nagents, p=[self.budget, 1-self.budget])
             info['comm_budget'] = comm_action.detach().numpy()
             # print("comm action, budget", comm_action, self.comm_budget, info['step_t'])
             comm_action_mask = comm_action.expand(batch_size, n, n).unsqueeze(-1)
