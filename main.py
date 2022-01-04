@@ -18,7 +18,7 @@ from collections import defaultdict
 # fixed for multiprocessing
 os.environ["OMP_NUM_THREADS"] = "1"
 
-# note for adding a new env: Add it in the data.py. Might involve righting a file in ic3net_envs.
+# note for adding a new env: Add it in the data.py. Might involve writing a file in ic3net_envs.
 
 torch.utils.backcompat.broadcast_warning.enabled = True
 torch.utils.backcompat.keepdim_warning.enabled = True
@@ -155,6 +155,12 @@ parser.add_argument('--optim_name', default='RMSprop', type=str,
 # learning rate scheduler
 parser.add_argument('--scheduleLR', action='store_true', default=False,
                     help='Cyclic learning rate scheduler')
+
+
+# communication maximum budget
+parser.add_argument('--budget', type=float, default=1.0,
+                    help='Communication budget')
+
 # first add environment specific args to the parser
 init_args_for_env(parser)
 

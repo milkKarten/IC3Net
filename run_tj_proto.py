@@ -18,8 +18,8 @@ methods = ["fixed_proto_var_commLimMask", "proto_commLimMask"]
 # G - IC3net with learned gating function
 # exp_name = "tj_g0.01_test"
 # for reward_curr_start, reward_curr_end in zip([1500, 1250, 1800],[1900, 2000, 2000]):
-# for rew in [1, .1, .01]:
-if True:
+for budget in [0.2, 0.5]:
+# if True:
     for method in methods:
         exp_name = "tj_" + method
         vision = 0
@@ -59,7 +59,7 @@ if True:
         variable_gate = False
         if "var" in method:
             variable_gate = True
-        nprocesses = 16
+        nprocesses = 8
         lr = 0.003
         if "medium" in method:
             nagents = 10
@@ -84,7 +84,7 @@ if True:
             add_rate_max = 0.3
             difficulty = 'easy'
         run_str = f"python main.py --env_name {env} --nprocesses {nprocesses} "+\
-                  f"--num_epochs {num_epochs} "+\
+                  f"--num_epochs {num_epochs} --epoch_size 20 --budget {budget} "+\
                   f"--gating_head_cost_factor {gating_head_cost_factor} "+\
                   f"--hid_size {hid_size} "+\
                   f" --detach_gap 10 --lrate {lr} --ic3net --vision {vision} "+\

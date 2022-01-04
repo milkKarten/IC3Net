@@ -6,6 +6,7 @@ from models import MLP
 from action_utils import select_action, translate_action
 from networks import ProtoNetwork, ProtoLayer
 from noise import OUNoise
+import numpy as np
 
 class CommNetMLP(nn.Module):
     """
@@ -153,7 +154,7 @@ class CommNetMLP(nn.Module):
 
         # communication limit, default always allows communication
         self.comm_budget = torch.tensor([self.args.max_steps+1] * self.nagents)
-        self.budget = .2
+        self.budget = args.budget
 
 
     def get_agent_mask(self, batch_size, info):

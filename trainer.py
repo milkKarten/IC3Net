@@ -243,10 +243,11 @@ class Trainer(object):
                         # punish excessive and strengthen current communication
                         # gating_head_rew = (np.abs(gating_head_rew - info['comm_budget'])).astype(np.float64)
                         # only punish excessive communication
-                        mask_rew = info['comm_action'] != info['comm_budget']
-                        error = np.zeros_like(gating_head_rew)
-                        error[mask_rew] = np.abs(gating_head_rew[mask_rew] - info['comm_budget'][mask_rew]).astype(np.float64)
-                        gating_head_rew = error
+                        # mask_rew = info['comm_action'] != info['comm_budget']
+                        # error = np.zeros_like(gating_head_rew)
+                        # error[mask_rew] = np.abs(gating_head_rew[mask_rew] - info['comm_budget'][mask_rew]).astype(np.float64)
+                        gating_head_rew = np.abs(gating_head_rew - info['comm_budget']).astype(np.float64)
+                        # gating_head_rew = error
                     else:
                         # max communication when budget is full
                         # gating_head_rew = np.abs(info['comm_action'] - 1).astype(np.float64)
