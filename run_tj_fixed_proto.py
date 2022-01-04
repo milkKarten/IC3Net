@@ -13,7 +13,7 @@ env = "traffic_junction"
 seeds = [777]
 # seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
-methods = ["fixed_proto_easy", "fixed_proto_medium", "fixed_proto_hard"]
+methods = ["fixed_proto_medium1"]
 # run baseline with no reward on the gating function
 # G - IC3net with learned gating function
 # exp_name = "tj_g0.01_test"
@@ -59,7 +59,7 @@ if True:
         variable_gate = False
         if "var" in method:
             variable_gate = True
-        nprocesses = 16
+        nprocesses = 8
         lr = 0.003
         if "medium" in method:
             nagents = 10
@@ -84,7 +84,7 @@ if True:
             add_rate_max = 0.3
             difficulty = 'easy'
         run_str = f"python main.py --env_name {env} --nprocesses {nprocesses} "+\
-                  f"--num_epochs {num_epochs} "+\
+                  f"--num_epochs {num_epochs} --epoch_size 20 "+\
                   f"--gating_head_cost_factor {gating_head_cost_factor} "+\
                   f"--hid_size {hid_size} "+\
                   f" --detach_gap 10 --lrate {lr} --ic3net --vision {vision} "+\
