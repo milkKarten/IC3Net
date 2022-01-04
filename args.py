@@ -12,12 +12,12 @@ def get_args():
                          help='number of update iterations in an epoch')
      parser.add_argument('--batch_size', type=int, default=500,
                          help='number of steps before each update (per thread)')
-     parser.add_argument('--nprocesses', type=int, default=16,
+     parser.add_argument('--nprocesses', type=int, default=1,
                          help='How many processes to run')
      # model
-     parser.add_argument('--hid_size', default=64, type=int,
+     parser.add_argument('--hid_size', default=128, type=int,
                          help='hidden layer size')
-     parser.add_argument('--recurrent', action='store_true', default=False,
+     parser.add_argument('--recurrent', action='store_true', default=True,
                          help='make the model recurrent in time')
      # optimization
      parser.add_argument('--gamma', type=float, default=1.0,
@@ -35,7 +35,7 @@ def get_args():
      parser.add_argument('--value_coeff', type=float, default=0.01,
                          help='coeff for value loss term')
      # environment
-     parser.add_argument('--env_name', default="Cartpole",
+     parser.add_argument('--env_name', default="predator_prey",
                          help='name of the environment to run')
      parser.add_argument('--max_steps', default=20, type=int,
                          help='force to end the game after this many steps')
@@ -63,9 +63,9 @@ def get_args():
      # CommNet specific args
      parser.add_argument('--commnet', action='store_true', default=False,
                          help="enable commnet model")
-     parser.add_argument('--ic3net', action='store_true', default=False,
+     parser.add_argument('--ic3net', action='store_true', default=True,
                          help="enable commnet model")
-     parser.add_argument('--nagents', type=int, default=1,
+     parser.add_argument('--nagents', type=int, default=3,
                          help="Number of agents (used in multiagent)")
      parser.add_argument('--comm_mode', type=str, default='avg',
                          help="Type of mode for communication tensor calculation [avg|sum]")
@@ -77,7 +77,7 @@ def get_args():
                          help='how much coooperative to do? 1.0 means fully cooperative')
      parser.add_argument('--rnn_type', default='MLP', type=str,
                          help='type of rnn to use. [LSTM|MLP]')
-     parser.add_argument('--detach_gap', default=10000, type=int,
+     parser.add_argument('--detach_gap', default=10, type=int,
                          help='detach hidden state and cell state for rnns at this interval.'
                               + ' Default 10000 (very high)')
      parser.add_argument('--comm_init', default='uniform', type=str,
@@ -115,5 +115,26 @@ def get_args():
                          help='discount factor')
      parser.add_argument('--restore', action='store_true', default=False,
                          help='plot training progress')
+     
+     #PP
+     parser.add_argument('--nenemies', type=int, default=1,
+                    help="Total number of preys in play")
+     parser.add_argument('--dim', type=int, default=5,
+                    help="Dimension of box")
+     parser.add_argument('--vision', type=int, default=0,
+                    help="Vision of predator")
+     parser.add_argument('--moving_prey', action="store_true", default=False,
+                    help="Whether prey is fixed or moving")
+     parser.add_argument('--no_stay', action="store_true", default=False,
+                    help="Whether predators have an action to stay in place")
+     parser.add_argument('--mode', default='mixed', type=str,
+                    help='cooperative|competitive|mixed (default: mixed)')
+     parser.add_argument('--enemy_comm', action="store_true", default=False,
+                    help="Whether prey can communicate.")
+     
+     #additional parser args from main.py
+     # communication maximum budget
+     parser.add_argument('--budget', type=float, default=1.0,
+                    help='Communication budget')
 
      return parser

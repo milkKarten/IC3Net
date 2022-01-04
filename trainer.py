@@ -150,6 +150,7 @@ class Trainer(object):
         if 'epoch' in reset_args:
             state = self.env.reset(epoch, success=self.begin_tj_curric)
         else:
+            print('no epoch')
             state = self.env.reset()
         should_display = self.display and self.last_step
 

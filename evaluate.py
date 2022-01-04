@@ -94,6 +94,7 @@ if not isinstance(args.num_actions, (list, tuple)): # single action case
     args.num_actions = [args.num_actions]
 args.dim_actions = env.dim_actions
 args.num_inputs = num_inputs
+print("num inputs is: ", num_inputs)
 
 # Hard attention
 if args.hard_attn and args.commnet:

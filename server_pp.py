@@ -47,7 +47,8 @@ LOG_ROOT = os.path.abspath("/data3/tsf_logs/")
 
 define("port", default=8888, help="run on the given port", type=int)
 
-
+Transition = namedtuple('Transition', ('state', 'action', 'action_out', 'value', 'episode_mask', 'episode_mini_mask', 'next_state',
+                                       'reward', 'misc'))
 
 class TSFServerProxy():
     """
@@ -266,6 +267,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
     def load(self, args, path):
         # d = torch.load(path)
         # policy_net.load_state_dict(d['policy_net'])
+        args.seed = 7382
 
         load_path = os.path.join(args.load, args.env_name, args.exp_name, "seed" + str(args.seed), "models")
         print(f"load directory is {load_path}")
@@ -324,6 +326,9 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             self.game.start()
             self.gameHandlerCallback.start()
             '''
+            torch.utils.backcompat.broadcast_warning.enabled = True
+            torch.utils.backcompat.keepdim_warning.enabled = True
+            torch.set_default_tensor_type('torch.DoubleTensor')
             self.t = 0
             parser = get_args()
             init_args_for_env(parser)
@@ -408,7 +413,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.state = self.env.reset(epoch)
             else:
                 self.state = self.env.reset()
-            should_display = self.display and self.last_step
+            should_display = False
 
             if should_display:
                 self.env.display()
@@ -416,7 +421,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             self.info = dict()
             switch_t = -1
 
-            prev_hid = torch.zeros(1, self.args.nagents, self.args.hid_size)
+            self.prev_hid = torch.zeros(1, self.args.nagents, self.args.hid_size)
             return
 
 
@@ -455,22 +460,26 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             # recurrence over time
             if self.args.recurrent:
                 if self.args.rnn_type == 'LSTM' and t == 0:
-                    prev_hid = self.policy_net.init_hidden(batch_size=self.state.shape[0])
+                    self.prev_hid = self.policy_net.init_hidden(batch_size=self.state.shape[0])
 
-                x = [self.state, prev_hid]
-                action_out, value, prev_hid = self.policy_net(x, self.info)
+                x = [self.state, self.prev_hid]
+                action_out, value, self.prev_hid = self.policy_net(x, self.info)
 
                 if (t + 1) % self.args.detach_gap == 0:
                     if self.args.rnn_type == 'LSTM':
-                        prev_hid = (prev_hid[0].detach(), prev_hid[1].detach())
+                        self.prev_hid = (self.prev_hid[0].detach(), self.prev_hid[1].detach())
                     else:
-                        prev_hid = prev_hid.detach()
+                        self.prev_hid = self.prev_hid.detach()
             else:
                 x = self.state
                 action_out, value = self.policy_net(x, self.info)
+            
+            print(action_out)
 
             action = select_action(self.args, action_out)
+            print(action)
             action, actual = translate_action(self.args, self.env, action)
+            print(actual)
             next_state, reward, done, info = self.env.step(actual)
 
             # store comm_action in info for next step
@@ -514,6 +523,8 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             self.episode.append(trans)
             self.state = next_state
             self.t = t + 1
+            #print(t)
+            #print(self.t)
         
 
     def on_game_state(self, gameState):

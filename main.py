@@ -6,6 +6,7 @@ import argparse
 from tensorboardX import SummaryWriter
 import torch
 # import visdom
+from args import get_args
 
 import data
 from models import *
@@ -57,7 +58,7 @@ parser.add_argument('--entr', type=float, default=0,
 parser.add_argument('--value_coeff', type=float, default=0.01,
                     help='coeff for value loss term')
 # environment
-parser.add_argument('--env_name', default="Cartpole",
+parser.add_argument('--env_name', default="predator_prey",
                     help='name of the environment to run')
 parser.add_argument('--max_steps', default=20, type=int,
                     help='force to end the game after this many steps')
@@ -165,6 +166,9 @@ parser.add_argument('--budget', type=float, default=1.0,
 init_args_for_env(parser)
 
 args = parser.parse_args()
+#parser_2 = get_args()
+#init_args_for_env(parser_2)
+#args = parser_2.parse_args()
 
 if args.ic3net:
     # if using ic3 net commnet and hard_attn both are on.
