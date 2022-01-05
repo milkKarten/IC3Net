@@ -271,7 +271,7 @@ class CommNetMLP(nn.Module):
                 if self.add_comm_noise:
                     # Currently, just hardcoded. We want enough noise to have an effect but not too much to prevent
                     # learning.
-                    std = 0.05
+                    std = 0.3
                     # Generates samples from a zero-mean unit gaussian, which we rescale by the std parameter.
                     noise = torch.randn_like(comm) * std
                     comm += noise

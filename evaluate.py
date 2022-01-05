@@ -32,7 +32,7 @@ def plot_comms(_data, special=None, _pca=None, _ax=None):
         fig, _ax = plt.subplots()
     pcm = _ax.scatter(x, y, s=20, marker='o', c='gray')
     if special is not None:
-        special_transformed = _pca.transform(special)
+        special_transformed = _pca.transform(special) if _pca is not None else special
         _ax.scatter(special_transformed[:, 0], special_transformed[:, 1], s=30, c='red')
     return _pca
 
@@ -128,7 +128,7 @@ else:
     policy_net = MLP(args, num_inputs)
 
 load(args.load)
-
+policy_net.eval()
 if not args.display:
     display_models([policy_net])
 
@@ -164,13 +164,15 @@ print("average stats is: ", average_stat)
 print("time taken per step ", total_episode_time/stat['num_steps'])
 
 protos_np = None
+num_proto_cutoff = 9
 try:
+    all_comms_to_loc = {k: v for k, v in sorted(all_comms_to_loc.items(), key=lambda item: sum(item[1].values()))}
     # A bit gross, but first get proto network and then proto layer
     protos = policy_net.proto_layer.prototype_layer.prototypes
     # Pass the prototypes through sigmoid to get the actual values.
     constrained_protos = torch.sigmoid(protos)
     protos_np = constrained_protos.detach().cpu().numpy()
-    protos_list = [proto for proto in all_comms_to_loc.keys()]
+    protos_list = [proto for proto in all_comms_to_loc.keys()][:num_proto_cutoff]
     protos_np = np.asarray(protos_list)
     # print("Prototypes", protos_np)
 except AttributeError:
@@ -184,12 +186,39 @@ num_agents = len(all_comms[0])
 for i in range(num_agents):
     print(f"for agent{i} communication is: ", all_comms[:, i])
 
-# Plot the locations associated with each prototype recorded during executiong
+# Plot the locations associated with each prototype recorded during execution
+proto_idx = 0
 for proto, locs in all_comms_to_loc.items():
-    grid = np.zeros((7, 7))
+    grid = np.zeros((10, 10))
     for loc, count in locs.items():
         grid[loc[0], loc[1]] = count
     fig, ax = plt.subplots(1, 2)
     plot_comms(protos_np, np.expand_dims(np.asarray(proto), 0), pca_transform, ax[0])
     ax[1].imshow(grid, cmap='hot')
-    plt.show()
+    plt.savefig("Proto" + str(proto_idx))
+    # plt.show()
+    plt.close()
+    proto_idx += 1
+    if proto_idx >= num_proto_cutoff:
+        break
+
+# Lastly, compute a metric of correlation between distance in comm space and distance in grid.
+proto_dists = []
+space_dists = []
+for proto1, locs1 in all_comms_to_loc.items():
+    for proto2, locs2 in all_comms_to_loc.items():
+        if np.array_equal(proto1, proto2):
+            continue
+        proto_dist = np.linalg.norm(np.asarray(proto1) - np.asarray(proto2)) / (np.sqrt(2))
+        loc1 = sorted(locs1.items(), key=lambda item: item[1])[-1][0]  # Most popular, get the location
+        loc2 = sorted(locs2.items(), key=lambda item: item[1])[-1][0]
+        space_dist = np.linalg.norm(np.asarray(loc1) - np.asarray(loc2)) / (9 * np.sqrt(2))
+        proto_dists.append(proto_dist)
+        space_dists.append(space_dist)
+m, b = np.polynomial.polynomial.Polynomial.fit(proto_dists, space_dists, 1)
+plt.scatter(proto_dists, space_dists)
+plt.plot(proto_dists, m*np.asarray(proto_dists) + b)
+plt.ylabel("Normalized L2 distance between physical locations")
+plt.xlabel("Normalized L2 distance between prototype vectors")
+plt.savefig("Correlation.png")
+# plt.show()

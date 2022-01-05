@@ -46,7 +46,7 @@ class Evaluator:
             if t == 0 and self.args.hard_attn and self.args.commnet:
                 info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
             # Hardcoded to record communication for agent 1 (prey)
-            info['record_comms'] = 0
+            info['record_comms'] = 1
             # recurrence over time
             if self.args.recurrent:
                 if self.args.rnn_type == 'LSTM' and t == 0:
@@ -56,9 +56,10 @@ class Evaluator:
                 action_out, value, prev_hid, proto_comms = self.policy_net(x, info)
                 if isinstance(self.env.env.env, predator_prey_env.PredatorPreyEnv):
                     tuple_comms = tuple(proto_comms.detach().numpy())
-                    if comms_to_prey_loc.get(tuple_comms) is None:
-                        comms_to_prey_loc[tuple_comms] = []
-                    comms_to_prey_loc[tuple_comms].append(tuple(self.env.env.env.prey_loc[0]))
+                    if t < 2:
+                        if comms_to_prey_loc.get(tuple_comms) is None:
+                            comms_to_prey_loc[tuple_comms] = []
+                        comms_to_prey_loc[tuple_comms].append(tuple(self.env.env.env.prey_loc[0]))
 
                 if (t + 1) % self.args.detach_gap == 0:
                     if self.args.rnn_type == 'LSTM':
@@ -74,7 +75,7 @@ class Evaluator:
                         comms_to_prey_loc[tuple_comms] = []
                     comms_to_prey_loc[tuple_comms].append(tuple(self.env.env.env.prey_loc[0]))
 
-            action = select_action(self.args, action_out)
+            action = select_action(self.args, action_out, eval_mode=True)
             action, actual = translate_action(self.args, self.env, action)
             next_state, reward, done, info = self.env.step(actual)
 

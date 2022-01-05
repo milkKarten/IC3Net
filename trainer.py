@@ -47,6 +47,8 @@ class Trainer(object):
                 self.success_thresh = .86
             elif self.args.difficulty == 'hard':
                 self.success_thresh = .70
+        else:
+            self.success_thresh = 1.0
 
 
         # reward communication when false

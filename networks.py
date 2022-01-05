@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 from torch.autograd import Variable
-import time
+import numpy as np
 from network_utils import gumbel_softmax, onehot_from_logits
 
 
@@ -18,10 +18,11 @@ class ProtoLayer(nn.Module):
         # # some random initialisation has been given to the prototypes.
         # for i in range(num_prototypes):
         #     for j in range(comm_dim):
-        #         if i == j:
+        #         if i % comm_dim == j:
         #             self.prototypes.data[i, j] = 5
         #         else:
         #             self.prototypes.data[i, j] = -5
+        #         self.prototypes.data[i, j] += np.random.random()
 
     def forward(self, comm_vectors):
         """ Calculates L2 distances from each latent comm_vector to each prototype. Useful for computing loss.
@@ -65,6 +66,7 @@ class ProtoNetwork(nn.Module):
                 out = num_protos if discrete else out_dim
             self.layers.append(nn.Linear(in_dim, out))
         self.discrete = discrete
+        self.dropout = nn.Dropout(0.0)
         # self.prototype_layer = ProtoLayer(out_dim, num_prototypes=ProtoNetwork.num_protos)  # FIXME. Shouldn't be static
         self.prototype_layer = ProtoLayer(out_dim, num_prototypes=num_protos)
         if constrain_out and not discrete:
@@ -96,7 +98,8 @@ class ProtoNetwork(nn.Module):
     def step(self, raw_output, explore, exploration, device):
         if self.discrete:
             # Having higher temperature seems to help encourage using more prototypes. But I'm not sure yet what's best.
-            onehot_pred = gumbel_softmax(raw_output, temperature=3, hard=True) if explore else onehot_from_logits(raw_output)
+            masked = self.dropout(raw_output)
+            onehot_pred = gumbel_softmax(masked, temperature=1, hard=True) if explore else onehot_from_logits(raw_output)
             # Multiply onehot by prototypes
             # print(onehot_pred)
             prototypes = torch.sigmoid(self.prototype_layer.prototypes)
