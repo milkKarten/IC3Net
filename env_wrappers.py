@@ -119,3 +119,6 @@ class GymWrapper(object):
             return self.env.stat
         else:
             return dict()
+    
+    def get_pp_loc_wrapper(self):
+        return self.env.get_pp_loc()

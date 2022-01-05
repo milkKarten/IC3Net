@@ -474,13 +474,15 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 x = self.state
                 action_out, value = self.policy_net(x, self.info)
             
-            print(action_out)
+            #print(action_out)
 
             action = select_action(self.args, action_out)
-            print(action)
+            #print(action)
             action, actual = translate_action(self.args, self.env, action)
-            print(actual)
+            #print(actual)
             next_state, reward, done, info = self.env.step(actual)
+            #print(next_state)
+            print(self.env.get_pp_loc_wrapper())
 
             # store comm_action in info for next step
             if self.args.hard_attn and self.args.commnet:

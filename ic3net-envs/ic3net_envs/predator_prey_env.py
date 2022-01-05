@@ -346,3 +346,6 @@ class PredatorPreyEnv(gym.Env):
 
     def exit_render(self):
         curses.endwin()
+    
+    def get_pp_loc(self):
+        return self.predator_loc, self.prey_loc
