@@ -70,20 +70,20 @@ OpenWindow.document.close()
 }
 
 
-//const ws = new WebSocket("ws://"+location.host+"/tsfsocket");
-//
-//ws.onopen = function()
-//{
-//    console.log('WebSocket Client Connected');
-//    ws.send('Hi this is web client.');
-//};
-//
-//ws.onmessage = function(e)
-//{
-//    //console.log("Received: '" + e.data + "'");
-//    var jsonObject = JSON.parse(e.data);
-//    draw(jsonObject);
-//};
+const ws = new WebSocket("ws://"+location.host+"/tsfsocket");
+
+ws.onopen = function()
+{
+    console.log('WebSocket Client Connected');
+    ws.send('Hi this is web client.');
+};
+
+ws.onmessage = function(e)
+{
+    //console.log("Received: '" + e.data + "'");
+    var jsonObject = JSON.parse(e.data);
+    draw(jsonObject);
+};
 
 state = {
     'players':{
@@ -98,7 +98,8 @@ state = {
         'token5':{'x':0,'y':0,'selected':false}
     },
     'step':0,
-    'best':7
+    'best':7,
+    'humanRole':'parent'
 }
 
 draw(state)
@@ -121,33 +122,44 @@ function draw(frame_info){
 
     document.getElementById('best').innerHTML = frame_info.best.toString();
     document.getElementById('step').innerHTML = frame_info.step.toString();
+    if (frame_info.hasOwnProperty('currentTrial')) {
+        document.getElementById('trial').innerHTML = frame_info.currentTrial.toString();
+    }
     //draw board
     drawBoard(ctx)
     //draw parent's vision
     drawVision(ctx,frame_info.players['parent'].x,frame_info.players['parent'].y);
     //draw player
-    for (var key in frame_info.players) {
-        if (frame_info.players.hasOwnProperty(key)) {
-            if(key == 'child'){
-                drawChild(ctx,frame_info.players[key].x,frame_info.players[key].y);
-            }
-            else if(key == 'parent'){
-                drawParent(ctx,frame_info.players[key].x,frame_info.players[key].y);
+    if (frame_info.done){
+        drawResult(ctx,frame_info.players['child'].x,frame_info.players['child'].y);
+        info_send();
+    }
+    else{
+        for (var key in frame_info.players) {
+            if (frame_info.players.hasOwnProperty(key)) {
+                if(key == 'child'){
+                    drawChild(ctx,frame_info.players[key].x,frame_info.players[key].y);
+                }
+                else if(key == 'parent'){
+                    drawParent(ctx,frame_info.players[key].x,frame_info.players[key].y);
 
+                }
             }
         }
+        var canvas = document.getElementById("comm");
+        var ctx = canvas.getContext("2d");
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+         //draw comm space
+        drawSpace(ctx)
+        //draw comm tokens
+        for (var key in frame_info.comm){
+            if (frame_info.comm[key].selected){drawToken(ctx,frame_info.comm[key].x,frame_info.comm[key].y,key,true);}
+            else{drawToken(ctx,frame_info.comm[key].x,frame_info.comm[key].y,key,false);}
+        }
     }
-    var canvas = document.getElementById("comm");
-    var ctx = canvas.getContext("2d");
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-     //draw comm space
-    drawSpace(ctx)
-    //draw comm tokens
-    for (var key in frame_info.comm){
-        if (frame_info.comm[key].selected){drawToken(ctx,frame_info.comm[key].x,frame_info.comm[key].y,key,true);}
-        else{drawToken(ctx,frame_info.comm[key].x,frame_info.comm[key].y,key,false);}
-    }
+
+
 
 
 }
@@ -170,6 +182,13 @@ function drawChild(ctx,x,y){
     const image = document.getElementById('child');
     ctx.drawImage(image, 38, 66, 27, 27, x*80+50, y*80+50, 75, 75);
 }
+
+function drawResult(ctx,x,y){
+    const image = document.getElementById('heart');
+    ctx.drawImage(image, x*80+50, y*80+50, 50, 50);
+}
+
+
 
 function drawSpace(ctx){
     // Box width
@@ -229,32 +248,33 @@ function drawVision(ctx,x,y){
 
 }
 
-function commUpdate(token){
+function commSend(token){
   var message = new Object();
-  message.type = "comm"
+  message.type = "comm";
   message.message = token;
-  state = state_update(state,message);
-  draw(state);
-//  ws.send(JSON.stringify(message));
+  message.humanRole = 'child';
+//  state = state_update(state,message);
+//  draw(state);
+  ws.send(JSON.stringify(message));
 }
 
-function state_update(state,message){
-  if(message.type == 'command'){
-    if(message.message.command == "up" && state.players['parent'].y-1>=0){state.players['parent'].y-=1}
-    if(message.message.command == "left" && state.players['parent'].x-1>=0){state.players['parent'].x-=1}
-    if(message.message.command == "right" && state.players['parent'].x+1<=4){state.players['parent'].x+=1}
-    if(message.message.command == "down" && state.players['parent'].y+1<=4){state.players['parent'].y+=1}
-    state.step+=1;
-    return state
-  }
-  if(message.type == 'comm'){
-    for (var token in state.comm){
-        if (state.comm[token].selected){state.comm[token].selected = false}
-    }
-    state.comm[message.message].selected=true;
-    return state
-  }
-}
+//function state_update(state,message){
+//  if(message.type == 'command'){
+//    if(message.message.command == "up" && state.players['parent'].y-1>=0){state.players['parent'].y-=1}
+//    if(message.message.command == "left" && state.players['parent'].x-1>=0){state.players['parent'].x-=1}
+//    if(message.message.command == "right" && state.players['parent'].x+1<=4){state.players['parent'].x+=1}
+//    if(message.message.command == "down" && state.players['parent'].y+1<=4){state.players['parent'].y+=1}
+//    state.step+=1;
+//    return state
+//  }
+//  if(message.type == 'comm'){
+//    for (var token in state.comm){
+//        if (state.comm[token].selected){state.comm[token].selected = false}
+//    }
+//    state.comm[message.message].selected=true;
+//    return state
+//  }
+//}
 
 function message_send(key, flag) {
   var command = new Object();
@@ -279,9 +299,10 @@ function message_send(key, flag) {
   var message = new Object();
   message.type = "command"
   message.message = command;
-  state = state_update(state,message);
-  draw(state);
-//  ws.send(JSON.stringify(message));
+  message.humanRole = 'parent'
+//  state = state_update(state,message);
+//  draw(state);
+  ws.send(JSON.stringify(message));
 }
 
 
