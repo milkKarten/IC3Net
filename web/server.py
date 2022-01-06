@@ -13,6 +13,10 @@ import time
 import signal
 import argparse
 import time, os
+
+p = os.path.abspath('.')
+sys.path.insert(1, p)
+
 import numpy as np
 import torch
 import data
@@ -22,7 +26,7 @@ from utils import *
 from action_utils import parse_action_args
 from evaluator import Evaluator
 from args import get_args
-from inspect import getargspec
+from inspect import getfullargspec
 from action_utils import *
 
 
@@ -59,9 +63,9 @@ class TSFServerProxy():
         Create the proxy listener
         """
 
-        self.websocket_handler = websocket_handler 
+        self.websocket_handler = websocket_handler
 
-        # NECESSARY: Need to call the GameListener __init__ in order to be 
+        # NECESSARY: Need to call the GameListener __init__ in order to be
         # considered a GameListener in the C++ code
         #tsf.GameListener.__init__(self)
 
@@ -78,7 +82,7 @@ class TSFServerProxy():
         """
         """
 
-        self.websocket_handler.on_game_over() 
+        self.websocket_handler.on_game_over()
 
 
 
@@ -92,15 +96,15 @@ class TSFWebApplication(tornado.web.Application):
         """
         """
 
-        handlers = [(r"/", MainHandler), 
+        handlers = [(r"/", MainHandler),
                     (r"/login", LoginHandler),
                     (r"/logout", LogoutHandler),
                     (r"/tsfsocket", TSFWebSocketHandler)]
 
         settings = dict(
             cookie_secret="__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE_HERE__",
-            template_path=os.path.join(os.path.dirname(__file__), "web/templetes"),
-            static_path=os.path.join(os.path.dirname(__file__), "web/static"),
+            template_path=os.path.join(os.path.dirname(__file__), "templetes"),
+            static_path=os.path.join(os.path.dirname(__file__), "static"),
             xsrf_cookies=True,
         )
         super(TSFWebApplication, self).__init__(handlers, **settings)
@@ -135,7 +139,7 @@ class MainHandler(BaseHandler):
             print("User Logged In:", self.current_user)
 
         # Otherwise, redirect to the game
-        self.render("index.html", error=None)
+        self.render("parent_child.html", error=None)
 
 
 
@@ -182,7 +186,7 @@ class LogoutHandler(BaseHandler):
         """
 
         self.clear_cookie("user")
-        self.redirect("/")        
+        self.redirect("/")
 
 
 
@@ -212,7 +216,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
     def open(self):
         """
-        
+
         """
 
         self.username = self.get_secure_cookie("user").decode()
@@ -236,9 +240,16 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
         # Create a proxy listener and link it to the game
         # self.proxy_listener=TSFServerProxy(self)
         # self.game.addListener(self.proxy_listener)
-
+        print('Game start')
+        self.numTrial = 20
+        self.best = 999
+        self.currentTrial = 1
+        # if np.random.randint(0,2):
+        #     self.firstSession = 'parent'
+        # else:
+        #     self.firstSession = 'child'
         self.gameHandlerCallback = tornado.ioloop.PeriodicCallback(self.gameHandler, 1)
-        
+
         # Player command to be updated as messages are received
         self.playerCommand = None
 
@@ -256,11 +267,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 #        self.agent.kill()
         self.gameHandlerCallback.stop()
         # Get rid of the instance of builder and game
-        del self.builder
-        del self.game
-        del self.proxy_listener
-        del self.gameHandlerCallback
-        del self.logger
+        # del self.logger
 #        del self.agent
 
     def load(self, args, path):
@@ -292,7 +299,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 #        if message=="start":
 #            self.game.start()
 #            self.gameHandlerCallback.start()
-#            return 
+#            return
 
         # Try parsing as json
         try:
@@ -314,7 +321,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             agent_class = agents.repo[self.agent_class_name][0]
             self.agent = agent_class(self.builder.getPlayer(1))
             self.game.addListener(self.agent)
-            
+
             # Create a proxy listener and link it to the game
             self.proxy_listener=TSFServerProxy(self)
             self.game.addListener(self.proxy_listener)
@@ -324,6 +331,8 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             self.game.start()
             self.gameHandlerCallback.start()
             '''
+            if self.currentTrial>1:
+                time.sleep(1)
             self.t = 0
             parser = get_args()
             init_args_for_env(parser)
@@ -347,6 +356,8 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                     raise RuntimeError("Env. needs to pass argument 'nenemy'.")
 
             self.env = data.init(args.env_name, args, False)
+
+
 
             num_inputs = self.env.observation_dim
             args.num_actions = self.env.num_actions
@@ -389,7 +400,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             else:
                 self.policy_net = MLP(args, num_inputs)
 
-            self.load(args, args.load)
+            # self.load(args, args.load)
 
             if not args.display:
                 display_models([self.policy_net])
@@ -397,36 +408,93 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             # share parameters among threads, but not gradients
             for p in self.policy_net.parameters():
                 p.data.share_memory_()
-            
+
             self.args = args
-            
+
             self.all_comms = []
             self.episode = []
             epoch = 1
-            reset_args = getargspec(self.env.reset).args
+            reset_args = getfullargspec(self.env.reset).args
             if 'epoch' in reset_args:
                 self.state = self.env.reset(epoch)
             else:
                 self.state = self.env.reset()
-            should_display = self.display and self.last_step
-
-            if should_display:
-                self.env.display()
+            # should_display = self.display and self.last_step
+            #
+            # if should_display:
+            #     self.env.display()
             self.stat = dict()
             self.info = dict()
             switch_t = -1
 
             prev_hid = torch.zeros(1, self.args.nagents, self.args.hid_size)
+
+
+            #Process control and render initialization
+            self.step = 0
+            predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
+            gameState = {
+                'players': {
+                    'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
+                    'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
+                },
+                'step': self.step,
+                'best':self.best,
+                'done':False,
+                'humanRole': 'parent'
+            }
+
+            gameStateJson = json.dumps(gameState)
+
+            self.write_message(gameStateJson)
             return
 
 
         if message_json["type"] == "command":
+            self.step += 1
             # Pull out the command
             command = message_json["message"]
-        
-            # See if the JSON has the correct elements
-            if not "player" in command or not "command" in command or not "isPress" in command:
+
+            #Pull out human role and check if function is correctly triggered
+            humanRole = message_json["humanRole"]
+
+            if not humanRole == 'parent':
                 return
+
+            if command["command"] == "up":
+                self.humanAction = 0
+            elif command["command"] == "right":
+                self.humanAction = 1
+            elif command["command"] == "down":
+                self.humanAction = 2
+            elif command["command"] == "left":
+                self.humanAction = 3
+            else:
+                return
+
+            next_state, reward, done, info = self.env.step([self.humanAction])
+            predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
+            print(predator_loc, prey_loc)
+            gameState = {
+                'players': {
+                    'child': {'x': int(prey_loc[0,1]), 'y': int(prey_loc[0,0])},
+                    'parent': {'x': int(predator_loc[0,1]), 'y': int(predator_loc[0,0])},
+                },
+                'step': self.step,
+                'best': self.best,
+                'done':done,
+                'currentTrial':self.currentTrial,
+                'humanRole': 'parent'
+            }
+            if done:
+                self.currentTrial+=1
+                if self.step < self.best:
+                    self.best = self.step
+            gameStateJson = json.dumps(gameState)
+
+            self.write_message(gameStateJson)
+
+
 
             # Create a command from the message
             '''
@@ -439,13 +507,22 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             elif command["command"] == "turn_right":
                 self.playerCommand.turn=tsf.TURN_RIGHT if command["isPress"] else tsf.NO_TURN
 
-            if command["command"] == "fire": 
+            if command["command"] == "fire":
                 if command["isPress"] and not self.playerFired:
                     self.playerCommand.fire = True
-                    self.playerFired = True            
+                    self.playerFired = True
                 if not command["isPress"]:
                     self.playerFired = False
             '''
+        if message_json["type"] == "comm":
+
+            # Pull out human role and check if function is correctly triggered
+            humanRole = message_json["humanRole"]
+
+            if not humanRole == 'child':
+                return
+
+
             should_display = False
             t = self.t
             misc = dict()
@@ -514,7 +591,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             self.episode.append(trans)
             self.state = next_state
             self.t = t + 1
-        
+
 
     def on_game_state(self, gameState):
         """
@@ -528,11 +605,11 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
         gameStateJson = json.loads(gameState.toJsonString())
 
         gameStateJson["time"] = self.game.gameClock.getTime()
-        gameStateJson["tick"] = self.game.gameClock.getTick()        
+        gameStateJson["tick"] = self.game.gameClock.getTick()
 
         gameStateJson = json.dumps(gameStateJson)
 
-        self.write_message(gameStateJson)        
+        self.write_message(gameStateJson)
 
 
     def on_game_over(self):
@@ -542,9 +619,9 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
         print("on_game_over")
 
-        self.game.stop()
-       
- 
+        # self.game.stop()
+
+
         # Dump the log
         if self.logger is not None:
             log_path = os.path.join(LOG_ROOT,self.username,self.agent_class_name)
@@ -553,7 +630,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             if not os.path.exists(log_path):
                 os.makedirs(log_path)
                 print("Created path: ", log_path)
-            
+
             # Create a unique filename
             now = datetime.datetime.now(dateutil.tz.tzlocal()).strftime('%Y_%m_%d_%H_%M_%S')
             random_string = now + ''.join(random.choice(string.ascii_uppercase) for _ in range(8))
@@ -571,7 +648,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
             log_file_path = os.path.join(log_path,log_filename)
             # meta_file_path = os.path.join(log_path,metadata_filename)
- 
+
             print("Log filename: %s" % log_file_path)
             # print("Metadata path: %s" % meta_file_path)
 
