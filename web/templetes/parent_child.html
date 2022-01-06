@@ -61,11 +61,11 @@
       <h2>Communication Space</h2>
     <canvas id="comm" width="500" height="500"></canvas>
 
-      <p>&nbsp; <button id=token1 style="height:40px" onclick="commUpdate('token1')">Token 1</button>
-      <button id=token2 style="height:40px" onclick="commUpdate('token2')">Token 2</button>
-      <button id=token3 style="height:40px" onclick="commUpdate('token3')">Token 3</button>
-      <button id=token4 style="height:40px" onclick="commUpdate('token4')">Token 4</button>
-      <button id=token5 style="height:40px" onclick="commUpdate('token5')">Token 5</button></p>
+      <p>&nbsp; <button id=token1 style="height:40px" onclick="commSend('token1')">Token 1</button>
+      <button id=token2 style="height:40px" onclick="commSend('token2')">Token 2</button>
+      <button id=token3 style="height:40px" onclick="commSend('token3')">Token 3</button>
+      <button id=token4 style="height:40px" onclick="commSend('token4')">Token 4</button>
+      <button id=token5 style="height:40px" onclick="commSend('token5')">Token 5</button></p>
 </div>
 <div class="right">
   <h1>Progress</h1>
@@ -76,11 +76,15 @@
 </div>
   <div style="display:none;">
   <img id="child"
-       src="mbaby1.png">
+       src="{{ static_url('mbaby1.png') }}">
 </div>
     <div style="display:none;">
   <img id="parent"
-       src="fgirl1.png">
+       src="{{ static_url('fgirl1.png') }}">
+</div>
+      <div style="display:none;">
+  <img id="heart"
+       src="{{ static_url('heart.png') }}">
 </div>
 <main>
 <h1>Brief Instructions</h1>
@@ -94,16 +98,14 @@ Child control: select communication contents using buttons on the right side<p>
 </main>
     <!-- Scripts to interact with game server -->
     <script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
-<!--    <script src="{{ static_url("parent_child.js") }}" type="text/javascript"></script>-->
-      <script src="parent_child.js" type="text/javascript"></script>
+    <script src="{{ static_url('parent_child.js') }}" type="text/javascript"></script>
 <script type="text/javascript">
 var keyflag = false;
 num_trail = 0
 $("#startGame").click(function(){
   document.addEventListener('keydown',keyDownCheck,false);
   var name =  getParams("name");
-<!--  info_send(name);-->
-  num_trail = num_trail + 1;
+  info_send(name);
   document.getElementById('trial').innerHTML = num_trail;
 });
 $("#Help").click(function(){
