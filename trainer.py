@@ -279,7 +279,7 @@ class Trainer(object):
                 # if self.first_print:
                 #     print(f"gating head reward is {gating_head_rew}, general reward {reward}")
                 #     self.first_print = False
-                if not self.args.variable_gate or True: # TODO: remove or True later
+                if not self.args.variable_gate: # TODO: remove or True later
                     reward += gating_head_rew
 
             # store comm_action in info for next step
