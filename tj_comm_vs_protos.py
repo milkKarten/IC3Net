@@ -18,19 +18,18 @@ methods = ["fixed_proto_comm_vs_protos_junction_easy"]
 # G - IC3net with learned gating function
 # exp_name = "tj_g0.01_test"
 # for reward_curr_start, reward_curr_end in zip([1500, 1250, 1800],[1900, 2000, 2000]):
-if "easy" in method:
-    protos_list = [14, 28, 56]
-    comms_list = [8, 32, 128]
-elif 'medium' in method:
-    protos_list = [56, 28, 112]
-    comms_list = [32]
-elif 'hard' in method:
-    protos_list = [144, 72, 288]
-    comms_list = [32]
-
-for num_proto in protos_list:
-    for comm_dim in comms_list:
-        for method in methods:
+for method in methods:
+    if "easy" in method:
+        protos_list = [14, 28, 56]
+        comms_list = [8, 32, 128]
+    elif 'medium' in method:
+        protos_list = [56, 28, 112]
+        comms_list = [32]
+    elif 'hard' in method:
+        protos_list = [144, 72, 288]
+        comms_list = [32]
+    for num_proto in protos_list:
+        for comm_dim in comms_list:
             exp_name = "tj_EX_" + method + "_p" + str(num_proto) + "_c" + str(comm_dim)
             vision = 0
             # discrete comm is true if you want to use learnable prototype based communication.
