@@ -59,7 +59,7 @@ if True:
         variable_gate = False
         if "var" in method:
             variable_gate = True
-        nprocesses = 0
+        nprocesses = 16
         lr = 0.003
         if "medium" in method:
             nagents = 10
@@ -124,9 +124,9 @@ if True:
             # run_str += "> runLogs/" + exp_name + "Log.txt 2>&1 &"
             # cmd_args = run_str[:-1].split(" ")
             # print(cmd_args)
-            # with open("runLogs/" + exp_name + "Log.txt","wb") as out:
-            #     subprocess.Popen(run_str + f"--seed {seed}", shell=True, stdout=out)#, stderr=out)
-            os.system(run_str + f"--seed {seed}")
+            with open("runLogs/" + exp_name + "Log.txt","wb") as out:
+                subprocess.Popen(run_str + f"--seed {seed}", shell=True, stdout=out)#, stderr=out)
+            # os.system(run_str + f"--seed {seed}")
         # sys.exit(0)
         # plot the avg and error graphs using multiple seeds.
         # os.system(f"python plot.py --env_name {env} --exp_name {exp_name} --nagents {nagents}")
