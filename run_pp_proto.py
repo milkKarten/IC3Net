@@ -5,7 +5,7 @@ env = "predator_prey"
 
 # specify all the seeds you want to run the experiment on.
 # seeds = [1, 2, 3]
-seeds = [6]
+seeds = [3]
 
 # for predator-prey there are 3 modes: cooperative, competitive and mixed.
 mode = "cooperative"
@@ -17,19 +17,19 @@ exp_name = "proto_fixed1"
 nagents = 1
 
 # number of epochs you wish to train on.
-num_epochs = 3000
+num_epochs = 6000
 
 # size of the hidden layer in LSTM
-hid_size = 32
+hid_size = 2
 
 # dimension of the grid in predator-prey.
-dim = 5
+dim = 9
 
 # max steps per episode.
 max_steps = 20
 
 # specify the vision for the agents. 0 means agents are blind.
-vision = 0
+vision = 1
 
 # checkpoint models after every 100th epoch.
 save_every = 100
@@ -41,7 +41,7 @@ gating_head_cost_factor = 0.0
 discrete_comm = True
 
 # specify the number of prototypes you wish to use.
-num_proto = 100
+num_proto = 9
 
 # dimension of the communication vector.
 comm_dim = hid_size
