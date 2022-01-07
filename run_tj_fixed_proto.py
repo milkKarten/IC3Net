@@ -13,7 +13,7 @@ env = "traffic_junction"
 seeds = [777]
 # seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
-methods = ["fixed_proto_longer_easy"]
+methods = ["fixed_proto_easy", "fixed_proto_junction_easy"]
 # run baseline with no reward on the gating function
 # G - IC3net with learned gating function
 # exp_name = "tj_g0.01_test"
@@ -21,14 +21,14 @@ methods = ["fixed_proto_longer_easy"]
 # for rew in [1, .1, .01]:
 if True:
     for method in methods:
-        exp_name = "tj_" + method
+        exp_name = "tj_EX_" + method
         vision = 0
         # discrete comm is true if you want to use learnable prototype based communication.
         discrete_comm = False
         if "proto" in method:
             discrete_comm = True
-        num_epochs = 5000
-        hid_size= 128
+        num_epochs = 2000
+        hid_size = 128
         save_every = 100
         # g=1. If this is set to true agents will communicate at every step.
         comm_action_one = False
@@ -43,13 +43,13 @@ if True:
                 gating_head_cost_factor = 0
             comm_action_one = True
         # specify the number of prototypes you wish to use.
-        num_proto = 25  # try to increase prototypes
+        num_proto = 28  # try to increase prototypes
         if "bigproto" in method:
             num_proto = 50  # try to increase prototypes
         # dimension of the communication vector.
-        comm_dim = 16
-        if "bigcomm" in method:
-            comm_dim = 32
+        comm_dim = num_proto // 2
+        # if "bigcomm" in method:
+        #     comm_dim = 32
         if not discrete_comm:
             comm_dim = hid_size
         # use reward curriculum
@@ -59,7 +59,7 @@ if True:
         variable_gate = False
         if "var" in method:
             variable_gate = True
-        nprocesses = 8
+        nprocesses = 0
         lr = 0.003
         if "medium" in method:
             nagents = 10
@@ -90,13 +90,15 @@ if True:
             add_rate_min = 0.1
             add_rate_max = 0.3
             difficulty = 'easy'
-        run_str = f"python main.py --env_name {env} --nprocesses {nprocesses} "+\
-                  f"--num_epochs {num_epochs} --epoch_size 20 "+\
+
+
+        run_str = f"python main.py --env_name {env} --nprocesses {nprocesses} --display "+\
+                  f"--num_epochs {num_epochs} --epoch_size 10 "+\
                   f"--gating_head_cost_factor {gating_head_cost_factor} "+\
                   f"--hid_size {hid_size} "+\
                   f" --detach_gap 10 --lrate {lr} --ic3net --vision {vision} "+\
                   f"--recurrent "+\
-                  f"--max_steps {max_steps} --dim {dim} --nagents {nagents} --add_rate_min {add_rate_min} --add_rate_max {add_rate_max} --curr_epochs 2000 --difficulty {difficulty} "+\
+                  f"--max_steps {max_steps} --dim {dim} --nagents {nagents} --add_rate_min {add_rate_min} --add_rate_max {add_rate_max} --curr_epochs 1000 --difficulty {difficulty} "+\
                   f"--exp_name {exp_name} --save_every {save_every} "+\
                   f"--use_proto --comm_dim {comm_dim} --num_proto {num_proto} " # may need to change this to not use prototypes
 
@@ -110,6 +112,8 @@ if True:
             run_str += f"--comm_action_zero "
         if reward_curriculum:
             run_str += f"--gate_reward_curriculum "
+        if 'junction' in method:
+            run_str += f"--use_tj_curric "
 
         # Important: If you want to restore training just use the --restore tag
         # run for all seeds
@@ -120,9 +124,9 @@ if True:
             # run_str += "> runLogs/" + exp_name + "Log.txt 2>&1 &"
             # cmd_args = run_str[:-1].split(" ")
             # print(cmd_args)
-            with open("runLogs/" + exp_name + "Log.txt","wb") as out:
-                subprocess.Popen(run_str + f"--seed {seed}", shell=True, stdout=out)#, stderr=out)
-            # os.system(run_str + f"--seed {seed}")
+            # with open("runLogs/" + exp_name + "Log.txt","wb") as out:
+            #     subprocess.Popen(run_str + f"--seed {seed}", shell=True, stdout=out)#, stderr=out)
+            os.system(run_str + f"--seed {seed}")
         # sys.exit(0)
         # plot the avg and error graphs using multiple seeds.
         # os.system(f"python plot.py --env_name {env} --exp_name {exp_name} --nagents {nagents}")

@@ -157,9 +157,13 @@ parser.add_argument('--scheduleLR', action='store_true', default=False,
                     help='Cyclic learning rate scheduler')
 
 
+
 # communication maximum budget
 parser.add_argument('--budget', type=float, default=1.0,
                     help='Communication budget')
+
+parser.add_argument('--use_tj_curric', action='store_true', default=False,
+                    help='Use curric for TJ')
 
 # first add environment specific args to the parser
 init_args_for_env(parser)

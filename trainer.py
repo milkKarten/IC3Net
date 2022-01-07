@@ -61,7 +61,7 @@ class Trainer(object):
         self.total_error = None
 
         # traffic junction curriculum
-        self.begin_tj_curric = True
+        self.begin_tj_curric = False
         self.tj_epoch_success = 0
         self.tj_success = 0
         self.tj_epoch_i = 0
@@ -109,7 +109,7 @@ class Trainer(object):
                 self.args.gate_reward_curriculum = False
 
     def tj_curriculum(self, success_rate, num_episodes):
-        if not self.begin_tj_curric:
+        if not self.begin_tj_curric and False:
             self.tj_epoch_i += 1
             self.tj_epoch_success += success_rate
             if self.tj_epoch_i >= self.args.epoch_size:
@@ -133,7 +133,7 @@ class Trainer(object):
                 else:
                     self.comm_success = 0
                 self.comm_epoch_success = 0
-            if self.comm_success >= 50:
+            if self.comm_success >= 100:
                 # decrease budget, reset curriculum params
                 self.policy_net.budget -= 0.1
                 self.comm_epoch_i = 0
@@ -454,6 +454,8 @@ class Trainer(object):
 
     def run_batch(self, epoch):
         # self.reward_curriculum(epoch)
+        if epoch >= 250 and self.args.use_tj_curric:
+            self.begin_tj_curric = True
         batch = []
         self.stats = dict()
         self.stats['num_episodes'] = 0
