@@ -31,7 +31,7 @@ elif 'hard' in method:
 for num_proto in protos_list:
     for comm_dim in comms_list:
         for method in methods:
-            exp_name = "tj_EX_" + method
+            exp_name = "tj_EX_" + method + "_p" + str(num_proto) + "_c" + str(comm_dim)
             vision = 0
             # discrete comm is true if you want to use learnable prototype based communication.
             discrete_comm = False
