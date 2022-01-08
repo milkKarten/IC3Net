@@ -13,24 +13,30 @@ env = "traffic_junction"
 seeds = [777]
 # seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
-methods = ["fixed_proto_comm_vs_protos_junction_easy"]
+# methods = ["fixed_proto_comm_vs_protos_junction_easy"]
+methods = ["medium_baseline_fixed_proto", "medium_baseline_fixed_continuous", "medium_baseline_G_proto", "medium_baseline_G_continuous"]
+# methods = ["medium_fixed_continuous", "medium_G_proto", "medium_G_continuous"]
 # run baseline with no reward on the gating function
 # G - IC3net with learned gating function
 # exp_name = "tj_g0.01_test"
 # for reward_curr_start, reward_curr_end in zip([1500, 1250, 1800],[1900, 2000, 2000]):
 for method in methods:
     if "easy" in method:
-        protos_list = [14, 28, 56]
-        comms_list = [8, 32, 128]
-    elif 'medium' in method:
-        protos_list = [56, 28, 112]
+        # protos_list = [14, 28, 56]
+        protos_list = [56]
+        # comms_list = [8, 32, 128]
         comms_list = [32]
+    elif 'medium' in method:
+        # protos_list = [56, 28, 112]
+        protos_list = [112] # use 1 layer of redundancy
+        comms_list = [128]
     elif 'hard' in method:
         protos_list = [144, 72, 288]
-        comms_list = [32]
+        comms_list = [128]
     for num_proto in protos_list:
         for comm_dim in comms_list:
-            exp_name = "tj_EX_" + method + "_p" + str(num_proto) + "_c" + str(comm_dim)
+            exp_name = "tj_EX_" + method +
+            # exp_name = "tj_EX_" + method + "_p" + str(num_proto) + "_c" + str(comm_dim)
             vision = 0
             # discrete comm is true if you want to use learnable prototype based communication.
             discrete_comm = False
@@ -61,7 +67,7 @@ for method in methods:
             if "var" in method:
                 variable_gate = True
             nprocesses = 16
-            lr = 0.003
+            lr = 0.001
             if "medium" in method:
                 nagents = 10
                 max_steps = 40
@@ -100,11 +106,10 @@ for method in methods:
                       f" --detach_gap 10 --lrate {lr} --ic3net --vision {vision} "+\
                       f"--recurrent "+\
                       f"--max_steps {max_steps} --dim {dim} --nagents {nagents} --add_rate_min {add_rate_min} --add_rate_max {add_rate_max} --curr_epochs 1000 --difficulty {difficulty} "+\
-                      f"--exp_name {exp_name} --save_every {save_every} "+\
-                      f"--use_proto --comm_dim {comm_dim} --num_proto {num_proto} " # may need to change this to not use prototypes
+                      f"--exp_name {exp_name} --save_every {save_every} "
 
             if discrete_comm:
-                run_str += f"--discrete_comm "
+                run_str += f"--discrete_comm --use_proto --comm_dim {comm_dim} --num_proto {num_proto} "
             if comm_action_one:
                 run_str += f"--comm_action_one  "
             if variable_gate:
