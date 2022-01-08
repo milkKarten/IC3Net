@@ -8,7 +8,7 @@ env = "predator_prey"
 seeds = [3]
 
 # for predator-prey there are 3 modes: cooperative, competitive and mixed.
-mode = "cooperative"
+mode = "parent_child"
 
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 exp_name = "proto_fixed1"
@@ -66,7 +66,7 @@ for seed in seeds:
                   f"--nagents {nagents} --mode {mode} --seed {seed} "
                   f"--nprocesses 1 --gating_head_cost_factor {gating_head_cost_factor} --num_epochs {num_epochs} "
                   f"--hid_size {hid_size} --detach_gap 10 --lrate 0.001 "
-                  f"--dim {dim} --max_steps {max_steps} --ic3net --vision {vision} "
+                  f"--dim {dim} --max_steps {max_steps} --ic3net --recurrent --vision {vision} "
                   f"--save_every {save_every} --discrete_comm --use_proto --comm_dim {comm_dim} " +\
                   str("--add_comm_noise " if add_comm_noise else " ") +\
                   f"--num_proto {num_proto}")
@@ -75,7 +75,7 @@ for seed in seeds:
             f"python main.py --env_name {env} --exp_name {exp_name} --nagents {nagents} --mode {mode} --seed {seed} "
             f"--nprocesses 1 --gating_head_cost_factor {gating_head_cost_factor} --num_epochs {num_epochs} "
             f"--hid_size {hid_size} --detach_gap 10 --lrate 0.001 "
-            f"--dim {dim} --max_steps {max_steps} --ic3net --vision {vision} --recurrent --save_every {save_every} "
+            f"--dim {dim} --max_steps {max_steps} --ic3net --recurrent --vision {vision} --recurrent --save_every {save_every} "
             f"--use_proto --comm_dim {comm_dim} " +\
             str("--add_comm_noise " if add_comm_noise else " ") +\
             f"--num_proto {num_proto}")

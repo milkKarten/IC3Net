@@ -6,7 +6,7 @@ env = "predator_prey"
 # specify all the seeds you want to run the experiment on.
 # seeds = [1, 2, 3]
 seeds = [777]
-methods = ["proto_fixed"]
+methods = ["proto_fixed_test"]
 
 
 for method in methods:
@@ -22,7 +22,7 @@ for method in methods:
     num_epochs = 1000
 
     # size of the hidden layer in LSTM
-    hid_size = 64
+    hid_size = 128
 
     # dimension of the grid in predator-prey.
     dim = 10
@@ -49,7 +49,9 @@ for method in methods:
     comm_dim = hid_size
 
     # boolean to specify using protos
-    use_protos = True
+    use_protos = False
+    if "proto" in method:
+        use_protos = True
 
     # whether prey can comunication or not.
     enemy_comm = True
@@ -57,7 +59,7 @@ for method in methods:
     # g=1. If this is set to true agents will communicate at every step.
     comm_action_one = False
 
-    nprocesses = 2
+    nprocesses = 12
 
     if "fixed" in method:
         if not "var" in method:
@@ -68,6 +70,7 @@ for method in methods:
               f"--nagents {nagents} --mode {mode} "+\
               f"--nprocesses {nprocesses} --gating_head_cost_factor {gating_head_cost_factor} --num_epochs {num_epochs} "+\
               f"--hid_size {hid_size} --detach_gap 10 --lrate 0.001 "+\
+              f"--recurrent "+\
               f"--dim {dim} --max_steps {max_steps} --ic3net --vision {vision} "+\
               f"--save_every {save_every} --comm_dim {comm_dim} "
 

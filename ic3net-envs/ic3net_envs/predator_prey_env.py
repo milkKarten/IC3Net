@@ -273,8 +273,12 @@ class PredatorPreyEnv(gym.Env):
                 reward[on_prey] = self.POS_PREY_REWARD / nb_predator_on_prey
         elif self.mode == 'mixed':
             reward[on_prey] = self.PREY_REWARD
+        elif self.mode == 'parent_child':
+            # Actually, forget the sparse reward of "are you on the prey or not" and just do negative distance.
+            reward = -1 * np.linalg.norm(self.predator_loc[0] - self.prey_loc[0])
+            return 0.01 * np.asarray([reward, -1 * reward])  # Rescale to match the normal scale of rewards.
         else:
-            raise RuntimeError("Incorrect mode, Available modes: [cooperative|competitive|mixed]")
+            raise RuntimeError("Incorrect mode, Available modes: [cooperative|competitive|mixed|parent_child]")
 
         self.reached_prey[on_prey] = 1
 
@@ -294,9 +298,7 @@ class PredatorPreyEnv(gym.Env):
                 self.stat['success'] = 1
             else:
                 self.stat['success'] = 0
-        # Actually, forget the sparse reward of "are you on the prey or not" and just do negative distance.
-        reward = -1 * np.linalg.norm(self.predator_loc[0] - self.prey_loc[0])
-        return 0.01 * np.asarray([reward, -1 * reward])  # Rescale to match the normal scale of rewards.
+        return reward
 
     def reward_terminal(self):
         return np.zeros_like(self._get_reward())
