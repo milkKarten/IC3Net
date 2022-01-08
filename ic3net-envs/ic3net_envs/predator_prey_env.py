@@ -66,7 +66,7 @@ class PredatorPreyEnv(gym.Env):
         env.add_argument('--no_stay', action="store_true", default=False,
                          help="Whether predators have an action to stay in place")
         parser.add_argument('--mode', default='mixed', type=str,
-                        help='cooperative|competitive|mixed (default: mixed)')
+                        help='cooperative|competitive|mixed|parent_child (default: mixed)')
         env.add_argument('--enemy_comm', action="store_true", default=False,
                          help="Whether prey can communicate.")
 
