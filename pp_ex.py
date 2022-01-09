@@ -6,19 +6,19 @@ env = "predator_prey"
 # specify all the seeds you want to run the experiment on.
 # seeds = [1, 2, 3]
 seeds = [777]
-methods = ["fixed_continuous", "G_proto", "G_continuous"]
+methods = ["fixed_proto", "fixed_continuous", "G_proto", "G_continuous"]
 # methods = ["fixed_proto"]
 
 # for num_proto in [16, 58, 100]:
-for method in methods:
+for method, mode_name, nagents, max_steps, vision, dim in zip(methods, ["easy", "hard"], [3,10], [20, 80], [0,1], [5, 20]):
     # for predator-prey there are 3 modes: cooperative, competitive and mixed.
     mode = "cooperative"
-    exp_name = "pp_EX_" + mode + "_" + method
+    exp_name = "pp_EX_" + mode + "_" + mode_name + "_"+ method
     # exp_name = "pp_EX_" + mode + "_" + method + "_proto_" + str(num_proto)
     # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 
     # specify the number of predators.
-    nagents = 5
+    # nagents = 5
 
     # number of epochs you wish to train on.
     num_epochs = 300
@@ -27,13 +27,13 @@ for method in methods:
     hid_size = 128
 
     # dimension of the grid in predator-prey.
-    dim = 10
+    # dim = 10
 
     # max steps per episode.
-    max_steps = 40
+    # max_steps = 40
 
     # specify the vision for the agents. 0 means agents are blind.
-    vision = 1
+    # vision = 1
 
     # checkpoint models after every 100th epoch.
     save_every = 100
