@@ -165,6 +165,15 @@ parser.add_argument('--budget', type=float, default=1.0,
 parser.add_argument('--use_tj_curric', action='store_true', default=False,
                     help='Use curric for TJ')
 
+parser.add_argument('--soft_budget', type=float, default=1.0,
+                    help='Soft comm budget')
+
+# use a pretrained network
+parser.add_argument('--load_pretrain', action='store_true', default=False,
+                    help='load old model as pretrain')
+parser.add_argument('--pretrain_exp_name', type=str,
+                    help='pretrain model name')
+
 # first add environment specific args to the parser
 init_args_for_env(parser)
 
@@ -313,6 +322,7 @@ if not args.restore:
 
 if args.variable_gate and args.restore:
     trainer.setup_var_reload()
+
 
 # this is used for getting that multiple seed plot in the end.
 history = defaultdict(list)
@@ -478,6 +488,20 @@ if args.restore:
     if args.scheduleLR:
         trainer.load_scheduler(start_epoch)
 
+
+if args.load_pretrain:
+    load_path = os.path.join(args.load, args.env_name, args.pretrain_exp_name, "seed" + str(args.seed), "models")
+    print("load directory is "+str(load_path))
+
+    if 'model.pt' in os.listdir(load_path):
+        model_path = os.path.join(load_path, "model.pt")
+
+    else:
+        all_models = sort([int(f.split('.pt')[0]) for f in os.listdir(load_path)])
+        model_path = os.path.join(load_path, str(all_models[-1])+".pt")
+
+    d = torch.load(model_path)
+    policy_net.load_state_dict(d['policy_net'])
 
 run(args.num_epochs)
 

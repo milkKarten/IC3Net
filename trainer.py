@@ -209,7 +209,7 @@ class Trainer(object):
                 if self.args.gating_punish:
                     # encourage communication to be at thresh %
                     # thresh = 0.125
-                    thresh = 0.5
+                    thresh = self.args.soft_budget
                     Kp = 1.
                     Kd = 3.2
                     Ki = 0.26
