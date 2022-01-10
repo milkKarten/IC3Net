@@ -82,27 +82,46 @@ ws.onmessage = function(e)
 {
     //console.log("Received: '" + e.data + "'");
     var jsonObject = JSON.parse(e.data);
+    if (jsonObject.humanRole=='parent'){hideButtons()}
+    else{displayButtons()}
     draw(jsonObject);
 };
 
-state = {
-    'players':{
-        'child':{'x':3,'y':3},
-        'parent':{'x':1,'y':1},
-    },
-    'comm':{
-        'token1':{'x':4,'y':4,'selected':true},
-        'token2':{'x':1,'y':2,'selected':false},
-        'token3':{'x':4,'y':0,'selected':false},
-        'token4':{'x':0,'y':4,'selected':false},
-        'token5':{'x':0,'y':0,'selected':false}
-    },
-    'step':0,
-    'best':7,
-    'humanRole':'parent'
-}
+//state = {
+//    'players':{
+//        'child':{'x':3,'y':3},
+//        'parent':{'x':1,'y':1},
+//    },
+//    'comm':{
+//        'token1':{'x':4,'y':4,'index':1},
+//        'token2':{'x':1,'y':2,'index':2},
+//        'token3':{'x':4,'y':0,'index':3},
+//        'token4':{'x':0,'y':4,'index':4},
+//        'token5':{'x':0,'y':0,'index':5}
+//    },
+//    'selectedToken':1,
+//    'step':0,
+//    'best':999,
+//    'humanRole':'parent'
+//}
+//
+//draw(state)
 
-draw(state)
+function hideButtons(){
+    document.getElementById('token1').style.visibility = 'hidden';
+    document.getElementById('token2').style.visibility = 'hidden';
+    document.getElementById('token3').style.visibility = 'hidden';
+    document.getElementById('token4').style.visibility = 'hidden';
+    document.getElementById('token5').style.visibility = 'hidden';
+    }
+
+function displayButtons(){
+    document.getElementById('token1').style.visibility = 'visible';
+    document.getElementById('token2').style.visibility = 'visible';
+    document.getElementById('token3').style.visibility = 'visible';
+    document.getElementById('token4').style.visibility = 'visible';
+    document.getElementById('token5').style.visibility = 'visible';
+    }
 
 function info_send(name){
   var message = new Object();
@@ -154,7 +173,7 @@ function draw(frame_info){
         drawSpace(ctx)
         //draw comm tokens
         for (var key in frame_info.comm){
-            if (frame_info.comm[key].selected){drawToken(ctx,frame_info.comm[key].x,frame_info.comm[key].y,key,true);}
+            if (frame_info.comm[key].index == frame_info.selectedToken){drawToken(ctx,frame_info.comm[key].x,frame_info.comm[key].y,key,true);}
             else{drawToken(ctx,frame_info.comm[key].x,frame_info.comm[key].y,key,false);}
         }
     }
@@ -191,23 +210,9 @@ function drawResult(ctx,x,y){
 
 
 function drawSpace(ctx){
-    // Box width
-    var bw = 400;
-    // Box height
-    var bh = 400;
-    // Padding
-    var p = 40;
-    for (var x = 0; x <= bw; x += 400) {
-            ctx.moveTo(0.5 + x + p, p);
-            ctx.lineTo(0.5 + x + p, bh + p);
-        }
-
-        for (var x = 0; x <= bh; x += 400) {
-            ctx.moveTo(p, 0.5 + x + p);
-            ctx.lineTo(bw + p, 0.5 + x + p);
-        }
-        ctx.strokeStyle = "black";
-        ctx.stroke();
+    ctx.arc(250,250,225,0, 2 * Math.PI);
+    ctx.strokeStyle = "black";
+    ctx.stroke();
 }
 
 function drawBoard(ctx){
