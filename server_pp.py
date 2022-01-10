@@ -136,7 +136,7 @@ class MainHandler(BaseHandler):
             print("User Logged In:", self.current_user)
 
         # Otherwise, redirect to the game
-        self.render("index.html", error=None)
+        self.render("parent_child.html", error=None)
 
 
 
@@ -238,6 +238,16 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
         # self.proxy_listener=TSFServerProxy(self)
         # self.game.addListener(self.proxy_listener)
 
+        print('Game start')
+        self.numTrial = 20
+        self.best = 999
+        self.currentTrial = 1
+        sessionList = ['parent','child']
+
+        i = 0
+        self.firstSession = sessionList[i]
+        self.secondSession = sessionList[i-1]
+
         self.gameHandlerCallback = tornado.ioloop.PeriodicCallback(self.gameHandler, 1)
         
         # Player command to be updated as messages are received
@@ -257,11 +267,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 #        self.agent.kill()
         self.gameHandlerCallback.stop()
         # Get rid of the instance of builder and game
-        del self.builder
-        del self.game
-        del self.proxy_listener
-        del self.gameHandlerCallback
-        del self.logger
+        # del self.logger
 #        del self.agent
 
     def load(self, args, path):
@@ -326,6 +332,8 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             self.game.start()
             self.gameHandlerCallback.start()
             '''
+            if self.currentTrial>1:
+                time.sleep(1)
             torch.utils.backcompat.broadcast_warning.enabled = True
             torch.utils.backcompat.keepdim_warning.enabled = True
             torch.set_default_tensor_type('torch.DoubleTensor')
@@ -415,22 +423,97 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.state = self.env.reset()
             should_display = False
 
-            if should_display:
-                self.env.display()
+            #if should_display:
+            #    self.env.display()
             self.stat = dict()
             self.info = dict()
             switch_t = -1
 
             self.prev_hid = torch.zeros(1, self.args.nagents, self.args.hid_size)
+
+            #Process control and render initialization
+            if self.currentTrial <= self.numTrial/2:
+                self.currentSession = self.firstSession
+            else:
+                self.currentSession = self.secondSession
+            print(self.currentTrial,self.currentSession)
+            
+            self.done = False
+            self.step = 0
+            predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
+            
+            if self.currentSession == 'parent':
+                self.randomToken = np.random.randint(1,6)
+                gameState = {
+                    'players': {
+                        'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
+                        'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
+                    },
+                    'comm': {
+                        'token1': {'x': 4, 'y': 4, 'index': 1},
+                        'token2': {'x': 1, 'y': 2, 'index': 2},
+                        'token3': {'x': 4, 'y': 0, 'index': 3},
+                        'token4': {'x': 0, 'y': 4, 'index': 4},
+                        'token5': {'x': 0, 'y': 0, 'index': 5}
+                    },
+                    'selectedToken': self.randomToken,
+                    'step': self.step,
+                    'best':self.best,
+                    'done':False,
+                    'humanRole': 'parent'
+                }
+                # visibility should be handel by the environment, not here
+                if abs(int(prey_loc[0, 1]) - int(predator_loc[0, 1])) > 1 or abs(
+                    int(prey_loc[0, 0]) - int(predator_loc[0, 0])) > 1:
+                    gameState['players'] = {
+                        'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])}
+                    }
+            elif self.currentSession == 'child':
+                gameState = {
+                    'players': {
+                        'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
+                        'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
+                    },
+                    'comm': {
+                        'token1': {'x': 4, 'y': 4, 'index': 1},
+                        'token2': {'x': 1, 'y': 2, 'index': 2},
+                        'token3': {'x': 4, 'y': 0, 'index': 3},
+                        'token4': {'x': 0, 'y': 4, 'index': 4},
+                        'token5': {'x': 0, 'y': 0, 'index': 5}
+                    },
+                    'selectedToken': None,
+                    'step': self.step,
+                    'best': self.best,
+                    'done': False,
+                    'humanRole': 'child'
+                }
+
+            gameStateJson = json.dumps(gameState)
+
+            self.write_message(gameStateJson)
             return
 
 
         if message_json["type"] == "command":
+            self.step += 1
             # Pull out the command
             command = message_json["message"]
         
-            # See if the JSON has the correct elements
-            if not "player" in command or not "command" in command or not "isPress" in command:
+            #Pull out human role and check if function is correctly triggered
+            humanRole = message_json["humanRole"]
+
+            if not humanRole == 'parent':
+                return
+            
+            if command["command"] == "up":
+                self.humanAction = 0
+            elif command["command"] == "right":
+                self.humanAction = 1
+            elif command["command"] == "down":
+                self.humanAction = 2
+            elif command["command"] == "left":
+                self.humanAction = 3
+            else:
                 return
 
             # Create a command from the message
@@ -479,10 +562,45 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             action = select_action(self.args, action_out)
             #print(action)
             action, actual = translate_action(self.args, self.env, action)
-            #print(actual)
+            print(actual[0])
+            actual[0][0] = self.humanAction
             next_state, reward, done, info = self.env.step(actual)
             #print(next_state)
-            print(self.env.get_pp_loc_wrapper())
+            #print(self.env.get_pp_loc_wrapper())
+            predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
+            print(predator_loc, prey_loc)
+            gameState = {
+                'players': {
+                    'child': {'x': int(prey_loc[0,1]), 'y': int(prey_loc[0,0])},
+                    'parent': {'x': int(predator_loc[0,1]), 'y': int(predator_loc[0,0])},
+                },
+                'comm': {
+                    'token1': {'x': 4, 'y': 4, 'index': 1},
+                    'token2': {'x': 1, 'y': 2, 'index': 2},
+                    'token3': {'x': 4, 'y': 0, 'index': 3},
+                    'token4': {'x': 0, 'y': 4, 'index': 4},
+                    'token5': {'x': 0, 'y': 0, 'index': 5}
+                },
+                'selectedToken': self.randomToken,
+                'step': self.step,
+                'best': self.best,
+                'done': self.done,
+                'currentTrial':self.currentTrial,
+                'humanRole': 'parent'
+            }
+            # visibility should be handel by the environment, not here
+            if abs(int(prey_loc[0, 1]) - int(predator_loc[0, 1])) > 1 or abs(
+                int(prey_loc[0, 0]) - int(predator_loc[0, 0])) > 1:
+                gameState['players'] = {
+                    'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])}
+                }
+            if self.done:
+                self.currentTrial+=1
+                if self.step < self.best:
+                    self.best = self.step
+            gameStateJson = json.dumps(gameState)
+
+            self.write_message(gameStateJson)
 
             # store comm_action in info for next step
             if self.args.hard_attn and self.args.commnet:
@@ -525,8 +643,157 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             self.episode.append(trans)
             self.state = next_state
             self.t = t + 1
+            self.info = info
+            self.done = done
             #print(t)
             #print(self.t)
+        if message_json["type"] == "comm":
+
+            # Pull out human role and check if function is correctly triggered
+            humanRole = message_json["humanRole"]
+
+            if not humanRole == 'child':
+                return
+            while not self.done:
+                self.step += 1
+                time.sleep(0.5)
+                should_display = False
+                t = self.t
+                misc = dict()
+                if t == 0 and self.args.hard_attn and self.args.commnet:
+                    self.info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
+                
+                # Hardcoded to record communication for agent 1 (prey)
+                # UNCOMMENT FOR PROTOS
+                #self.info['record_comms'] = 0
+
+                # recurrence over time
+                if self.args.recurrent:
+                    if self.args.rnn_type == 'LSTM' and t == 0:
+                        self.prev_hid = self.policy_net.init_hidden(batch_size=self.state.shape[0])
+
+                    x = [self.state, self.prev_hid]
+                    action_out, value, self.prev_hid = self.policy_net(x, self.info)
+
+                    if (t + 1) % self.args.detach_gap == 0:
+                        if self.args.rnn_type == 'LSTM':
+                            self.prev_hid = (self.prev_hid[0].detach(), self.prev_hid[1].detach())
+                        else:
+                            self.prev_hid = self.prev_hid.detach()
+                else:
+                    x = self.state
+                    action_out, value = self.policy_net(x, self.info)
+                
+                #print(action_out)
+
+                action = select_action(self.args, action_out)
+                #print(action)
+                action, actual = translate_action(self.args, self.env, action)
+                #print(actual)
+                next_state, reward, done, info = self.env.step(actual)
+                #print(next_state)
+                #print(self.env.get_pp_loc_wrapper())
+                predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
+                print(predator_loc, prey_loc)
+                gameState = {
+                        'players': {
+                            'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
+                            'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
+                        },
+                        'comm': {
+                            'token1': {'x': 4, 'y': 4, 'index': 1},
+                            'token2': {'x': 1, 'y': 2, 'index': 2},
+                            'token3': {'x': 4, 'y': 0, 'index': 3},
+                            'token4': {'x': 0, 'y': 4, 'index': 4},
+                            'token5': {'x': 0, 'y': 0, 'index': 5}
+                        },
+                        'selectedToken': message_json['message'],
+                        'step': self.step,
+                        'best': self.best,
+                        'done': self.done,
+                        'currentTrial': self.currentTrial,
+                        'humanRole': 'child'
+                    }
+                if self.done:
+                    self.currentTrial+=1
+                    if self.step < self.best:
+                        self.best = self.step
+                gameStateJson = json.dumps(gameState)
+
+                self.write_message(gameStateJson)
+
+                # store comm_action in info for next step
+                if self.args.hard_attn and self.args.commnet:
+                    info['comm_action'] = action[-1] if not self.args.comm_action_one else np.ones(self.args.nagents, dtype=int)
+
+                    # print("before ", stat.get('comm_action', 0), info['comm_action'][:self.args.nfriendly])
+                    self.stat['comm_action'] = self.stat.get('comm_action', 0) + info['comm_action'][:self.args.nfriendly]
+                    self.all_comms.append(info['comm_action'][:self.args.nfriendly])
+                    if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
+                        self.stat['enemy_comm']  = self.stat.get('enemy_comm', 0)  + info['comm_action'][self.args.nfriendly:]
+
+
+                if 'alive_mask' in info:
+                    misc['alive_mask'] = info['alive_mask'].reshape(reward.shape)
+                else:
+                    misc['alive_mask'] = np.ones_like(reward)
+
+                # env should handle this make sure that reward for dead agents is not counted
+                # reward = reward * misc['alive_mask']
+
+                self.stat['reward'] = self.stat.get('reward', 0) + reward[:self.args.nfriendly]
+                if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
+                    self.stat['enemy_reward'] = self.stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
+
+                done = done or t == self.args.max_steps - 1
+
+                episode_mask = np.ones(reward.shape)
+                episode_mini_mask = np.ones(reward.shape)
+
+                if done:
+                    episode_mask = np.zeros(reward.shape)
+                else:
+                    if 'is_completed' in info:
+                        episode_mini_mask = 1 - info['is_completed'].reshape(-1)
+
+                if should_display:
+                    self.env.display()
+
+                trans = Transition(self.state, action, action_out, value, episode_mask, episode_mini_mask, next_state, reward, misc)
+                self.episode.append(trans)
+                self.state = next_state
+                self.t = t + 1
+                self.info = info
+                self.done = done
+                #print(t)
+                #print(self.t)
+            predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
+            print(predator_loc, prey_loc)
+            gameState = {
+                    'players': {
+                        'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
+                        'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
+                    },
+                    'comm': {
+                        'token1': {'x': 4, 'y': 4, 'index': 1},
+                        'token2': {'x': 1, 'y': 2, 'index': 2},
+                        'token3': {'x': 4, 'y': 0, 'index': 3},
+                        'token4': {'x': 0, 'y': 4, 'index': 4},
+                        'token5': {'x': 0, 'y': 0, 'index': 5}
+                    },
+                    'selectedToken': message_json['message'],
+                    'step': self.step,
+                    'best': self.best,
+                    'done': self.done,
+                    'currentTrial': self.currentTrial,
+                    'humanRole': 'child'
+                }
+            if self.done:
+                self.currentTrial+=1
+                if self.step < self.best:
+                    self.best = self.step
+            gameStateJson = json.dumps(gameState)
+            self.write_message(gameStateJson)
         
 
     def on_game_state(self, gameState):
