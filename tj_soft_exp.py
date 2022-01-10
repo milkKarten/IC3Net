@@ -129,7 +129,7 @@ for soft_budget in [.10,.50,.90]:
                 if 'junction' in method:
                     run_str += f"--use_tj_curric "
                 if 'soft' in method:
-                    run_str += f"--use_soft_constraint --load_pretrain --pretrain_exp_name {pretrain_exp_name} "
+                    run_str += f"--load_pretrain --pretrain_exp_name {pretrain_exp_name} "
 
                 # Important: If you want to restore training just use the --restore tag
                 # run for all seeds
