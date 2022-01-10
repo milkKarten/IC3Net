@@ -44,7 +44,7 @@ for soft_budget in [.10,.50,.90]:
             num_epochs = 4000
         for num_proto in protos_list:
             for comm_dim in comms_list:
-                exp_name = "tj_EX_" + method
+                exp_name = "tj_EX_" + method + '_sb_' + str(soft_budget)
                 # exp_name = "tj_EX_" + method + "_p" + str(num_proto) + "_c" + str(comm_dim)
                 vision = 0
                 # discrete comm is true if you want to use learnable prototype based communication.
