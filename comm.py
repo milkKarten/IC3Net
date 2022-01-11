@@ -271,7 +271,7 @@ class CommNetMLP(nn.Module):
                 if self.add_comm_noise:
                     # Currently, just hardcoded. We want enough noise to have an effect but not too much to prevent
                     # learning.
-                    std = 0.3
+                    std = 0.2  # 0.4 for dim 16
                     # Generates samples from a zero-mean unit gaussian, which we rescale by the std parameter.
                     noise = torch.randn_like(comm) * std
                     comm += noise
@@ -279,6 +279,7 @@ class CommNetMLP(nn.Module):
             else:
                 # print(f"inside else {hidden_state.size()}")
                 comm = hidden_state
+                all_comms.append(torch.squeeze(comm, 0).detach().clone())
                 assert self.args.comm_dim == self.args.hid_size , "If not using protos comm dim should be same as hid"
 
             # comm = hidden_state.view(batch_size, n, self.hid_size) if self.args.recurrent else hidden_state

@@ -142,7 +142,7 @@ st_time = time.time()
 
 all_stats = []
 all_comms_to_loc = {}
-for i in range(100):
+for i in range(500):
     ep, stat, all_comms, comms_to_loc = evaluator.run_episode()
     all_stats.append(stat)
     for k, v in comms_to_loc.items():
@@ -164,7 +164,7 @@ print("average stats is: ", average_stat)
 print("time taken per step ", total_episode_time/stat['num_steps'])
 
 protos_np = None
-num_proto_cutoff = 9
+num_proto_cutoff = 9  # Or None if you want all of them.
 try:
     all_comms_to_loc = {k: v for k, v in sorted(all_comms_to_loc.items(), key=lambda item: sum(item[1].values()))}
     # A bit gross, but first get proto network and then proto layer
@@ -172,7 +172,9 @@ try:
     # Pass the prototypes through sigmoid to get the actual values.
     constrained_protos = torch.sigmoid(protos)
     protos_np = constrained_protos.detach().cpu().numpy()
-    protos_list = [proto for proto in all_comms_to_loc.keys()][:num_proto_cutoff]
+    protos_list = [proto for proto in all_comms_to_loc.keys()]
+    if num_proto_cutoff is not None:
+        protos_list = protos_list[:num_proto_cutoff]
     protos_np = np.asarray(protos_list)
     # print("Prototypes", protos_np)
 except AttributeError:
@@ -199,8 +201,16 @@ for proto, locs in all_comms_to_loc.items():
     # plt.show()
     plt.close()
     proto_idx += 1
-    if proto_idx >= num_proto_cutoff:
+    if num_proto_cutoff is not None and proto_idx >= num_proto_cutoff:
         break
+
+def get_weighted_loc(_loc_dict):
+    total_count = 0
+    summed = np.zeros(2)
+    for loc, count in _loc_dict.items():
+        summed += count * np.asarray(loc)
+        total_count += count
+    return summed / total_count
 
 # Lastly, compute a metric of correlation between distance in comm space and distance in grid.
 proto_dists = []
@@ -209,14 +219,19 @@ for proto1, locs1 in all_comms_to_loc.items():
     for proto2, locs2 in all_comms_to_loc.items():
         if np.array_equal(proto1, proto2):
             continue
-        proto_dist = np.linalg.norm(np.asarray(proto1) - np.asarray(proto2)) / (np.sqrt(2))
-        loc1 = sorted(locs1.items(), key=lambda item: item[1])[-1][0]  # Most popular, get the location
-        loc2 = sorted(locs2.items(), key=lambda item: item[1])[-1][0]
-        space_dist = np.linalg.norm(np.asarray(loc1) - np.asarray(loc2)) / (9 * np.sqrt(2))
+        proto_dist = np.linalg.norm(np.asarray(proto1) - np.asarray(proto2)) / (np.sqrt(args.comm_dim))
+        avg1 = get_weighted_loc(locs1)
+        avg2 = get_weighted_loc(locs2)
+        space_dist = np.linalg.norm(avg1 - avg2) / (9 * np.sqrt(2))
         proto_dists.append(proto_dist)
         space_dists.append(space_dist)
-m, b = np.polynomial.polynomial.Polynomial.fit(proto_dists, space_dists, 1)
+
+from sklearn.linear_model import LinearRegression
+reg = LinearRegression().fit(np.asarray(proto_dists).reshape(-1, 1), np.asarray(space_dists).reshape(-1, 1))
 plt.scatter(proto_dists, space_dists)
+m = reg.coef_[0]
+b = reg.intercept_[0]
+print("M", m, "b", b)
 plt.plot(proto_dists, m*np.asarray(proto_dists) + b)
 plt.ylabel("Normalized L2 distance between physical locations")
 plt.xlabel("Normalized L2 distance between prototype vectors")

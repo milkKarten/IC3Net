@@ -66,7 +66,7 @@ class ProtoNetwork(nn.Module):
                 out = num_protos if discrete else out_dim
             self.layers.append(nn.Linear(in_dim, out))
         self.discrete = discrete
-        self.dropout = nn.Dropout(0.0)
+        self.dropout = nn.Dropout(0.3)
         # self.prototype_layer = ProtoLayer(out_dim, num_prototypes=ProtoNetwork.num_protos)  # FIXME. Shouldn't be static
         self.prototype_layer = ProtoLayer(out_dim, num_prototypes=num_protos)
         if constrain_out and not discrete:
