@@ -121,7 +121,7 @@ class MultiProcessTrainer(object):
         self.trainer.optimizer.step()
         if self.trainer.args.scheduleLR:
             self.trainer.scheduler.step()
-        stat['learning_rate'] = self.trainer.get_lr(self.trainer.optimizer)
+
 
         # Check if success has converged for curriculum learning
         for comm in self.comms:
@@ -140,7 +140,13 @@ class MultiProcessTrainer(object):
         for comm in self.comms:
             comm.send(['communication_curriculum', stat['success'], stat['num_episodes']])
         self.trainer.communication_curriculum(stat['success'], stat['num_episodes'])
+        # converge on comm_action
+        if not self.trainer.comm_converge:
+            if np.abs(stat['comm_action'] - self.trainer.args.soft_budget) < 0.05:
+                self.trainer.comm_converge = True
+                self.trainer.comm_scheduler.step()
 
+        stat['learning_rate'] = self.trainer.get_lr(self.trainer.optimizer)
         return stat
 
     def state_dict(self):

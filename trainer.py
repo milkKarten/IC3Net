@@ -75,6 +75,10 @@ class Trainer(object):
         self.comm_epoch_success = 0
         self.comm_success = 0
 
+        # if comunication has converged at budget
+        self.comm_converge = False
+        self.comm_scheduler = optim.lr_scheduler.ConstantLR(self.optimizer, factor=0.1)
+
 
     def success_curriculum(self, success_rate, num_episodes):
         if self.args.variable_gate:
@@ -213,7 +217,7 @@ class Trainer(object):
                     Kp = 1.
                     Kd = 3.2
                     Ki = 0.26
-                    Kpdi = 1.
+                    Kpdi = .1
                     # 0.05 is the minimum comm rate to ensure success
                     # gating_head_rew[gating_head_rew < 0.05] = 10
                     # error = (gating_head_rew - (0.5*(thresh_top+thresh_bot))) ** 2
