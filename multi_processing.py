@@ -142,7 +142,8 @@ class MultiProcessTrainer(object):
         self.trainer.communication_curriculum(stat['success'], stat['num_episodes'])
         # converge on comm_action
         if not self.trainer.comm_converge:
-            if np.abs(np.mean(stat['comm_action']) - self.trainer.args.soft_budget) < 0.05:
+            self.trainer.set_lr()
+            if np.abs(np.mean(stat['comm_action'] / stat['num_steps']) - self.trainer.args.soft_budget) < 0.05:
                 self.trainer.comm_converge = True
                 self.trainer.comm_scheduler.step()
 

@@ -516,6 +516,10 @@ class Trainer(object):
         for param_group in optimizer.param_groups:
             return param_group['lr']
 
+    def set_lr(self):
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = self.args.lrate
+
     def state_dict(self):
         return self.optimizer.state_dict()
 
