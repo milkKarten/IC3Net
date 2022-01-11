@@ -42,9 +42,11 @@ class Trainer(object):
         # traffic junction success
         if self.args.env_name == "traffic_junction":
             if self.args.difficulty == 'easy':
-                self.success_thresh = .90
+                # self.success_thresh = .90
+                self.success_thresh = .95
             elif self.args.difficulty == 'medium':
-                self.success_thresh = .86
+                # self.success_thresh = .86
+                self.success_thresh = .9
             elif self.args.difficulty == 'hard':
                 self.success_thresh = .70
         else:
@@ -77,7 +79,7 @@ class Trainer(object):
 
         # if comunication has converged at budget
         self.comm_converge = False
-        self.comm_scheduler = optim.lr_scheduler.ConstantLR(self.optimizer, factor=0.1)
+        self.comm_scheduler = optim.lr_scheduler.ConstantLR(self.optimizer, factor=0.01)
 
 
     def success_curriculum(self, success_rate, num_episodes):

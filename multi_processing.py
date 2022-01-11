@@ -143,9 +143,11 @@ class MultiProcessTrainer(object):
         # converge on comm_action
         if not self.trainer.comm_converge:
             self.trainer.set_lr()
-            if np.abs(np.mean(stat['comm_action'] / stat['num_steps']) - self.trainer.args.soft_budget) < 0.05:
+            if stat['success'] >= self.success_thresh and\
+                np.abs(np.mean(stat['comm_action'] / stat['num_steps']) - self.trainer.args.soft_budget) < 0.025:
                 self.trainer.comm_converge = True
-                self.trainer.comm_scheduler.step()
+                self.trainer.args.lrate = self.trainer.args.lrate * .01
+                self.trainer.set_lr()
 
         stat['learning_rate'] = self.trainer.get_lr(self.trainer.optimizer)
         return stat
