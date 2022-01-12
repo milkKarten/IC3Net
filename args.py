@@ -6,7 +6,7 @@ def get_args():
      parser = argparse.ArgumentParser(description='PyTorch RL trainer')
      # training
      # note: number of steps per epoch = epoch_size X batch_size x nprocesses
-     parser.add_argument('--num_epochs', default=100, type=int,
+     parser.add_argument('--num_epochs', default=6000, type=int,
                          help='number of training epochs')
      parser.add_argument('--epoch_size', type=int, default=10,
                          help='number of update iterations in an epoch')
@@ -24,7 +24,7 @@ def get_args():
                          help='discount factor')
      parser.add_argument('--tau', type=float, default=1.0,
                          help='gae (remove?)')
-     parser.add_argument('--seed', type=int, default=-1,
+     parser.add_argument('--seed', type=int, default=2,
                          help='random seed. Pass -1 for random seed')  # TODO: works in thread?
      parser.add_argument('--normalize_rewards', action='store_true', default=False,
                          help='normalize rewards in each batch')
@@ -50,7 +50,7 @@ def get_args():
                          help='plot env name')
      parser.add_argument('--save', default='trained_models', type=str,
                          help='save the model after training')
-     parser.add_argument('--save_every', default=0, type=int,
+     parser.add_argument('--save_every', default=100, type=int,
                          help='save the model after every n_th epoch')
      parser.add_argument('--load', default='trained_models', type=str,
                          help='load the model')
@@ -65,7 +65,7 @@ def get_args():
                          help="enable commnet model")
      parser.add_argument('--ic3net', action='store_true', default=True,
                          help="enable commnet model")
-     parser.add_argument('--nagents', type=int, default=3,
+     parser.add_argument('--nagents', type=int, default=1,
                          help="Number of agents (used in multiagent)")
      parser.add_argument('--comm_mode', type=str, default='avg',
                          help="Type of mode for communication tensor calculation [avg|sum]")
@@ -84,7 +84,7 @@ def get_args():
                          help='how to initialise comm weights [uniform|zeros]')
      parser.add_argument('--hard_attn', default=False, action='store_true',
                          help='Whether to use hard attention: action - talk|silent')
-     parser.add_argument('--comm_action_one', default=False, action='store_true',
+     parser.add_argument('--comm_action_one', default=True, action='store_true',
                          help='Whether to always talk, sanity check for hard attention.')
      parser.add_argument('--advantages_per_action', default=False, action='store_true',
                          help='Whether to multipy log porb for each chosen action with advantages')
@@ -92,22 +92,22 @@ def get_args():
                          help='Share weights for hops')
      parser.add_argument('--log_dir', default='tb_logs', type=str,
                          help='directory to save tensorboard logs')
-     parser.add_argument('--exp_name', default='default_exp', type=str,
+     parser.add_argument('--exp_name', default='proto_fixed1', type=str,
                          help='directory to save tensorboard logs')
 
      # TODO: Sanity check so as to make sure discrete and proto works for environments other than predator-prey.
      #  Currently the discrete and prototype based methods will only really take effect from inside the CommNet.
-     parser.add_argument('--use_proto', default=False, action='store_true',
+     parser.add_argument('--use_proto', default=True, action='store_true',
                          help='Whether to use prototype nets in the communication layer.')
 
-     parser.add_argument('--discrete_comm', default=False, action='store_true',
+     parser.add_argument('--discrete_comm', default=True, action='store_true',
                          help='Whether to use discrete_comm')
-     parser.add_argument('--num_proto', type=int, default=6,
+     parser.add_argument('--num_proto', type=int, default=81,
                          help="Number of prototypes to use")
      parser.add_argument('--add_comm_noise', default=False, action='store_true',
                         help='Whether to add noise to communication')
 
-     parser.add_argument('--comm_dim', type=int, default=128,
+     parser.add_argument('--comm_dim', type=int, default=9,
                          help="Dimension of the communication vector")
 
      # TODO: Formalise this gating head penalty factor
@@ -119,17 +119,17 @@ def get_args():
      #PP
      parser.add_argument('--nenemies', type=int, default=1,
                     help="Total number of preys in play")
-     parser.add_argument('--dim', type=int, default=5,
+     parser.add_argument('--dim', type=int, default=9,
                     help="Dimension of box")
-     parser.add_argument('--vision', type=int, default=0,
+     parser.add_argument('--vision', type=int, default=1,
                     help="Vision of predator")
      parser.add_argument('--moving_prey', action="store_true", default=False,
                     help="Whether prey is fixed or moving")
      parser.add_argument('--no_stay', action="store_true", default=False,
                     help="Whether predators have an action to stay in place")
-     parser.add_argument('--mode', default='mixed', type=str,
+     parser.add_argument('--mode', default='cooperative', type=str,
                     help='cooperative|competitive|mixed (default: mixed)')
-     parser.add_argument('--enemy_comm', action="store_true", default=False,
+     parser.add_argument('--enemy_comm', action="store_true", default=True,
                     help="Whether prey can communicate.")
      
      #additional parser args from main.py

@@ -349,3 +349,6 @@ class PredatorPreyEnv(gym.Env):
     
     def get_pp_loc(self):
         return self.predator_loc, self.prey_loc
+    
+    def get_reached_prey(self):
+        return np.all(self.reached_prey == 1)

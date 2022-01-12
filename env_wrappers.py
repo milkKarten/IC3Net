@@ -122,3 +122,6 @@ class GymWrapper(object):
     
     def get_pp_loc_wrapper(self):
         return self.env.get_pp_loc()
+    
+    def get_reached_prey_wrapper(self):
+        return self.env.get_reached_prey()

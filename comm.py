@@ -266,7 +266,13 @@ class CommNetMLP(nn.Module):
                     comm = self.proto_layer.step(raw_outputs, False, None, 'cpu')
                     all_comms.append(comm.detach().clone())
                 # Comm assumes shape (1, num_agents, num_protos), so just add that dimension back in.
+                # First, check if we need to replace prey comm
+                print('comm', comm)
+                if info.get('replace_comm', False) == True:
+                    replace_agent_idx = info.get('agent_id_replace', 0)
+                    comm[replace_agent_idx] = info.get('child_comm', comm)
                 comm = torch.unsqueeze(comm, 0)
+                print('modified comm', comm)
 
                 if self.add_comm_noise:
                     # Currently, just hardcoded. We want enough noise to have an effect but not too much to prevent
@@ -353,6 +359,7 @@ class CommNetMLP(nn.Module):
                 # Go through the all comms passes and only pick out comms for the agent you want.
                 filtered_comms = [c[info.get('record_comms')] for c in all_comms]
                 assert len(filtered_comms) == 1, "Only support one agent at a time"
+                print('filtered_comms', filtered_comms)
                 return action, value_head, (hidden_state.clone(), cell_state.clone()), filtered_comms[0]
             return action, value_head, (hidden_state.clone(), cell_state.clone())
         else:

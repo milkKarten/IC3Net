@@ -478,6 +478,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             return
 
         if message_json["type"] == "command":
+            self.info['replace_comm'] = False
             self.step += 1
             # Pull out the command
             command = message_json["message"]
@@ -522,14 +523,17 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             misc = dict()
             if t == 0 and self.args.hard_attn and self.args.commnet:
                 self.info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
-
+            
+            # Hardcoded to record communication for agent 1 (prey)
+            # UNCOMMENT FOR RETRIEVING PROTOS FROM filter_comms variable
+            self.info['record_comms'] = 0
             # recurrence over time
             if self.args.recurrent:
                 if self.args.rnn_type == 'LSTM' and t == 0:
                     self.prev_hid = self.policy_net.init_hidden(batch_size=self.state.shape[0])
 
                 x = [self.state, self.prev_hid]
-                action_out, value, self.prev_hid = self.policy_net(x, self.info)
+                action_out, value, self.prev_hid, filtered_comms = self.policy_net(x, self.info)
 
                 if (t + 1) % self.args.detach_gap == 0:
                     if self.args.rnn_type == 'LSTM':
@@ -538,9 +542,10 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                         self.prev_hid = self.prev_hid.detach()
             else:
                 x = self.state
-                action_out, value = self.policy_net(x, self.info)
-
-            # print(action_out)
+                action_out, value, filtered_comms = self.policy_net(x, self.info)
+            
+            #print(action_out)
+            print('filtered_comms', filtered_comms)
 
             action = select_action(self.args, action_out)
             # print(action)
@@ -607,7 +612,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
                 self.stat['enemy_reward'] = self.stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
 
-            done = done or t == self.args.max_steps - 1
+            done = done or t == self.args.max_steps - 1 or bool(self.env.get_reached_prey_wrapper())
 
             episode_mask = np.ones(reward.shape)
             episode_mini_mask = np.ones(reward.shape)
@@ -638,6 +643,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
             if not humanRole == 'child':
                 return
+            
             while not self.done:
                 self.step += 1
                 time.sleep(0.5)
@@ -649,7 +655,14 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
                 # Hardcoded to record communication for agent 1 (prey)
                 # UNCOMMENT FOR PROTOS
-                # self.info['record_comms'] = 0
+                #self.info['record_comms'] = 0
+                #either 0 or 1 depending on which agent to inject comm vector for
+                self.info['agent_id_replace'] = 0
+                self.info['child_comm'] = message_json['message']
+                #TEST COMM VEC COMMENT THE test_vec OUT WHEN USING ACTUAL MESSAGE
+                test_vec = [0.6093685361352408, 0.48378074925892295, 0.9301173165918591, 0.10678958236225718, 0.23254922156143712, 0.1226728540104421, 0.8425635664122217, 0.68843780288164, 0.10518988427018998]
+                self.info['child_comm'] = torch.Tensor(test_vec)
+                self.info['replace_comm'] = True
 
                 # recurrence over time
                 if self.args.recurrent:
@@ -730,7 +743,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
                     self.stat['enemy_reward'] = self.stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
 
-                done = done or t == self.args.max_steps - 1
+                done = done or t == self.args.max_steps - 1 or bool(self.env.get_reached_prey_wrapper())
 
                 episode_mask = np.ones(reward.shape)
                 episode_mini_mask = np.ones(reward.shape)
