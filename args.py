@@ -116,4 +116,6 @@ def get_args():
      parser.add_argument('--restore', action='store_true', default=False,
                          help='plot training progress')
 
+     parser.add_argument('--budget', type=float, default=1.0,
+                         help='Communication budget')
      return parser
