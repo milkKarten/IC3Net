@@ -73,7 +73,7 @@ class Trainer(object):
         # communication curriculum with hard constraint
         self.min_budget = 0.05
         self.policy_net.budget = self.args.budget
-        self.end_comm_curric = False
+        self.end_comm_curric = True
         self.comm_epoch_i = 0
         self.comm_epoch_success = 0
         self.comm_success = 0
@@ -223,7 +223,7 @@ class Trainer(object):
                     Kp = 1.
                     # Kd = 3.2
                     Kd = 1.6
-                    Ki = 0.26
+                    Ki = 0.026
                     Kpdi = 1.
                     # 0.05 is the minimum comm rate to ensure success
                     # gating_head_rew[gating_head_rew < 0.05] = 10
