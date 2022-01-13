@@ -113,6 +113,11 @@ function hideButtons(){
     document.getElementById('token3').style.visibility = 'hidden';
     document.getElementById('token4').style.visibility = 'hidden';
     document.getElementById('token5').style.visibility = 'hidden';
+    document.getElementById('token6').style.visibility = 'hidden';
+    document.getElementById('token7').style.visibility = 'hidden';
+    document.getElementById('token8').style.visibility = 'hidden';
+    document.getElementById('token9').style.visibility = 'hidden';
+    document.getElementById('token10').style.visibility = 'hidden';
     }
 
 function displayButtons(){
@@ -121,6 +126,11 @@ function displayButtons(){
     document.getElementById('token3').style.visibility = 'visible';
     document.getElementById('token4').style.visibility = 'visible';
     document.getElementById('token5').style.visibility = 'visible';
+    document.getElementById('token6').style.visibility = 'visible';
+    document.getElementById('token7').style.visibility = 'visible';
+    document.getElementById('token8').style.visibility = 'visible';
+    document.getElementById('token9').style.visibility = 'visible';
+    document.getElementById('token10').style.visibility = 'visible';
     }
 
 function info_send(name){
@@ -147,21 +157,23 @@ function draw(frame_info){
     //draw board
     drawBoard(ctx)
     //draw parent's vision
-    drawVision(ctx,frame_info.players['parent'].x,frame_info.players['parent'].y);
+
     //draw player
     if (frame_info.done){
-        drawResult(ctx,frame_info.players['child'].x,frame_info.players['child'].y);
-        info_send();
+        console.log('new_trial');
+        drawResult(ctx,frame_info.players['child'].x,frame_info.players['child'].y,frame_info);
+        setTimeout(() => {info_send()}, 3000);
     }
     else{
+        drawVision(ctx,frame_info.players['parent'].x,frame_info.players['parent'].y);
         for (var key in frame_info.players) {
             if (frame_info.players.hasOwnProperty(key)) {
                 if(key == 'child'){
                     drawChild(ctx,frame_info.players[key].x,frame_info.players[key].y);
                 }
                 else if(key == 'parent'){
-                    drawParent(ctx,frame_info.players[key].x,frame_info.players[key].y);
 
+                    drawParent(ctx,frame_info.players[key].x,frame_info.players[key].y);
                 }
             }
         }
@@ -173,8 +185,8 @@ function draw(frame_info){
         drawSpace(ctx)
         //draw comm tokens
         for (var key in frame_info.comm){
-            if (frame_info.comm[key].index == frame_info.selectedToken){drawToken(ctx,frame_info.comm[key].x,frame_info.comm[key].y,key,true);}
-            else{drawToken(ctx,frame_info.comm[key].x,frame_info.comm[key].y,key,false);}
+            if (key == frame_info.selectedToken){drawToken(ctx,frame_info.comm[key].loc[0],frame_info.comm[key].loc[1],key.toString(),true);}
+            else{drawToken(ctx,frame_info.comm[key].loc[0],frame_info.comm[key].loc[1],key.toString(),false);}
         }
     }
 
@@ -188,23 +200,75 @@ function drawToken(ctx,x,y,text,selected){
     if(selected){ctx.strokeStyle = "red";}
     else{ctx.strokeStyle = "black";}
     ctx.font = '24px serif';
-    ctx.strokeText(text,x*80+50,y*80+60);
+    ctx.strokeText(text,x*50+50,y*50+60);
 }
 
 
 function drawParent(ctx,x,y){
     const image = document.getElementById('parent');
-    ctx.drawImage(image, 38, 68, 27, 27, x*80+50, y*80+50, 75, 75);
+    ctx.drawImage(image, 38, 68, 27, 27, x*50+40, y*50+40, 50, 50);
 }
 
 function drawChild(ctx,x,y){
     const image = document.getElementById('child');
-    ctx.drawImage(image, 38, 66, 27, 27, x*80+50, y*80+50, 75, 75);
+    ctx.drawImage(image, 38, 66, 27, 27, x*50+40, y*50+40, 50, 50);
 }
 
-function drawResult(ctx,x,y){
-    const image = document.getElementById('heart');
-    ctx.drawImage(image, x*80+50, y*80+50, 50, 50);
+function drawResult(ctx,x,y,frame_info){
+    if (frame_info.humanRole == 'child'){
+        if (frame_info.step<20){
+            console.log('child, succ')
+            const image = document.getElementById('heart');
+            ctx.strokeStyle = "red";
+            ctx.drawImage(image, x*50+50, y*50+50, 30, 30);
+            var minimum = Math.abs(frame_info.history[0].x-x)+Math.abs(frame_info.history[0].y-y);
+            console.log(minimum);
+            for (let i = 0; i<frame_info.history.length; i ++){
+                console.log(frame_info.history[i]);
+                drawParent(ctx,frame_info.history[i].x,frame_info.history[i].y);
+            }
+
+            ctx.font = '20px serif';
+            ctx.strokeText('Actual steps taken: '+ frame_info.step.toString(),120,20);
+            ctx.strokeText('Minimum steps possible: ' + minimum.toString(),120,40);
+        }
+        else{
+            console.log('child, fail')
+            const image = document.getElementById('failure');
+            ctx.strokeStyle = "black";
+            ctx.drawImage(image, x*50+50, y*50+50, 30, 30);
+            var minimum = Math.abs(frame_info.history[0].x-x)+Math.abs(frame_info.history[0].y-y);
+            console.log(minimum);
+            for (let i = 0; i<frame_info.history.length; i ++){
+                console.log(frame_info.history[i]);
+                drawParent(ctx,frame_info.history[i].x,frame_info.history[i].y);
+            }
+
+            ctx.font = '20px serif';
+            ctx.strokeText('Actual steps taken: '+ frame_info.step.toString(),120,20);
+            ctx.strokeText('Minimum steps possible: ' + minimum.toString(),120,40);
+        }
+    }
+    if (frame_info.humanRole == 'parent'){
+        if (frame_info.step<20){
+            console.log('parent, succ')
+            const image = document.getElementById('heart');
+            ctx.drawImage(image, x*50+50, y*50+50, 30, 30);
+            ctx.strokeStyle = "red";
+            text = 'Task completed with token'+ frame_info.selectedToken.toString()
+            ctx.font = '20px serif';
+            ctx.strokeText(text,120,20);
+        }
+        else{
+            console.log('parent, fail')
+            const image = document.getElementById('failure');
+            ctx.drawImage(image, x*50+50, y*50+50, 30, 30);
+            ctx.strokeStyle = "black";
+            text = 'Task failed with token'+ frame_info.selectedToken.toString()
+            ctx.font = '20px serif';
+            ctx.strokeText(text,120,20);
+        }
+    }
 }
 
 
@@ -217,17 +281,17 @@ function drawSpace(ctx){
 
 function drawBoard(ctx){
     // Box width
-    var bw = 400;
+    var bw = 450;
     // Box height
-    var bh = 400;
+    var bh = 450;
     // Padding
     var p = 40;
-    for (var x = 0; x <= bw; x += 80) {
+    for (var x = 0; x <= bw; x += 50) {
             ctx.moveTo(0.5 + x + p, p);
             ctx.lineTo(0.5 + x + p, bh + p);
         }
 
-        for (var x = 0; x <= bh; x += 80) {
+        for (var x = 0; x <= bh; x += 50) {
             ctx.moveTo(p, 0.5 + x + p);
             ctx.lineTo(bw + p, 0.5 + x + p);
         }
@@ -237,17 +301,17 @@ function drawBoard(ctx){
 
 function drawVision(ctx,x,y){
     // Box width
-    var bw = 400;
+    var bw = 450;
     // Box height
-    var bh = 400;
+    var bh = 450;
     // Padding
     var p = 40;
     for (var i = x-1; i <= x+1; i += 1) {
             for (var j = y-1; j <= y+1; j += 1) {
             if(i<0 || j<0){continue;}
-            if(i>4 || j>4){continue;}
+            if(i>8 || j>8){continue;}
             ctx.fillStyle = 'gray';
-            ctx.fillRect(i*80+p+0.5,j*80+p+0.5, 80-0.5, 80-0.5);
+            ctx.fillRect(i*50+p+0.5,j*50+p+0.5, 50-0.5, 50-0.5);
     }
     }
 
