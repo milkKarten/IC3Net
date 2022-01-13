@@ -141,9 +141,9 @@ class MultiProcessTrainer(object):
             comm.send(['communication_curriculum', stat['success'], stat['num_episodes']])
         self.trainer.communication_curriculum(stat['success'], stat['num_episodes'])
         # converge on comm_action
-        if not self.trainer.comm_converge:
+        if not self.trainer.comm_converge and False:
             self.trainer.set_lr()
-            if stat['success'] >= self.success_thresh and\
+            if stat['success'] / stat['num_episodes'] >= self.trainer.success_thresh and\
                 np.abs(np.mean(stat['comm_action'] / stat['num_steps']) - self.trainer.args.soft_budget) < 0.025:
                 self.trainer.comm_converge = True
                 self.trainer.args.lrate = self.trainer.args.lrate * .01

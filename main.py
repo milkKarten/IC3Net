@@ -502,6 +502,7 @@ if args.load_pretrain:
 
     d = torch.load(model_path)
     policy_net.load_state_dict(d['policy_net'])
+    policy_net.budget = args.budget
 
 run(args.num_epochs)
 
