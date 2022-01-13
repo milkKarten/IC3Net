@@ -50,6 +50,59 @@ Transition = namedtuple('Transition',
                         ('state', 'action', 'action_out', 'value', 'episode_mask', 'episode_mini_mask', 'next_state',
                          'reward', 'misc'))
 
+token_dict = {
+    1:{
+        'raw':[0.23801799161900206, 0.7325141653996786, 0.19846114195194223, 0.5393944003862026, 0.4613124880046595, 0.10604421127378937, 0.3634451356342147, 0.6636483076769099, 0.8419504100027456],
+        'pca':[0.15182869,-0.47542515],
+        'loc':[3.,1.]
+    },
+    2: {
+        'raw': [0.3078763153536957, 0.14805834950618751, 0.3097069760365357, 0.8370009988023058, 0.8478655833306199, 0.29897639440391244, 0.3326006632661294, 0.7599369781457616, 0.8825214374555808],
+        'pca': [-0.24235778,-0.69981944],
+        'loc': [1.61111111,0.38888889]
+    },
+    3: {
+        'raw': [0.8819358330857345, 0.2627080195125338, 0.62647271479697, 0.169748378569708, 0.34497638629894034, 0.7300588380985256, 0.3317179862594988, 0.17439549365924764, 0.08449755976323294],
+        'pca': [-0.0904792,0.75396827],
+        'loc': [3.73684211,7.05263158]
+    },
+    4: {
+        'raw': [0.20142512309713748, 0.1473080108678259, 0.3277002287950114, 0.875473700525893, 0.7963215795273852, 0.8478443242888444, 0.07495478460179618, 0.8744399197670089, 0.8360873788653396],
+        'pca': [-0.5098786,-0.63763875],
+        'loc': [1.58536585,1.]
+    },
+    5: {
+        'raw': [0.08955887915571893, 0.27272336253766816, 0.924240663064384, 0.12190755582969964, 0.0860216133690335, 0.058724524162691374, 0.8617009143190693, 0.7219024078162108, 0.27013556266760846],
+        'pca': [1.01246488,0.02155013],
+        'loc': [7.34042553,3.55319149]
+    },
+    6: {
+        'raw': [0.6870517842572824, 0.7539627670929671, 0.5160086262278977, 0.7881142784163332, 0.7153026644021444, 0.8819773797750566, 0.12299347503232387, 0.11216835888901917, 0.09040002085285437],
+        'pca': [-0.5853829,0.54071572],
+        'loc': [2.18867925,6.86792453]
+    },
+    7: {
+        'raw': [0.8394953253077313, 0.8100684305765559, 0.9273408791409841, 0.28930216689938654, 0.15808560705240937, 0.6720555770875383, 0.8413709782204191, 0.38769766639247577, 0.3186048531745279],
+        'pca': [0.44402268,0.7313564],
+        'loc': [6.41176471,6.57647059]
+    },
+    8: {
+        'raw': [0.8221137435945136, 0.07835728277577594, 0.11865925580692684, 0.8615342115135893, 0.9297224013522408, 0.7893646909850021, 0.1813333902844934, 0.1211313242500813, 0.39521871371183176],
+        'pca': [-0.91406448,0.12871821],
+        'loc': [0.7826087,3.79347826]
+    },
+    9: {
+        'raw': [0.07422709275573385, 0.3387281696740808, 0.824552561563955, 0.6714906195213651, 0.12512868302052751, 0.10874550678310316, 0.7718508278402992, 0.7991284059181146, 0.6097104212735481],
+        'pca': [ 0.73384669,-0.36342538],
+        'loc': [5.65254237,1.52542373]
+    },
+    10: {
+        'raw': [0.6093685361352408, 0.48378074925892295, 0.9301173165918591, 0.10678958236225718, 0.23254922156143712, 0.1226728540104421, 0.8425635664122217, 0.68843780288164, 0.10518988427018998],
+        'pca': [0.79654476,0.40897997],
+        'loc': [4.04,3.778]
+    },
+}
+
 
 class TSFServerProxy():
     """
@@ -424,27 +477,22 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
             self.done = False
             self.step = 0
+            self.history = []
             predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
-
+            self.history.append({'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])})
             if self.currentSession == 'parent':
-                self.randomToken = np.random.randint(1, 6)
                 gameState = {
                     'players': {
                         'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
                         'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
                     },
-                    'comm': {
-                        'token1': {'x': 4, 'y': 4, 'index': 1},
-                        'token2': {'x': 1, 'y': 2, 'index': 2},
-                        'token3': {'x': 4, 'y': 0, 'index': 3},
-                        'token4': {'x': 0, 'y': 4, 'index': 4},
-                        'token5': {'x': 0, 'y': 0, 'index': 5}
-                    },
-                    'selectedToken': self.randomToken,
+                    'comm': token_dict,
+                    'selectedToken': None,
                     'step': self.step,
                     'best': self.best,
                     'done': False,
-                    'humanRole': 'parent'
+                    'humanRole': 'parent',
+                    'history':self.history
                 }
                 # visibility should be handel by the environment, not here
                 if abs(int(prey_loc[0, 1]) - int(predator_loc[0, 1])) > 1 or abs(
@@ -458,18 +506,13 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                         'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
                         'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
                     },
-                    'comm': {
-                        'token1': {'x': 4, 'y': 4, 'index': 1},
-                        'token2': {'x': 1, 'y': 2, 'index': 2},
-                        'token3': {'x': 4, 'y': 0, 'index': 3},
-                        'token4': {'x': 0, 'y': 4, 'index': 4},
-                        'token5': {'x': 0, 'y': 0, 'index': 5}
-                    },
+                    'comm': token_dict,
                     'selectedToken': None,
                     'step': self.step,
                     'best': self.best,
                     'done': False,
-                    'humanRole': 'child'
+                    'humanRole': 'child',
+                    'history': self.history
                 }
 
             gameStateJson = json.dumps(gameState)
@@ -523,7 +566,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             misc = dict()
             if t == 0 and self.args.hard_attn and self.args.commnet:
                 self.info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
-            
+
             # Hardcoded to record communication for agent 1 (prey)
             # UNCOMMENT FOR RETRIEVING PROTOS FROM filter_comms variable
             self.info['record_comms'] = 0
@@ -543,8 +586,8 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             else:
                 x = self.state
                 action_out, value, filtered_comms = self.policy_net(x, self.info)
-            
-            #print(action_out)
+
+            # print(action_out)
             print('filtered_comms', filtered_comms)
 
             action = select_action(self.args, action_out)
@@ -554,40 +597,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             next_state, reward, done, info = self.env.step(actual)
             # print(next_state)
             # print(self.env.get_pp_loc_wrapper())
-            predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
-            print(predator_loc, prey_loc)
-            gameState = {
-                'players': {
-                    'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
-                    'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
-                },
-                'comm': {
-                    'token1': {'x': 4, 'y': 4, 'index': 1},
-                    'token2': {'x': 1, 'y': 2, 'index': 2},
-                    'token3': {'x': 4, 'y': 0, 'index': 3},
-                    'token4': {'x': 0, 'y': 4, 'index': 4},
-                    'token5': {'x': 0, 'y': 0, 'index': 5}
-                },
-                'selectedToken': self.randomToken,
-                'step': self.step,
-                'best': self.best,
-                'done': self.done,
-                'currentTrial': self.currentTrial,
-                'humanRole': 'parent'
-            }
-            # visibility should be handel by the environment, not here
-            if abs(int(prey_loc[0, 1]) - int(predator_loc[0, 1])) > 1 or abs(
-                int(prey_loc[0, 0]) - int(predator_loc[0, 0])) > 1:
-                gameState['players'] = {
-                    'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])}
-                }
-            if self.done:
-                self.currentTrial += 1
-                if self.step < self.best:
-                    self.best = self.step
-            gameStateJson = json.dumps(gameState)
 
-            self.write_message(gameStateJson)
 
             # store comm_action in info for next step
             if self.args.hard_attn and self.args.commnet:
@@ -633,9 +643,42 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             self.t = t + 1
             self.info = info
             self.done = done
-            print(info)
-            # print(t)
-            # print(self.t)
+            predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
+            print(predator_loc, prey_loc)
+            self.history.append({'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])})
+            selectedToken = None
+            for i in token_dict.keys():
+                if torch.allclose(torch.tensor(token_dict[i]['raw']), filtered_comms,atol=1e-04):
+                    selectedToken = i
+            print(selectedToken)
+            gameState = {
+                'players': {
+                    'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
+                    'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
+                },
+                'comm': token_dict,
+                'selectedToken': selectedToken,
+                'step': self.step,
+                'best': self.best,
+                'done': self.done,
+                'currentTrial': self.currentTrial,
+                'humanRole': 'parent',
+                'history': self.history
+            }
+
+            # visibility should be handel by the environment, not here
+            if abs(int(prey_loc[0, 1]) - int(predator_loc[0, 1])) > 1 or abs(
+                int(prey_loc[0, 0]) - int(predator_loc[0, 0])) > 1:
+                gameState['players'] = {
+                    'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])}
+                }
+            if self.done:
+                self.currentTrial += 1
+                if self.step < self.best:
+                    self.best = self.step
+            gameStateJson = json.dumps(gameState)
+
+            self.write_message(gameStateJson)
         if message_json["type"] == "comm":
 
             # Pull out human role and check if function is correctly triggered
@@ -643,7 +686,6 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
             if not humanRole == 'child':
                 return
-            
             while not self.done:
                 self.step += 1
                 time.sleep(0.5)
@@ -655,13 +697,15 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
                 # Hardcoded to record communication for agent 1 (prey)
                 # UNCOMMENT FOR PROTOS
-                #self.info['record_comms'] = 0
-                #either 0 or 1 depending on which agent to inject comm vector for
+                # self.info['record_comms'] = 0
+                # either 0 or 1 depending on which agent to inject comm vector for
                 self.info['agent_id_replace'] = 0
-                self.info['child_comm'] = message_json['message']
-                #TEST COMM VEC COMMENT THE test_vec OUT WHEN USING ACTUAL MESSAGE
-                test_vec = [0.6093685361352408, 0.48378074925892295, 0.9301173165918591, 0.10678958236225718, 0.23254922156143712, 0.1226728540104421, 0.8425635664122217, 0.68843780288164, 0.10518988427018998]
-                self.info['child_comm'] = torch.Tensor(test_vec)
+                self.info['child_comm'] = torch.Tensor(token_dict[message_json['message']]['raw'])
+                # TEST COMM VEC COMMENT THE test_vec OUT WHEN USING ACTUAL MESSAGE
+                # test_vec = [0.6093685361352408, 0.48378074925892295, 0.9301173165918591, 0.10678958236225718,
+                #             0.23254922156143712, 0.1226728540104421, 0.8425635664122217, 0.68843780288164,
+                #             0.10518988427018998]
+                # self.info['child_comm'] = torch.Tensor(test_vec)
                 self.info['replace_comm'] = True
 
                 # recurrence over time
@@ -689,31 +733,27 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 # print(next_state)
                 # print(self.env.get_pp_loc_wrapper())
                 predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
-                print(self.prev_hid)
-                print(predator_loc, prey_loc)
+                self.history.append({'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])})
+                # print(self.prev_hid)
+                print(reward)
+                if done:
+                    self.currentTrial += 1
+                    if self.step < self.best:
+                        self.best = self.step
                 gameState = {
                     'players': {
                         'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
                         'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
                     },
-                    'comm': {
-                        'token1': {'x': 4, 'y': 4, 'index': 1},
-                        'token2': {'x': 1, 'y': 2, 'index': 2},
-                        'token3': {'x': 4, 'y': 0, 'index': 3},
-                        'token4': {'x': 0, 'y': 4, 'index': 4},
-                        'token5': {'x': 0, 'y': 0, 'index': 5}
-                    },
+                    'comm': token_dict,
                     'selectedToken': message_json['message'],
                     'step': self.step,
                     'best': self.best,
                     'done': self.done,
                     'currentTrial': self.currentTrial,
-                    'humanRole': 'child'
+                    'humanRole': 'child',
+                    'history': self.history
                 }
-                if self.done:
-                    self.currentTrial += 1
-                    if self.step < self.best:
-                        self.best = self.step
                 gameStateJson = json.dumps(gameState)
 
                 self.write_message(gameStateJson)
@@ -764,36 +804,31 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.t = t + 1
                 self.info = info
                 self.done = done
-                print(info)
                 # print(t)
                 # print(self.t)
-            # predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
-            # print(predator_loc, prey_loc)
-            # gameState = {
-            #     'players': {
-            #         'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
-            #         'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
-            #     },
-            #     'comm': {
-            #         'token1': {'x': 4, 'y': 4, 'index': 1},
-            #         'token2': {'x': 1, 'y': 2, 'index': 2},
-            #         'token3': {'x': 4, 'y': 0, 'index': 3},
-            #         'token4': {'x': 0, 'y': 4, 'index': 4},
-            #         'token5': {'x': 0, 'y': 0, 'index': 5}
-            #     },
-            #     'selectedToken': message_json['message'],
-            #     'step': self.step,
-            #     'best': self.best,
-            #     'done': self.done,
-            #     'currentTrial': self.currentTrial,
-            #     'humanRole': 'child'
-            # }
-            # if self.done:
-            #     self.currentTrial += 1
-            #     if self.step < self.best:
-            #         self.best = self.step
-            # gameStateJson = json.dumps(gameState)
-            # self.write_message(gameStateJson)
+            predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
+            print(predator_loc, prey_loc)
+            self.history.append({'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])})
+            gameState = {
+                'players': {
+                    'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
+                    'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
+                },
+                'comm': token_dict,
+                'selectedToken': message_json['message'],
+                'step': self.step,
+                'best': self.best,
+                'done': self.done,
+                'currentTrial': self.currentTrial,
+                'humanRole': 'child',
+                'history': self.history
+            }
+            if self.done:
+                self.currentTrial += 1
+                if self.step < self.best:
+                    self.best = self.step
+            gameStateJson = json.dumps(gameState)
+            self.write_message(gameStateJson)
 
     def on_game_state(self, gameState):
         """
