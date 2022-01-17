@@ -24,7 +24,7 @@ def get_args():
                          help='discount factor')
      parser.add_argument('--tau', type=float, default=1.0,
                          help='gae (remove?)')
-     parser.add_argument('--seed', type=int, default=2,
+     parser.add_argument('--seed', type=int, default=-1,
                          help='random seed. Pass -1 for random seed')  # TODO: works in thread?
      parser.add_argument('--normalize_rewards', action='store_true', default=False,
                          help='normalize rewards in each batch')
@@ -104,7 +104,7 @@ def get_args():
                          help='Whether to use discrete_comm')
      parser.add_argument('--num_proto', type=int, default=81,
                          help="Number of prototypes to use")
-     parser.add_argument('--add_comm_noise', default=False, action='store_true',
+     parser.add_argument('--add_comm_noise', default=True, action='store_true',
                         help='Whether to add noise to communication')
 
      parser.add_argument('--comm_dim', type=int, default=9,
@@ -115,7 +115,7 @@ def get_args():
                          help='discount factor')
      parser.add_argument('--restore', action='store_true', default=False,
                          help='plot training progress')
-     
+
      #PP
      parser.add_argument('--nenemies', type=int, default=1,
                     help="Total number of preys in play")
@@ -131,7 +131,7 @@ def get_args():
                     help='cooperative|competitive|mixed (default: mixed)')
      parser.add_argument('--enemy_comm', action="store_true", default=True,
                     help="Whether prey can communicate.")
-     
+
      #additional parser args from main.py
      # communication maximum budget
      parser.add_argument('--budget', type=float, default=1.0,
