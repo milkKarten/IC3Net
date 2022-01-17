@@ -55,15 +55,13 @@ OpenWindow=window.open("", "newwin", "height=640, width=400,toolbar=no,scrollbar
 OpenWindow.document.write("<TITLE>Full Instruction</TITLE>")
 OpenWindow.document.write("<BODY BGCOLOR=#ffffff>")
 OpenWindow.document.write("<h1>Game Rule</h1>")
-OpenWindow.document.write("Coop-Space Fortress is a 2-D cooperative game where two players control spaceships to destroy a fortress. The fortress is located in the center of the screen and the other two ships around it are controlled by players. The first ship entering the hexagon area will be locked and shot by fortress. The Fortress becomes vulnerable when it is firing. Players die whenever they hit any obstacles (e.g. boundaries, missiles, the fortress). You will gain 100 scores every time your team successes in destroying the fortress, lose 100 scores every time one of the player dies, and lose 20 scores every time your team miss hit the shield. The game resets every time after either fortress or both players are killed.")
-OpenWindow.document.write("<h1>Role Assignment</h1>")
-OpenWindow.document.write("A common strategy of this game is assigning two players roles of either bait or shooter. The bait  tries to attract the fortress' attention by entering the inner hexagon where it is vulnerable to the fortress. When the fortress attempts to shoot at the bait, it's shield lifts making it vulnerable. The other player in the role of shooter can now shoot at the fortress and destroy it. The team performance is measured by the number of fortress players kill.")
+OpenWindow.document.write("In this 'Parent-Child' scenario, you will play the role of either a parent or a child and complete the task with an AI partner in the complementary role. In this cooperative task, the parent with a limited vision need to find a stationary child. The goal of the child is to effectively communicate its location so that the parent can travel to the lost child.")
 OpenWindow.document.write("<h1>Procedure</h1>")
-OpenWindow.document.write("You will be assigned a role of either Bait or Shooter, which will remain the same during the whole experiment session. You will play the game teaming up with different AI partners in the complementary role. Your task is to collaborate with your partner to kill the fortress as much as you can in each 1-min trial. The strategy of your partner may vary across trials so you need to adapt to it for a better team performance.")
-OpenWindow.document.write("<h1>Training Process</h1>")
-OpenWindow.document.write("Here is a single-player training session for you to get familiar with this game and the responsibility of your designated role. Once you reach the minimum performance requirement, you can pass the training and process the experiment.")
+OpenWindow.document.write("You will need to complete 20 trials as a parent and 20 trials as a child. A trial begins with the parent and child spawned at random locations, and ends when the parent reaches to the child. ")
+OpenWindow.document.write("<h1>Communication Task</h1>")
+OpenWindow.document.write("The child is allowed to send only one communication for each trial. Each communication token refers to a specific location in the task environment. Your task is to learn the semantic meanings of those tokens based the interaction with your AI partner.")
 OpenWindow.document.write("<h1>Control</h1>")
-OpenWindow.document.write("D or right arrow - clockwise rotation , A or left arrow - counterclockwise rotation, J of F - shoot, W or up arrow - thrust.")
+OpenWindow.document.write("Parent control: D or right arrow - go right, A or left arrow - go left, W or up arrow - go up, S or down arrow - go down. Child control: select communication contents using buttons on the right side")
 OpenWindow.document.write("</BODY>")
 OpenWindow.document.write("</HTML>")
 OpenWindow.document.close()
@@ -84,7 +82,8 @@ ws.onmessage = function(e)
     var jsonObject = JSON.parse(e.data);
     if (jsonObject.humanRole=='parent'){hideButtons()}
     else{displayButtons()}
-    draw(jsonObject);
+    if (jsonObject.currentTrial>10){survey()}
+    else{draw(jsonObject)}
 };
 
 //state = {
@@ -106,6 +105,269 @@ ws.onmessage = function(e)
 //}
 //
 //draw(state)
+
+function survey(){
+    console.log('enter survey')
+    document.getElementById('survey').style.visibility = 'visible';
+    hideButtons();
+
+    var Token = function(x, y, index) {
+
+      this.x = x;
+      this.y = y;
+      this.index = index;
+      this.width = 24;
+      this.height = 24;
+      this.isDragging = false;
+
+      this.render = function(ctx) {
+
+
+        ctx.save();
+
+        ctx.beginPath();
+        ctx.rect(this.x - this.width * 0.5, this.y - this.height * 0.5, this.width, this.height);
+        ctx.fillStyle = 'gray';
+        ctx.fill();
+        ctx.font = '24px serif';
+        ctx.strokeStyle = "black";
+        ctx.strokeText(this.index.toString(),this.x- this.width * 0.25,this.y + this.height * 0.5);
+
+        ctx.restore();
+
+
+      }
+    }
+
+
+    var MouseTouchTracker = function(canvas, callback){
+
+      function processEvent(evt) {
+        var rect = canvas.getBoundingClientRect();
+        var offsetTop = rect.top;
+        var offsetLeft = rect.left;
+
+        if (evt.touches) {
+          return {
+            x: evt.touches[0].clientX - offsetLeft,
+            y: evt.touches[0].clientY - offsetTop
+          }
+        } else {
+          return {
+            x: evt.clientX - offsetLeft,
+            y: evt.clientY - offsetTop
+          }
+        }
+      }
+
+      function onDown(evt) {
+        evt.preventDefault();
+        var coords = processEvent(evt);
+        callback('down', coords.x, coords.y);
+      }
+
+      function onUp(evt) {
+        evt.preventDefault();
+        callback('up');
+      }
+
+      function onMove(evt) {
+        evt.preventDefault();
+        var coords = processEvent(evt);
+        callback('move', coords.x, coords.y);
+      }
+
+      canvas.ontouchmove = onMove;
+      canvas.onmousemove = onMove;
+
+      canvas.ontouchstart = onDown;
+      canvas.onmousedown = onDown;
+      canvas.ontouchend = onUp;
+      canvas.onmouseup = onUp;
+    }
+
+    function isHit(shape, x, y) {
+
+        if (x > shape.x - shape.width * 0.5 && y > shape.y - shape.height * 0.5 && x < shape.x + shape.width - shape.width * 0.5 && y < shape.y + shape.height - shape.height * 0.5) {
+            return true;
+        }
+
+        return false;
+    }
+
+    var canvas = document.getElementById('canvas');
+    var ctx = canvas.getContext('2d');
+    var startX = 0;
+    var startY = 0;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBoard(ctx);
+    document.getElementById('sessionReminder').innerHTML = 'Please drag tokens to corresponding locations you think they refer to, and fill the following survey.'
+    var token1 = new Token(25, 25, 1);
+    var token2 = new Token(50, 50, 2);
+    var token3 = new Token(100, 100, 3);
+    var token4 = new Token(150, 150, 4);
+    var token5 = new Token(200, 200, 5);
+    var token6 = new Token(250, 250, 6);
+    var token7 = new Token(300, 300, 7);
+    var token8 = new Token(350, 350, 8);
+    var token9 = new Token(400, 400, 9);
+    var token10 = new Token(450, 450, 10);
+
+
+    token1.render(ctx);
+    token2.render(ctx);
+    token3.render(ctx);
+    token4.render(ctx);
+    token5.render(ctx);
+    token6.render(ctx);
+    token7.render(ctx);
+    token8.render(ctx);
+    token9.render(ctx);
+    token10.render(ctx);
+
+    var mtt = new MouseTouchTracker(canvas,
+      function(evtType, x, y) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        switch(evtType) {
+
+          case 'down':
+            startX = x;
+            startY = y;
+
+            if (isHit(token1, x, y)) {
+              token1.isDragging = true;
+            }
+            if (isHit(token2, x, y)) {
+              token2.isDragging = true;
+            }
+            if (isHit(token3, x, y)) {
+              token3.isDragging = true;
+            }
+            if (isHit(token4, x, y)) {
+              token4.isDragging = true;
+            }
+            if (isHit(token5, x, y)) {
+              token5.isDragging = true;
+            }
+            if (isHit(token6, x, y)) {
+              token6.isDragging = true;
+            }
+            if (isHit(token7, x, y)) {
+              token7.isDragging = true;
+            }
+            if (isHit(token8, x, y)) {
+              token8.isDragging = true;
+            }
+            if (isHit(token9, x, y)) {
+              token9.isDragging = true;
+            }
+            if (isHit(token10, x, y)) {
+              token10.isDragging = true;
+            }
+
+
+            break;
+
+          case 'up':
+
+            token1.isDragging = false;
+            token2.isDragging = false;
+            token3.isDragging = false;
+            token4.isDragging = false;
+            token5.isDragging = false;
+            token6.isDragging = false;
+            token7.isDragging = false;
+            token8.isDragging = false;
+            token9.isDragging = false;
+            token10.isDragging = false;
+
+
+            break;
+
+          case 'move':
+            var dx = x - startX;
+            var dy = y - startY;
+            startX = x;
+            startY = y;
+
+            if (token1.isDragging) {
+              token1.x += dx;
+              token1.y += dy;
+            }
+            if (token2.isDragging) {
+              token2.x += dx;
+              token2.y += dy;
+            }
+            if (token3.isDragging) {
+              token3.x += dx;
+              token3.y += dy;
+            }
+            if (token4.isDragging) {
+              token4.x += dx;
+              token4.y += dy;
+            }
+            if (token5.isDragging) {
+              token5.x += dx;
+              token5.y += dy;
+            }
+            if (token6.isDragging) {
+              token6.x += dx;
+              token6.y += dy;
+            }
+            if (token7.isDragging) {
+              token7.x += dx;
+              token7.y += dy;
+            }
+            if (token8.isDragging) {
+              token8.x += dx;
+              token8.y += dy;
+            }
+            if (token9.isDragging) {
+              token9.x += dx;
+              token9.y += dy;
+            }
+            if (token10.isDragging) {
+              token10.x += dx;
+              token10.y += dy;
+            }
+
+
+            break;
+        }
+        drawBoard(ctx);
+        token1.render(ctx);
+        token2.render(ctx);
+        token3.render(ctx);
+        token4.render(ctx);
+        token5.render(ctx);
+        token6.render(ctx);
+        token7.render(ctx);
+        token8.render(ctx);
+        token9.render(ctx);
+        token10.render(ctx);
+
+
+
+      }
+    );
+
+}
+
+function attachTokenResults(){
+    var tokenLocation = {
+        1: {x:token1.x, y:token1.y},
+        2: {x:token2.x, y:token2.y},
+        3: {x:token3.x, y:token3.y},
+        4: {x:token4.x, y:token4.y},
+        5: {x:token5.x, y:token5.y},
+        6: {x:token6.x, y:token6.y},
+        7: {x:token7.x, y:token7.y},
+        8: {x:token8.x, y:token8.y},
+        9: {x:token9.x, y:token9.y},
+        10: {x:token10.x, y:token10.y},
+    }
+    document.getElementById("tokenLocation").value = tokenLocation;
+}
 
 function hideButtons(){
     document.getElementById('token1').style.visibility = 'hidden';
@@ -148,7 +410,12 @@ function draw(frame_info){
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-
+    if (frame_info.humanRole == 'child'){
+        document.getElementById('sessionReminder').innerHTML = 'You are the child, please select a token to communicate your location to the parent.'
+    }
+    if (frame_info.humanRole == 'parent'){
+        document.getElementById('sessionReminder').innerHTML = 'You are the parent, please search for the child based on the communication your received.'
+    }
     document.getElementById('best').innerHTML = frame_info.best.toString();
     document.getElementById('step').innerHTML = frame_info.step.toString();
     if (frame_info.hasOwnProperty('currentTrial')) {
@@ -169,11 +436,11 @@ function draw(frame_info){
         for (var key in frame_info.players) {
             if (frame_info.players.hasOwnProperty(key)) {
                 if(key == 'child'){
-                    drawChild(ctx,frame_info.players[key].x,frame_info.players[key].y);
+                    drawChild(ctx,frame_info.players[key].x,frame_info.players[key].y,frame_info.humanRole);
                 }
                 else if(key == 'parent'){
 
-                    drawParent(ctx,frame_info.players[key].x,frame_info.players[key].y);
+                    drawParent(ctx,frame_info.players[key].x,frame_info.players[key].y,frame_info.humanRole);
                 }
             }
         }
@@ -204,30 +471,39 @@ function drawToken(ctx,x,y,text,selected){
 }
 
 
-function drawParent(ctx,x,y){
+function drawParent(ctx,x,y,humanRole){
     const image = document.getElementById('parent');
     ctx.drawImage(image, 38, 68, 27, 27, x*50+40, y*50+40, 50, 50);
+    if(humanRole=='parent'){ctx.strokeStyle = "red";}
+    else{ctx.strokeStyle = "black";}
+    ctx.font = '16px serif';
+    ctx.strokeText('Parent',x*50+40,y*50+40);
 }
 
-function drawChild(ctx,x,y){
+function drawChild(ctx,x,y,humanRole){
     const image = document.getElementById('child');
     ctx.drawImage(image, 38, 66, 27, 27, x*50+40, y*50+40, 50, 50);
+    if(humanRole=='child'){ctx.strokeStyle = "red";}
+    else{ctx.strokeStyle = "black";}
+    ctx.font = '16px serif';
+    ctx.strokeText('Child',x*50+40,y*50+40);
+
 }
 
 function drawResult(ctx,x,y,frame_info){
     if (frame_info.humanRole == 'child'){
-        if (frame_info.step<20){
+        if (frame_info.complete){
             console.log('child, succ')
-            const image = document.getElementById('heart');
-            ctx.strokeStyle = "red";
-            ctx.drawImage(image, x*50+50, y*50+50, 30, 30);
+
             var minimum = Math.abs(frame_info.history[0].x-x)+Math.abs(frame_info.history[0].y-y);
             console.log(minimum);
             for (let i = 0; i<frame_info.history.length; i ++){
                 console.log(frame_info.history[i]);
                 drawParent(ctx,frame_info.history[i].x,frame_info.history[i].y);
             }
-
+            const image = document.getElementById('heart');
+            ctx.strokeStyle = "red";
+            ctx.drawImage(image, x*50+50, y*50+50, 30, 30);
             ctx.font = '20px serif';
             ctx.strokeText('Actual steps taken: '+ frame_info.step.toString(),120,20);
             ctx.strokeText('Minimum steps possible: ' + minimum.toString(),120,40);
@@ -250,8 +526,12 @@ function drawResult(ctx,x,y,frame_info){
         }
     }
     if (frame_info.humanRole == 'parent'){
-        if (frame_info.step<20){
+        if (frame_info.complete){
             console.log('parent, succ')
+            for (let i = 0; i<frame_info.history.length; i ++){
+                console.log(frame_info.history[i]);
+                drawParent(ctx,frame_info.history[i].x,frame_info.history[i].y);
+            }
             const image = document.getElementById('heart');
             ctx.drawImage(image, x*50+50, y*50+50, 30, 30);
             ctx.strokeStyle = "red";
@@ -261,8 +541,12 @@ function drawResult(ctx,x,y,frame_info){
         }
         else{
             console.log('parent, fail')
-            const image = document.getElementById('failure');
-            ctx.drawImage(image, x*50+50, y*50+50, 30, 30);
+            const image = document.getElementById('child');
+            ctx.drawImage(image, 38, 66, 27, 27, x*50+40, y*50+40, 50, 50);
+            for (let i = 0; i<frame_info.history.length; i ++){
+                console.log(frame_info.history[i]);
+                drawParent(ctx,frame_info.history[i].x,frame_info.history[i].y);
+            }
             ctx.strokeStyle = "black";
             text = 'Task failed with token'+ frame_info.selectedToken.toString()
             ctx.font = '20px serif';
