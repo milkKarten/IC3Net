@@ -82,7 +82,7 @@ ws.onmessage = function(e)
     var jsonObject = JSON.parse(e.data);
     if (jsonObject.humanRole=='parent'){hideButtons()}
     else{displayButtons()}
-    if (jsonObject.currentTrial>10){survey()}
+    if (jsonObject.currentTrial>40){survey()}
     else{draw(jsonObject)}
 };
 
@@ -397,6 +397,7 @@ function displayButtons(){
 
 function info_send(name){
   var message = new Object();
+  document.getElementById("startGame").style.visibility = 'hidden';
   message.type = "information";
   message.message = "start";
   message.name = name;
@@ -411,10 +412,10 @@ function draw(frame_info){
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (frame_info.humanRole == 'child'){
-        document.getElementById('sessionReminder').innerHTML = 'You are the child, please select a token to communicate your location to the parent.'
+        document.getElementById('sessionReminder').innerHTML = 'You are the child, select a token to communicate your location to the parent.'
     }
     if (frame_info.humanRole == 'parent'){
-        document.getElementById('sessionReminder').innerHTML = 'You are the parent, please search for the child based on the communication your received.'
+        document.getElementById('sessionReminder').innerHTML = 'You are the parent, use WASD to move and search for the child based on the communication your received.'
     }
     document.getElementById('best').innerHTML = frame_info.best.toString();
     document.getElementById('step').innerHTML = frame_info.step.toString();
@@ -422,14 +423,14 @@ function draw(frame_info){
         document.getElementById('trial').innerHTML = frame_info.currentTrial.toString();
     }
     //draw board
-    drawBoard(ctx)
+    drawBoard(ctx);
     //draw parent's vision
 
     //draw player
     if (frame_info.done){
         console.log('new_trial');
         drawResult(ctx,frame_info.players['child'].x,frame_info.players['child'].y,frame_info);
-        setTimeout(() => {info_send()}, 3000);
+        info_send();
     }
     else{
         drawVision(ctx,frame_info.players['parent'].x,frame_info.players['parent'].y);
@@ -505,8 +506,8 @@ function drawResult(ctx,x,y,frame_info){
             ctx.strokeStyle = "red";
             ctx.drawImage(image, x*50+50, y*50+50, 30, 30);
             ctx.font = '20px serif';
-            ctx.strokeText('Actual steps taken: '+ frame_info.step.toString(),120,20);
-            ctx.strokeText('Minimum steps possible: ' + minimum.toString(),120,40);
+            ctx.strokeText('Actual steps taken: '+ frame_info.step.toString(),0,20);
+            ctx.strokeText('Minimum steps possible: ' + minimum.toString(),250,20);
         }
         else{
             console.log('child, fail')
@@ -521,8 +522,8 @@ function drawResult(ctx,x,y,frame_info){
             }
 
             ctx.font = '20px serif';
-            ctx.strokeText('Actual steps taken: '+ frame_info.step.toString(),120,20);
-            ctx.strokeText('Minimum steps possible: ' + minimum.toString(),120,40);
+            ctx.strokeText('Actual steps taken: '+ frame_info.step.toString(),0,20);
+            ctx.strokeText('Minimum steps possible: ' + minimum.toString(),250,20);
         }
     }
     if (frame_info.humanRole == 'parent'){
@@ -606,6 +607,7 @@ function commSend(token){
   message.type = "comm";
   message.message = token;
   message.humanRole = 'child';
+  hideButtons();
 //  state = state_update(state,message);
 //  draw(state);
   ws.send(JSON.stringify(message));
