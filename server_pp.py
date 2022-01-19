@@ -281,12 +281,12 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
         # self.game.addListener(self.proxy_listener)
 
         print('Game start')
-        self.numTrial = 10
+        self.numTrial = 40
         self.best = 20
         self.currentTrial = 1
         sessionList = ['parent', 'child']
 
-        i = 0
+        i = np.random.randint(2)
         self.firstSession = sessionList[i]
         self.secondSession = sessionList[i - 1]
 
@@ -301,7 +301,8 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
         """
 
         # Perform a Game Over in order to close out, e.g., logger
-        self.on_game_over()
+        if hasattr(self, 'gameState'):
+            self.on_game_over()
 
         # Kill the agent thread
         #        self.agent.stop()
@@ -372,7 +373,8 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             self.game.start()
             self.gameHandlerCallback.start()
             '''
-
+            if self.currentTrial>1:
+                time.sleep(3)
             torch.utils.backcompat.broadcast_warning.enabled = True
             torch.utils.backcompat.keepdim_warning.enabled = True
             torch.set_default_tensor_type('torch.DoubleTensor')
@@ -485,109 +487,22 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             self.step = 0
             self.history = []
             self.moveRT = []
+            self.selectedToken = None
 
             if self.currentSession == 'parent':
-
-
-                should_display = False
-                t = self.t
-                misc = dict()
-                if t == 0 and self.args.hard_attn and self.args.commnet:
-                    self.info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
-
-                # Hardcoded to record communication for agent 1 (prey)
-                # UNCOMMENT FOR RETRIEVING PROTOS FROM filter_comms variable
-                self.info['record_comms'] = 0
-                # recurrence over time
-                if self.args.recurrent:
-                    if self.args.rnn_type == 'LSTM' and t == 0:
-                        self.prev_hid = self.policy_net.init_hidden(batch_size=self.state.shape[0])
-
-                    x = [self.state, self.prev_hid]
-                    action_out, value, self.prev_hid, filtered_comms = self.policy_net(x, self.info)
-
-                    if (t + 1) % self.args.detach_gap == 0:
-                        if self.args.rnn_type == 'LSTM':
-                            self.prev_hid = (self.prev_hid[0].detach(), self.prev_hid[1].detach())
-                        else:
-                            self.prev_hid = self.prev_hid.detach()
-                else:
-                    x = self.state
-                    action_out, value, filtered_comms = self.policy_net(x, self.info)
-
-                # print(action_out)
-                print('filtered_comms', filtered_comms)
-                for i in token_dict.keys():
-                    if torch.allclose(torch.tensor(token_dict[i]['raw']), filtered_comms, atol=1e-04):
-                        self.selectedToken = i
-                print(self.selectedToken)
-
-                action = select_action(self.args, action_out)
-                # print(action)
-                action, actual = translate_action(self.args, self.env, action)
-                # actual[0] = self.humanAction
-                next_state, reward, done, info = self.env.step(actual)
-                # print(next_state)
-                # print(self.env.get_pp_loc_wrapper())
-
-                # store comm_action in info for next step
-                if self.args.hard_attn and self.args.commnet:
-                    info['comm_action'] = action[-1] if not self.args.comm_action_one else np.ones(self.args.nagents,
-                                                                                                   dtype=int)
-
-                    # print("before ", stat.get('comm_action', 0), info['comm_action'][:self.args.nfriendly])
-                    self.stat['comm_action'] = self.stat.get('comm_action', 0) + info['comm_action'][
-                                                                                 :self.args.nfriendly]
-                    self.all_comms.append(info['comm_action'][:self.args.nfriendly])
-                    if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
-                        self.stat['enemy_comm'] = self.stat.get('enemy_comm', 0) + info['comm_action'][
-                                                                                   self.args.nfriendly:]
-
-                if 'alive_mask' in info:
-                    misc['alive_mask'] = info['alive_mask'].reshape(reward.shape)
-                else:
-                    misc['alive_mask'] = np.ones_like(reward)
-
-                # env should handle this make sure that reward for dead agents is not counted
-                # reward = reward * misc['alive_mask']
-
-                self.stat['reward'] = self.stat.get('reward', 0) + reward[:self.args.nfriendly]
-                if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
-                    self.stat['enemy_reward'] = self.stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
-
-                done = done or t >= self.args.max_steps - 1 or bool(self.env.get_reached_prey_wrapper())
-
-                episode_mask = np.ones(reward.shape)
-                episode_mini_mask = np.ones(reward.shape)
-
-                if done:
-                    episode_mask = np.zeros(reward.shape)
-                else:
-                    if 'is_completed' in info:
-                        episode_mini_mask = 1 - info['is_completed'].reshape(-1)
-
-                if should_display:
-                    self.env.display()
-
-                trans = Transition(self.state, action, action_out, value, episode_mask, episode_mini_mask, next_state,
-                                   reward, misc)
-                self.episode.append(trans)
-                self.state = next_state
-                self.t = t + 1
-                self.info = info
-                self.done = done
-
-                self.selectedToken = None
-                while self.selectedToken == None:
+                self.done = True
+                while self.selectedToken == None or self.done:
+                    if 'epoch' in reset_args:
+                        self.state = self.env.reset(epoch)
+                    else:
+                        self.state = self.env.reset()
                     should_display = False
                     t = self.t
                     misc = dict()
                     if t == 0 and self.args.hard_attn and self.args.commnet:
                         self.info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
 
-                    # Hardcoded to record communication for agent 1 (prey)
-                    # UNCOMMENT FOR RETRIEVING PROTOS FROM filter_comms variable
-                    self.info['record_comms'] = 0
+                    self.info['record_comms'] = 1
                     # recurrence over time
                     if self.args.recurrent:
                         if self.args.rnn_type == 'LSTM' and t == 0:
@@ -605,10 +520,72 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                         x = self.state
                         action_out, value, filtered_comms = self.policy_net(x, self.info)
 
+                    # print(action_out)
+                    print('filtered_comms', filtered_comms)
                     for i in token_dict.keys():
                         if torch.allclose(torch.tensor(token_dict[i]['raw']), filtered_comms, atol=1e-04):
-                            self.selectedToken = i
+                            if i != 10:
+                                self.selectedToken = i
+
                     print(self.selectedToken)
+
+                    action = select_action(self.args, action_out)
+                    # print(action)
+                    action, actual = translate_action(self.args, self.env, action)
+                    # actual[0] = self.humanAction
+                    next_state, reward, done, info = self.env.step(actual)
+                    # print(next_state)
+                    # print(self.env.get_pp_loc_wrapper())
+
+                    # store comm_action in info for next step
+                    if self.args.hard_attn and self.args.commnet:
+                        info['comm_action'] = action[-1] if not self.args.comm_action_one else np.ones(self.args.nagents,
+                                                                                                       dtype=int)
+
+                        # print("before ", stat.get('comm_action', 0), info['comm_action'][:self.args.nfriendly])
+                        self.stat['comm_action'] = self.stat.get('comm_action', 0) + info['comm_action'][
+                                                                                     :self.args.nfriendly]
+                        self.all_comms.append(info['comm_action'][:self.args.nfriendly])
+                        if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
+                            self.stat['enemy_comm'] = self.stat.get('enemy_comm', 0) + info['comm_action'][
+                                                                                       self.args.nfriendly:]
+
+                    if 'alive_mask' in info:
+                        misc['alive_mask'] = info['alive_mask'].reshape(reward.shape)
+                    else:
+                        misc['alive_mask'] = np.ones_like(reward)
+
+                    # env should handle this make sure that reward for dead agents is not counted
+                    # reward = reward * misc['alive_mask']
+
+                    self.stat['reward'] = self.stat.get('reward', 0) + reward[:self.args.nfriendly]
+                    if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
+                        self.stat['enemy_reward'] = self.stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
+
+                    done = done or t >= self.args.max_steps - 1 or bool(self.env.get_reached_prey_wrapper())
+
+                    episode_mask = np.ones(reward.shape)
+                    episode_mini_mask = np.ones(reward.shape)
+
+                    if done:
+                        episode_mask = np.zeros(reward.shape)
+                    else:
+                        if 'is_completed' in info:
+                            episode_mini_mask = 1 - info['is_completed'].reshape(-1)
+
+                    if should_display:
+                        self.env.display()
+
+                    trans = Transition(self.state, action, action_out, value, episode_mask, episode_mini_mask, next_state,
+                                       reward, misc)
+                    self.episode.append(trans)
+                    self.state = next_state
+                    self.t = t + 1
+                    self.info = info
+                    self.done = done
+
+
+
 
                 predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
                 self.history.append({'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])})
@@ -642,7 +619,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                         'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
                     },
                     'comm': token_dict,
-                    'selectedToken': None,
+                    'selectedToken': self.selectedToken,
                     'step': self.step,
                     'best': self.best,
                     'done': False,
@@ -665,7 +642,8 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             humanRole = message_json["humanRole"]
 
 
-            if not humanRole == 'parent':
+            if not self.currentSession == 'parent':
+                print('reject invalid action')
                 return
 
             if command["command"] == "up":
@@ -687,6 +665,10 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.lastMove = time.time()
             self.info['replace_comm'] = False
             self.step += 1
+
+
+
+
 
 
             next_state, reward, done, info = self.env.step([self.humanAction])
@@ -738,7 +720,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             # Pull out human role and check if function is correctly triggered
             humanRole = message_json["humanRole"]
 
-            if humanRole != 'child' or self.currentSession != 'child':
+            if self.currentSession != 'child':
                 return
             self.commTimer = time.time()
             self.commRT = self.commTimer - self.startTimer
@@ -755,7 +737,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 # UNCOMMENT FOR PROTOS
                 # self.info['record_comms'] = 0
                 # either 0 or 1 depending on which agent to inject comm vector for
-                self.info['agent_id_replace'] = 0
+                self.info['agent_id_replace'] = 1
                 self.info['child_comm'] = torch.Tensor(token_dict[message_json['message']]['raw'])
                 # TEST COMM VEC COMMENT THE test_vec OUT WHEN USING ACTUAL MESSAGE
                 # test_vec = [0.6093685361352408, 0.48378074925892295, 0.9301173165918591, 0.10678958236225718,
@@ -792,27 +774,6 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.history.append({'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])})
                 # print(self.prev_hid)
                 print(reward)
-                if done:
-                    self.currentTrial += 1
-                    if self.step < self.best:
-                        self.best = self.step
-                self.gameState = {
-                    'players': {
-                        'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
-                        'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
-                    },
-                    'comm': token_dict,
-                    'selectedToken': message_json['message'],
-                    'step': self.step,
-                    'best': self.best,
-                    'done': self.done,
-                    'currentTrial': self.currentTrial,
-                    'humanRole': 'child',
-                    'history': self.history
-                }
-                self.gameStateJson = json.dumps(self.gameState)
-
-                self.write_message(self.gameStateJson)
 
                 # store comm_action in info for next step
                 if self.args.hard_attn and self.args.commnet:
@@ -860,53 +821,34 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.t = t + 1
                 self.info = info
                 self.done = done
-                # print(t)
-                # print(self.t)
-            self.complete = bool(self.env.get_reached_prey_wrapper())
-            predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
-            print(predator_loc, prey_loc)
-            self.history.append({'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])})
-            self.gameState = {
-                'players': {
-                    'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
-                    'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
-                },
-                'comm': token_dict,
-                'selectedToken': message_json['message'],
-                'commRT':self.commRT,
-                'moveRT': None,
-                'step': self.step,
-                'best': self.best,
-                'done': self.done,
-                'complete':self.complete,
-                'currentTrial': self.currentTrial,
-                'humanRole': 'child',
-                'history': self.history
-            }
-            if self.done:
-                self.currentTrial += 1
-                if self.step < self.best:
-                    self.best = self.step
-            self.gameStateJson = json.dumps(self.gameState)
-            self.save_log()
-            self.write_message(self.gameStateJson)
+                self.complete = bool(self.env.get_reached_prey_wrapper())
 
-    # def on_game_state(self, self.gameState):
-    #     """
-    #     Callback from a proxy game listener
-    #     """
-    #
-    #     # HACK:  Add the time information to the json before converting to
-    #     # a string.  Should probably have this in the C++ code...
-    #
-    #     self.gameStateJson = json.loads(self.gameState.toJsonString())
-    #
-    #     self.gameStateJson["time"] = self.game.gameClock.getTime()
-    #     self.gameStateJson["tick"] = self.game.gameClock.getTick()
-    #
-    #     self.gameStateJson = json.dumps(self.gameStateJson)
-    #
-    #     self.write_message(self.gameStateJson)
+                if done:
+                    self.currentTrial += 1
+                    if self.step < self.best:
+                        self.best = self.step
+                self.gameState = {
+                    'players': {
+                        'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
+                        'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
+                    },
+                    'comm': token_dict,
+                    'selectedToken': message_json['message'],
+                    'commRT': self.commRT,
+                    'moveRT': None,
+                    'step': self.step,
+                    'best': self.best,
+                    'done': self.done,
+                    'complete':self.complete,
+                    'currentTrial': self.currentTrial,
+                    'humanRole': 'child',
+                    'history': self.history
+                }
+                self.gameStateJson = json.dumps(self.gameState)
+
+                self.write_message(self.gameStateJson)
+            self.save_log()
+
 
 
     def save_log(self):
@@ -927,7 +869,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
             # Create a unique filename
             now = datetime.datetime.now(dateutil.tz.tzlocal()).strftime('%Y_%m_%d_%H_%M_%S')
-            random_string = now + '_'.join(self.username)
+            random_string = now +'_'+ ''.join(self.username)
             log_filename = 'game_log_%s.json' % random_string
             # metadata_filename = 'game_log_%s.meta' % random_string
             existing_files = os.listdir(log_path)
@@ -961,7 +903,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
             # Create a unique filename
             now = datetime.datetime.now(dateutil.tz.tzlocal()).strftime('%Y_%m_%d_%H_%M_%S')
-            random_string = now + '_'.join(self.username)
+            random_string = now +'_'+ ''.join(self.username)
             log_filename = 'game_log_%s.json' % random_string
             # metadata_filename = 'game_log_%s.meta' % random_string
             existing_files = os.listdir(log_path)

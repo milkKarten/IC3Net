@@ -104,7 +104,7 @@ def get_args():
                          help='Whether to use discrete_comm')
      parser.add_argument('--num_proto', type=int, default=81,
                          help="Number of prototypes to use")
-     parser.add_argument('--add_comm_noise', default=True, action='store_true',
+     parser.add_argument('--add_comm_noise', default=False, action='store_true',
                         help='Whether to add noise to communication')
 
      parser.add_argument('--comm_dim', type=int, default=9,
