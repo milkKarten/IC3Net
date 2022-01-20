@@ -44,7 +44,7 @@ import dateutil.tz
 
 LOG_ROOT = os.path.abspath("/home/huaol/data")
 
-define("port", default=8000, help="run on the given port", type=int)
+define("port", default=443, help="run on the given port", type=int)
 
 Transition = namedtuple('Transition',
                         ('state', 'action', 'action_out', 'value', 'episode_mask', 'episode_mini_mask', 'next_state',
