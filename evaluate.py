@@ -216,11 +216,16 @@ def get_weighted_loc(_loc_dict):
 proto_dists = []
 space_dists = []
 for proto1, locs1 in all_comms_to_loc.items():
+    avg1 = get_weighted_loc(locs1)
+    pca1 = pca_transform.transform(np.reshape(proto1, (1, -1)))
+    print("PCA proto to location")
+    print(proto1)
+    print(pca1)
+    print(avg1)
     for proto2, locs2 in all_comms_to_loc.items():
         if np.array_equal(proto1, proto2):
             continue
         proto_dist = np.linalg.norm(np.asarray(proto1) - np.asarray(proto2)) / (np.sqrt(args.comm_dim))
-        avg1 = get_weighted_loc(locs1)
         avg2 = get_weighted_loc(locs2)
         space_dist = np.linalg.norm(avg1 - avg2) / (9 * np.sqrt(2))
         proto_dists.append(proto_dist)
