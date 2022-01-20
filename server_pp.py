@@ -44,7 +44,7 @@ import dateutil.tz
 
 LOG_ROOT = os.path.abspath("/home/huaol/data")
 
-define("port", default=8888, help="run on the given port", type=int)
+define("port", default=8000, help="run on the given port", type=int)
 
 Transition = namedtuple('Transition',
                         ('state', 'action', 'action_out', 'value', 'episode_mask', 'episode_mini_mask', 'next_state',
@@ -285,7 +285,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
         self.best = 20
         self.currentTrial = 1
         sessionList = ['parent', 'child']
-
+        # decide first session
         i = np.random.randint(2)
         self.firstSession = sessionList[i]
         self.secondSession = sessionList[i - 1]
@@ -294,6 +294,10 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
         # Player command to be updated as messages are received
         self.playerCommand = None
+
+        model_conditions = ['proto_fixed1', 'one_hot81']
+        # self.condition = np.random.randint(2)
+        self.condition = 0
 
     def on_close(self):
         """
@@ -316,7 +320,13 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
     def load(self, args, path):
         # d = torch.load(path)
         # policy_net.load_state_dict(d['policy_net'])
-        args.seed = 2
+
+        if(self.condition):
+            args.seed = 0
+            args.exp_name = 'one_hot81'
+        else:
+            args.seed = 2
+            args.exp_name = 'proto_fixed1'
 
         load_path = os.path.join(args.load, args.env_name, args.exp_name, "seed" + str(args.seed), "models")
         print(f"load directory is {load_path}")
@@ -373,8 +383,6 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             self.game.start()
             self.gameHandlerCallback.start()
             '''
-            if self.currentTrial>1:
-                time.sleep(3)
             torch.utils.backcompat.broadcast_warning.enabled = True
             torch.utils.backcompat.keepdim_warning.enabled = True
             torch.set_default_tensor_type('torch.DoubleTensor')
@@ -382,6 +390,11 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             parser = get_args()
             init_args_for_env(parser)
             args = parser.parse_args()
+            if self.condition:
+                args.hid_size = 81  # Was 128 for proto; 81 for one-hot
+                args.num_proto = 81
+                args.comm_dim = 81
+                args.use_protos = False
 
             if args.ic3net:
                 args.commnet = 1
@@ -665,6 +678,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.lastMove = time.time()
             self.info['replace_comm'] = False
             self.step += 1
+            self.currentTrial += 1
 
 
 
@@ -706,7 +720,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                     }
 
             if self.done:
-                self.currentTrial += 1
+
                 if self.step < self.best:
                     self.best = self.step
                 self.save_log()
@@ -722,11 +736,11 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
             if self.currentSession != 'child':
                 return
+            self.currentTrial += 1
             self.commTimer = time.time()
             self.commRT = self.commTimer - self.startTimer
             while not self.done:
                 self.step += 1
-                time.sleep(0.5)
                 should_display = False
                 t = self.t
                 misc = dict()
@@ -823,30 +837,30 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.done = done
                 self.complete = bool(self.env.get_reached_prey_wrapper())
 
-                if done:
-                    self.currentTrial += 1
+                if self.done:
                     if self.step < self.best:
                         self.best = self.step
-                self.gameState = {
-                    'players': {
-                        'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
-                        'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
-                    },
-                    'comm': token_dict,
-                    'selectedToken': message_json['message'],
-                    'commRT': self.commRT,
-                    'moveRT': None,
-                    'step': self.step,
-                    'best': self.best,
-                    'done': self.done,
-                    'complete':self.complete,
-                    'currentTrial': self.currentTrial,
-                    'humanRole': 'child',
-                    'history': self.history
-                }
-                self.gameStateJson = json.dumps(self.gameState)
+            predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
+            self.gameState = {
+                'players': {
+                    'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
+                    'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
+                },
+                'comm': token_dict,
+                'selectedToken': message_json['message'],
+                'commRT': self.commRT,
+                'moveRT': None,
+                'step': self.step,
+                'best': self.best,
+                'done': self.done,
+                'complete':self.complete,
+                'currentTrial': self.currentTrial,
+                'humanRole': 'child',
+                'history': self.history
+            }
+            self.gameStateJson = json.dumps(self.gameState)
 
-                self.write_message(self.gameStateJson)
+            self.write_message(self.gameStateJson)
             self.save_log()
 
 
