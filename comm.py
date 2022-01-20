@@ -53,7 +53,7 @@ class CommNetMLP(nn.Module):
 
         # this is discrete/proto communication which is not to be confused with discrete action. T
         # Although since the communication is being added to the encoded state directly, it makes things a bit tricky.
-        if args.use_proto:
+        if args.discrete_comm:
             self.proto_layer = ProtoNetwork(args.hid_size, args.comm_dim, args.discrete_comm, num_layers=2,
                                             hidden_dim=64, num_protos=args.num_proto, constrain_out=False)
 
@@ -275,6 +275,12 @@ class CommNetMLP(nn.Module):
                     # Generates samples from a zero-mean unit gaussian, which we rescale by the std parameter.
                     noise = torch.randn_like(comm) * std
                     comm += noise
+            elif self.args.discrete_comm:  #one-hot
+                raw_outputs = self.proto_layer(hidden_state)
+                raw_outputs = torch.squeeze(raw_outputs, 0)
+                comm = self.proto_layer.onehot_step(raw_outputs, self.train_mode)
+                all_comms.append(comm.detach().clone())
+                comm = torch.unsqueeze(comm, 0)
 
             else:
                 # print(f"inside else {hidden_state.size()}")

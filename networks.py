@@ -109,6 +109,12 @@ class ProtoNetwork(nn.Module):
             return raw_output + Variable(Tensor(exploration.noise()), requires_grad=False).to(device)
         return self.__convert_to_prototype__(raw_output)
 
+    def onehot_step(self, raw_output, explore):
+        assert self.discrete
+        masked = self.dropout(raw_output)
+        onehot_pred = gumbel_softmax(masked, temperature=1, hard=True) if explore else onehot_from_logits(raw_output)
+        return onehot_pred
+
     def __convert_to_prototype__(self, output):
         dists_to_protos, _ = self.prototype_layer(output)
         closest_proto_idx = torch.argmin(dists_to_protos, dim=1)

@@ -5,7 +5,7 @@ env = "predator_prey"
 
 # specify all the seeds you want to run the experiment on.
 # seeds = [1, 2, 3]
-seeds = [0]
+seeds = [1]
 
 # for predator-prey there are 3 modes: cooperative, competitive and mixed.
 mode = "parent_child"
@@ -79,7 +79,8 @@ for seed in seeds:
                       f"--hid_size {hid_size} --detach_gap 10 --lrate 0.001 "
                       f"--dim {dim} --max_steps {max_steps} --ic3net --recurrent --vision {vision} "
                       f"--save_every {save_every} --discrete_comm --comm_dim {comm_dim} " +\
-                      str("--add_comm_noise " if add_comm_noise else " "))
+                      str("--add_comm_noise " if add_comm_noise else " ")+\
+                      f"--num_proto {num_proto}")
     else:
         os.system(
             f"python main.py --env_name {env} --exp_name {exp_name} --nagents {nagents} --mode {mode} --seed {seed} "
