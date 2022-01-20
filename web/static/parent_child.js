@@ -55,11 +55,11 @@ OpenWindow=window.open("", "newwin", "height=640, width=400,toolbar=no,scrollbar
 OpenWindow.document.write("<TITLE>Full Instruction</TITLE>")
 OpenWindow.document.write("<BODY BGCOLOR=#ffffff>")
 OpenWindow.document.write("<h1>Game Rule</h1>")
-OpenWindow.document.write("In this 'Parent-Child' scenario, you will play the role of either a parent or a child and complete the task with an AI partner in the complementary role. In this cooperative task, the parent with a limited vision need to find a stationary child. The goal of the child is to effectively communicate its location so that the parent can travel to the lost child.")
+OpenWindow.document.write("You will play the role of either a parent or a child and complete the task with an AI partner in the complementary role. The parent need to find the lost child, and she can only see the child in a close range. The goal of the child is to effectively communicate its location so that the parent can travel to the lost child.")
 OpenWindow.document.write("<h1>Procedure</h1>")
-OpenWindow.document.write("You will need to complete 20 trials as a parent and 20 trials as a child. A trial begins with the parent and child spawned at random locations, and ends when the parent reaches to the child. ")
+OpenWindow.document.write("You will need to complete 20 trials as a parent and another 20 trials as a child. A trial begins with the parent and child spawned at random locations, and ends when the parent reaches to the same location with the child or exceeds maximum steps allowed.")
 OpenWindow.document.write("<h1>Communication Task</h1>")
-OpenWindow.document.write("The child is allowed to send only one communication for each trial. Each communication token refers to a specific location in the task environment. Your task is to learn the semantic meanings of those tokens based the interaction with your AI partner.")
+OpenWindow.document.write("In the communication panel, there are several tokens for the child to communicate its location to the parent. Each communication token refers to a specific location in the task environment. The child should select a token to inform the parent her location, and the parent should search for the child according to received token. Your task is to learn to use those tokens to collaborate with your AI partner in both parent and child roles. Your AI partner is trained to have a good understanding of those tokens, so you should be able to rely on its behavior to learn the communication. Your compensation is based on <b>task performance</b> (e.g. number of completed trials and steps taken in each trials).")
 OpenWindow.document.write("<h1>Control</h1>")
 OpenWindow.document.write("Parent control: D or right arrow - go right, A or left arrow - go left, W or up arrow - go up, S or down arrow - go down. Child control: select communication contents using buttons on the right side")
 OpenWindow.document.write("</BODY>")
@@ -80,10 +80,20 @@ ws.onmessage = function(e)
 {
     //console.log("Received: '" + e.data + "'");
     var jsonObject = JSON.parse(e.data);
-    if (jsonObject.humanRole=='parent'){hideButtons()}
-    else{displayButtons()}
     if (jsonObject.currentTrial>40){survey()}
-    else{draw(jsonObject)}
+    else{
+        if (jsonObject.humanRole=='parent'){
+            hideButtons();
+            draw(jsonObject);
+        }
+        else{
+            displayButtons();
+            if (jsonObject.done==false){draw(jsonObject);}
+            else{drawC(jsonObject);}
+
+        }
+    }
+
 };
 
 //state = {
@@ -109,6 +119,7 @@ ws.onmessage = function(e)
 function survey(){
     console.log('enter survey')
     document.getElementById('survey').style.visibility = 'visible';
+    document.removeEventListener('keydown',keyDownCheck,false);
     hideButtons();
 
     var Token = function(x, y, index) {
@@ -430,7 +441,7 @@ function draw(frame_info){
     if (frame_info.done){
         console.log('new_trial');
         drawResult(ctx,frame_info.players['child'].x,frame_info.players['child'].y,frame_info);
-        info_send();
+        setTimeout(() => {info_send();}, 2500);
     }
     else{
         drawVision(ctx,frame_info.players['parent'].x,frame_info.players['parent'].y);
@@ -457,10 +468,71 @@ function draw(frame_info){
             else{drawToken(ctx,frame_info.comm[key].loc[0],frame_info.comm[key].loc[1],key.toString(),false);}
         }
     }
+}
 
 
 
 
+function drawC(frame_info){
+    console.log('start drawC')
+    hideButtons();
+    if (frame_info.humanRole == 'child'){
+        document.getElementById('sessionReminder').innerHTML = 'You are the child, select a token to communicate your location to the parent.'
+    }
+    if (frame_info.humanRole == 'parent'){
+        document.getElementById('sessionReminder').innerHTML = 'You are the parent, use WASD to move and search for the child based on the communication your received.'
+    }
+    document.getElementById('best').innerHTML = frame_info.best.toString();
+
+    if (frame_info.hasOwnProperty('currentTrial')) {
+        document.getElementById('trial').innerHTML = frame_info.currentTrial.toString();
+    }
+    var canvas = document.getElementById("comm");
+    var ctx = canvas.getContext("2d");
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+     //draw comm space
+    drawSpace(ctx);
+    //draw comm tokens
+    for (var key in frame_info.comm){
+        if (key == frame_info.selectedToken){drawToken(ctx,frame_info.comm[key].loc[0],frame_info.comm[key].loc[1],key.toString(),true);}
+        else{drawToken(ctx,frame_info.comm[key].loc[0],frame_info.comm[key].loc[1],key.toString(),false);}
+    }
+    var canvas = document.getElementById("canvas");
+    var ctx = canvas.getContext("2d");
+    for (var i = 0; i<=frame_info.step;i++){
+        console.log('enter for loop');
+        updateLoc(frame_info,i,ctx);
+    }
+    console.log('new_trial');
+    setTimeout(() => {drawResult(ctx,frame_info.players['child'].x,frame_info.players['child'].y,frame_info);}, i*500+500);
+    setTimeout(() => {displayButtons();info_send();}, i*500+2500);
+}
+
+
+function updateLoc(frame_info,i,ctx){
+    setTimeout(function() {
+        document.getElementById('step').innerHTML = i.toString();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        //draw board
+        drawBoard(ctx);
+        //draw parent's vision
+        var parentLocation = frame_info.history[i];
+        console.log(parentLocation);
+        drawVision(ctx,parentLocation.x,parentLocation.y);
+        //draw player
+        for (var key in frame_info.players) {
+            if (frame_info.players.hasOwnProperty(key)) {
+                if(key == 'child'){
+                    drawChild(ctx,frame_info.players[key].x,frame_info.players[key].y,frame_info.humanRole);
+                }
+                else if(key == 'parent'){
+                    drawParent(ctx,parentLocation.x,parentLocation.y,frame_info.humanRole);
+                }
+            }
+        }
+    }, i*500);
 }
 
 
@@ -493,13 +565,14 @@ function drawChild(ctx,x,y,humanRole){
 
 function drawResult(ctx,x,y,frame_info){
     if (frame_info.humanRole == 'child'){
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBoard(ctx);
         if (frame_info.complete){
             console.log('child, succ')
 
             var minimum = Math.abs(frame_info.history[0].x-x)+Math.abs(frame_info.history[0].y-y);
             console.log(minimum);
             for (let i = 0; i<frame_info.history.length; i ++){
-                console.log(frame_info.history[i]);
                 drawParent(ctx,frame_info.history[i].x,frame_info.history[i].y);
             }
             const image = document.getElementById('heart');
@@ -515,9 +588,7 @@ function drawResult(ctx,x,y,frame_info){
             ctx.strokeStyle = "black";
             ctx.drawImage(image, x*50+50, y*50+50, 30, 30);
             var minimum = Math.abs(frame_info.history[0].x-x)+Math.abs(frame_info.history[0].y-y);
-            console.log(minimum);
             for (let i = 0; i<frame_info.history.length; i ++){
-                console.log(frame_info.history[i]);
                 drawParent(ctx,frame_info.history[i].x,frame_info.history[i].y);
             }
 
@@ -530,7 +601,6 @@ function drawResult(ctx,x,y,frame_info){
         if (frame_info.complete){
             console.log('parent, succ')
             for (let i = 0; i<frame_info.history.length; i ++){
-                console.log(frame_info.history[i]);
                 drawParent(ctx,frame_info.history[i].x,frame_info.history[i].y);
             }
             const image = document.getElementById('heart');
@@ -545,7 +615,6 @@ function drawResult(ctx,x,y,frame_info){
             const image = document.getElementById('child');
             ctx.drawImage(image, 38, 66, 27, 27, x*50+40, y*50+40, 50, 50);
             for (let i = 0; i<frame_info.history.length; i ++){
-                console.log(frame_info.history[i]);
                 drawParent(ctx,frame_info.history[i].x,frame_info.history[i].y);
             }
             ctx.strokeStyle = "black";
