@@ -44,7 +44,7 @@ import dateutil.tz
 
 LOG_ROOT = os.path.abspath("/home/huaol/data")
 
-define("port", default=443, help="run on the given port", type=int)
+define("port", default=8001, help="run on the given port", type=int)
 
 Transition = namedtuple('Transition',
                         ('state', 'action', 'action_out', 'value', 'episode_mask', 'episode_mini_mask', 'next_state',
@@ -494,7 +494,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 # self.on_game_over()
                 # self.currentSession = 'survey'
                 self.write_message(self.gameStateJson)
-                self.on_close()
+                # self.on_close()
 
             self.done = False
             self.step = 0
@@ -655,7 +655,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             humanRole = message_json["humanRole"]
 
 
-            if not self.currentSession == 'parent':
+            if self.currentSession != 'parent' or self.step >= self.args.max_steps:
                 print('reject invalid action')
                 return
 
@@ -678,7 +678,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.lastMove = time.time()
             self.info['replace_comm'] = False
             self.step += 1
-            self.currentTrial += 1
+
 
 
 
@@ -711,6 +711,14 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 'history': self.history
             }
 
+
+
+            if self.done:
+                self.currentTrial += 1
+                if self.step < self.best:
+                    self.best = self.step
+                self.save_log()
+
             # visibility should be handel by the environment, not here
             if not self.done:
                 if abs(int(prey_loc[0, 1]) - int(predator_loc[0, 1])) > 1 or abs(
@@ -718,12 +726,6 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                     self.gameState['players'] = {
                         'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])}
                     }
-
-            if self.done:
-
-                if self.step < self.best:
-                    self.best = self.step
-                self.save_log()
             self.gameStateJson = json.dumps(self.gameState)
 
             self.write_message(self.gameStateJson)
@@ -751,6 +753,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 # UNCOMMENT FOR PROTOS
                 # self.info['record_comms'] = 0
                 # either 0 or 1 depending on which agent to inject comm vector for
+
                 self.info['agent_id_replace'] = 1
                 self.info['child_comm'] = torch.Tensor(token_dict[message_json['message']]['raw'])
                 # TEST COMM VEC COMMENT THE test_vec OUT WHEN USING ACTUAL MESSAGE
@@ -863,16 +866,55 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             self.write_message(self.gameStateJson)
             self.save_log()
 
+        if message_json['type']=='survey':
+
+            self.surveyResults = {
+                'name':self.username,
+                "randomCode":message_json["randomCode"],
+                "helpful":message_json["helpful"],
+                "understand":message_json["understand"],
+                "satisfy":message_json["satisfy"],
+                "Post_difficulty": message_json["Post_difficulty"],
+                "Post_how":message_json["Post_how"],
+                "Post_feedback": message_json["Post_feedback"],
+                "tokenLocation": message_json["tokenLocation"]
+            }
+
+            self.save_log()
+
 
 
     def save_log(self):
 
         print("log saved")
 
-
-
         # random.choice(string.ascii_uppercase) for _ in range(8)
         # Dump the log
+
+        if hasattr(self, 'surveyResults'):
+            log_path = os.path.join(LOG_ROOT, self.username)
+
+            # Create the folder, if it doesn't exist
+            if not os.path.exists(log_path):
+                os.makedirs(log_path)
+                print("Created path: ", log_path)
+
+            # Create a unique filename
+            now = datetime.datetime.now(dateutil.tz.tzlocal()).strftime('%Y_%m_%d_%H_%M_%S')
+            random_string = now + '_' + ''.join(self.username)
+            log_filename = 'survey_results_%s.json' % random_string
+            # metadata_filename = 'game_log_%s.meta' % random_string
+            existing_files = os.listdir(log_path)
+
+            log_file_path = os.path.join(log_path, log_filename)
+            # meta_file_path = os.path.join(log_path,metadata_filename)
+
+            print("Log filename: %s" % log_file_path)
+            # print("Metadata path: %s" % meta_file_path)
+
+            with open(log_file_path, 'a+') as outfile:
+                json.dump(self.surveyResults, outfile)
+
         if self.gameState is not None:
             log_path = os.path.join(LOG_ROOT, self.username)
 
