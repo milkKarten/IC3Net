@@ -51,7 +51,14 @@
 <body>
   <center>
     <h1>Human Agent Communication Experiment</h1>
+      <div id = 'ending' style = 'visibility:hidden;'>
+          <h2>Thank you for your time and efforts. Your task is submitted. </h2>
+              <h2>Please copy and paste the confirmation code below to MTurk. </h2>
+        <h2 id = 'randomCode'>Confirmation code: Error please contact hul52@pitt.edu</h2>
+      </div>
   </center>
+
+
 <div class="left">
     <h1>Instructions</h1>
     <button  id=Help style="height:40px">View full instructions</button>
@@ -81,7 +88,7 @@
 </div>
 <div class="right">
   <h1>Progress</h1>
-  <p> &nbsp; Session 1, Trail <span id="trial"></span></p>
+  <p> &nbsp; Trial <span id="trial"></span> / 40</p>
   <p> &nbsp; Step taken: <span id="step"></span> (steps)</p>
     <p> &nbsp; Best performance: <span id="best"></span> (steps)</p>
   <p>&nbsp; <button id=startGame style="height:40px">Start Game</button></p>
@@ -105,7 +112,7 @@
 </div>
 
 <br>
-<form id = 'survey' style = 'visibility:hidden;' action = 'https://www.mturk.com/mturk/externalSubmit' onsubmit='attachTokenResults()'>
+<form id = 'survey' style = 'visibility:hidden;'>
     <h3>How helpful are those communication tokens in completing the task?</h3><br>
     <ul class="likert">
   <li> Not Helpful </li>
@@ -148,10 +155,10 @@
 <h3>Is there any other feedback or suggestions you would like to provide?</h3><br>
 <textarea name="Post_feedback" ROWS="4"  COLS="60">
 </textarea>
-<input id="tokenLocation" name="tokenLocation" type="hidden" value="" />
-<input id="assignmentId" name="assignmentId" type="hidden" value="" />
-<input id="playerId" name="playerId" type="hidden" value="" />
-    <br><input type="submit" value="Submit">
+<!--<input id="tokenLocation" name="tokenLocation" type="hidden" value="" />-->
+<!--<input id="assignmentId" name="assignmentId" type="hidden" value="" />-->
+<!--<input id="playerId" name="playerId" type="hidden" value="" />-->
+    <br><input type="button" value="Submit" onclick = 'attachResults();'>
 </form>
 
 
