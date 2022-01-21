@@ -62,6 +62,8 @@ OpenWindow.document.write("<h1>Communication Task</h1>")
 OpenWindow.document.write("In the communication panel, there are several tokens for the child to communicate its location to the parent. Each communication token refers to a specific location in the task environment. The child should select a token to inform the parent her location, and the parent should search for the child according to received token. Your task is to learn to use those tokens to collaborate with your AI partner in both parent and child roles. Your AI partner is trained to have a good understanding of those tokens, so you should be able to rely on its behavior to learn the communication. Your compensation is based on <b>task performance</b> (e.g. number of completed trials and steps taken in each trials).")
 OpenWindow.document.write("<h1>Control</h1>")
 OpenWindow.document.write("Parent control: D or right arrow - go right, A or left arrow - go left, W or up arrow - go up, S or down arrow - go down. Child control: select communication contents using buttons on the right side")
+OpenWindow.document.write("<h1>Contact</h1>")
+OpenWindow.document.write("This is a research conducted by the University of Pittsburgh, contact researchers at hul52@pitt.edu if you have any questions.")
 OpenWindow.document.write("</BODY>")
 OpenWindow.document.write("</HTML>")
 OpenWindow.document.close()
@@ -96,33 +98,7 @@ ws.onmessage = function(e)
 
 };
 
-//state = {
-//    'players':{
-//        'child':{'x':3,'y':3},
-//        'parent':{'x':1,'y':1},
-//    },
-//    'comm':{
-//        'token1':{'x':4,'y':4,'index':1},
-//        'token2':{'x':1,'y':2,'index':2},
-//        'token3':{'x':4,'y':0,'index':3},
-//        'token4':{'x':0,'y':4,'index':4},
-//        'token5':{'x':0,'y':0,'index':5}
-//    },
-//    'selectedToken':1,
-//    'step':0,
-//    'best':999,
-//    'humanRole':'parent'
-//}
-//
-//draw(state)
-
-function survey(){
-    console.log('enter survey')
-    document.getElementById('survey').style.visibility = 'visible';
-    document.removeEventListener('keydown',keyDownCheck,false);
-    hideButtons();
-
-    var Token = function(x, y, index) {
+var Token = function(x, y, index) {
 
       this.x = x;
       this.y = y;
@@ -149,6 +125,24 @@ function survey(){
 
       }
     }
+var token1 = new Token(25, 25, 1);
+var token2 = new Token(50, 50, 2);
+var token3 = new Token(100, 100, 3);
+var token4 = new Token(150, 150, 4);
+var token5 = new Token(200, 200, 5);
+var token6 = new Token(250, 250, 6);
+var token7 = new Token(300, 300, 7);
+var token8 = new Token(350, 350, 8);
+var token9 = new Token(400, 400, 9);
+var token10 = new Token(450, 450, 10);
+
+
+function survey(){
+    console.log('enter survey')
+    document.getElementById('survey').style.visibility = 'visible';
+    document.removeEventListener('keydown',keyDownCheck,false);
+    hideButtons();
+
 
 
     var MouseTouchTracker = function(canvas, callback){
@@ -213,16 +207,7 @@ function survey(){
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawBoard(ctx);
     document.getElementById('sessionReminder').innerHTML = 'Please drag tokens to corresponding locations you think they refer to, and fill the following survey.'
-    var token1 = new Token(25, 25, 1);
-    var token2 = new Token(50, 50, 2);
-    var token3 = new Token(100, 100, 3);
-    var token4 = new Token(150, 150, 4);
-    var token5 = new Token(200, 200, 5);
-    var token6 = new Token(250, 250, 6);
-    var token7 = new Token(300, 300, 7);
-    var token8 = new Token(350, 350, 8);
-    var token9 = new Token(400, 400, 9);
-    var token10 = new Token(450, 450, 10);
+
 
 
     token1.render(ctx);
@@ -364,20 +349,53 @@ function survey(){
 
 }
 
-function attachTokenResults(){
+
+function makeid(length) {
+    var result           = '';
+    var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var charactersLength = characters.length;
+    for ( var i = 0; i < length; i++ ) {
+      result += characters.charAt(Math.floor(Math.random() *
+ charactersLength));
+   }
+   return result;
+}
+
+function attachResults(){
     var tokenLocation = {
-        1: {x:token1.x, y:token1.y},
-        2: {x:token2.x, y:token2.y},
-        3: {x:token3.x, y:token3.y},
-        4: {x:token4.x, y:token4.y},
-        5: {x:token5.x, y:token5.y},
-        6: {x:token6.x, y:token6.y},
-        7: {x:token7.x, y:token7.y},
-        8: {x:token8.x, y:token8.y},
-        9: {x:token9.x, y:token9.y},
-        10: {x:token10.x, y:token10.y},
+        1: {"x":token1.x, "y":token1.y},
+        2: {"x":token2.x, "y":token2.y},
+        3: {"x":token3.x, "y":token3.y},
+        4: {"x":token4.x, "y":token4.y},
+        5: {"x":token5.x, "y":token5.y},
+        6: {"x":token6.x, "y":token6.y},
+        7: {"x":token7.x, "y":token7.y},
+        8: {"x":token8.x, "y":token8.y},
+        9: {"x":token9.x, "y":token9.y},
+        10: {"x":token10.x, "y":token10.y},
     }
-    document.getElementById("tokenLocation").value = tokenLocation;
+
+
+    var message = new Object();
+    message.type = "survey";
+    var formEl = document.forms.survey;
+    var formData = new FormData(formEl);
+    message.helpful = formData.get('helpful');
+    message.understand = formData.get('understand');
+    message.satisfy = formData.get('satisfy');
+    message.Post_difficulty = formData.get('Post_difficulty');
+    message.Post_how = formData.get('Post_how');
+    message.Post_feedback = formData.get('Post_feedback');
+    message.tokenLocation = tokenLocation;
+    message.randomCode = makeid(8);
+    ws.send(JSON.stringify(message));
+    document.getElementsByClassName("right")[0].style.visibility = 'hidden';
+    document.getElementsByClassName("left")[0].style.visibility = 'hidden';
+    document.getElementsByClassName("middleleft")[0].style.visibility = 'hidden';
+    document.getElementsByClassName("middleright")[0].style.visibility = 'hidden';
+    document.getElementById("survey").style.visibility = 'hidden';
+    document.getElementById("ending").style.visibility = 'visible';
+    document.getElementById("randomCode").innerHTML = 'Confirmation code: '+ message.randomCode;
 }
 
 function hideButtons(){
