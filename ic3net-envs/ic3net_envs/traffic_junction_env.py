@@ -646,3 +646,9 @@ class TrafficJunctionEnv(gym.Env):
             # self.add_rate = step_size * (self.exact_rate // step_size)
         else:
             print("not updating curriculum for tj for epoch", epoch)
+
+    def get_loc(self):
+        return self.car_loc
+
+    def get_is_compelted(self):
+        return np.all(self.is_completed == 1)
