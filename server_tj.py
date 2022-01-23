@@ -490,12 +490,12 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             self.moveRT = []
             self.selectedToken = None
 
-            predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
-            self.history.append({'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])})
+            car_loc = self.env.get_loc_wrapper()
+            self.history.append({'x': int(car_loc[0, 1]), 'y': int(car_loc[0, 0])})
             self.gameState = {
                 'players': {
-                    'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
-                    'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
+                    'child': {'x': int(car_loc[0, 1]), 'y': int(car_loc[0, 0])},
+                    'parent': {'x': int(car_loc[1, 1]), 'y': int(car_loc[1, 0])},
                 },
                 'comm': token_dict,
                 'selectedToken': self.selectedToken,
@@ -651,14 +651,12 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
             self.done = done or self.step >= self.args.max_steps or bool(self.env.get_reached_prey_wrapper())
             self.complete = bool(self.env.get_reached_prey_wrapper())
-            predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
-            print(predator_loc, prey_loc)
-            self.history.append({'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])})
-
+            car_loc = self.env.get_loc_wrapper()
+            self.history.append({'x': int(car_loc[0, 1]), 'y': int(car_loc[0, 0])})
             self.gameState = {
                 'players': {
-                    'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
-                    'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
+                    'car0': {'x': int(car_loc[0, 1]), 'y': int(car_loc[0, 0])},
+                    'car1': {'x': int(car_loc[1, 1]), 'y': int(car_loc[1, 0])},
                 },
                 'comm': token_dict,
                 'selectedToken': self.selectedToken,
