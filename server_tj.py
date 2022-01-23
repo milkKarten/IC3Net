@@ -484,162 +484,28 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
             self.prev_hid = torch.zeros(1, self.args.nagents, self.args.hid_size)
 
-            # Process control and render initialization
-            if self.currentTrial <= self.numTrial / 2:
-                self.currentSession = self.firstSession
-            else:
-                self.currentSession = self.secondSession
-            print(self.currentTrial, self.currentSession)
-            if self.currentTrial > self.numTrial:
-                # self.on_game_over()
-                # self.currentSession = 'survey'
-                self.write_message(self.gameStateJson)
-                # self.on_close()
-
             self.done = False
             self.step = 0
             self.history = []
             self.moveRT = []
             self.selectedToken = None
 
-            if self.currentSession == 'parent':
-                self.done = True
-                while self.selectedToken == None or self.done:
-                    if 'epoch' in reset_args:
-                        self.state = self.env.reset(epoch)
-                    else:
-                        self.state = self.env.reset()
-                    should_display = False
-                    t = self.t
-                    misc = dict()
-                    if t == 0 and self.args.hard_attn and self.args.commnet:
-                        self.info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
-
-                    self.info['record_comms'] = 1
-                    # recurrence over time
-                    if self.args.recurrent:
-                        if self.args.rnn_type == 'LSTM' and t == 0:
-                            self.prev_hid = self.policy_net.init_hidden(batch_size=self.state.shape[0])
-
-                        x = [self.state, self.prev_hid]
-                        action_out, value, self.prev_hid, filtered_comms = self.policy_net(x, self.info)
-
-                        if (t + 1) % self.args.detach_gap == 0:
-                            if self.args.rnn_type == 'LSTM':
-                                self.prev_hid = (self.prev_hid[0].detach(), self.prev_hid[1].detach())
-                            else:
-                                self.prev_hid = self.prev_hid.detach()
-                    else:
-                        x = self.state
-                        action_out, value, filtered_comms = self.policy_net(x, self.info)
-
-                    # print(action_out)
-                    print('filtered_comms', filtered_comms)
-                    for i in token_dict.keys():
-                        if torch.allclose(torch.tensor(token_dict[i]['raw']), filtered_comms, atol=1e-04):
-                            if i != 10:
-                                self.selectedToken = i
-
-                    print(self.selectedToken)
-
-                    action = select_action(self.args, action_out)
-                    # print(action)
-                    action, actual = translate_action(self.args, self.env, action)
-                    # actual[0] = self.humanAction
-                    next_state, reward, done, info = self.env.step(actual)
-                    # print(next_state)
-                    # print(self.env.get_pp_loc_wrapper())
-
-                    # store comm_action in info for next step
-                    if self.args.hard_attn and self.args.commnet:
-                        info['comm_action'] = action[-1] if not self.args.comm_action_one else np.ones(self.args.nagents,
-                                                                                                       dtype=int)
-
-                        # print("before ", stat.get('comm_action', 0), info['comm_action'][:self.args.nfriendly])
-                        self.stat['comm_action'] = self.stat.get('comm_action', 0) + info['comm_action'][
-                                                                                     :self.args.nfriendly]
-                        self.all_comms.append(info['comm_action'][:self.args.nfriendly])
-                        if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
-                            self.stat['enemy_comm'] = self.stat.get('enemy_comm', 0) + info['comm_action'][
-                                                                                       self.args.nfriendly:]
-
-                    if 'alive_mask' in info:
-                        misc['alive_mask'] = info['alive_mask'].reshape(reward.shape)
-                    else:
-                        misc['alive_mask'] = np.ones_like(reward)
-
-                    # env should handle this make sure that reward for dead agents is not counted
-                    # reward = reward * misc['alive_mask']
-
-                    self.stat['reward'] = self.stat.get('reward', 0) + reward[:self.args.nfriendly]
-                    if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
-                        self.stat['enemy_reward'] = self.stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
-
-                    done = done or t >= self.args.max_steps - 1 or bool(self.env.get_reached_prey_wrapper())
-
-                    episode_mask = np.ones(reward.shape)
-                    episode_mini_mask = np.ones(reward.shape)
-
-                    if done:
-                        episode_mask = np.zeros(reward.shape)
-                    else:
-                        if 'is_completed' in info:
-                            episode_mini_mask = 1 - info['is_completed'].reshape(-1)
-
-                    if should_display:
-                        self.env.display()
-
-                    trans = Transition(self.state, action, action_out, value, episode_mask, episode_mini_mask, next_state,
-                                       reward, misc)
-                    self.episode.append(trans)
-                    self.state = next_state
-                    self.t = t + 1
-                    self.info = info
-                    self.done = done
-
-
-
-
-                predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
-                self.history.append({'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])})
-
-                self.gameState = {
-                    'players': {
-                        'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
-                        'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
-                    },
-                    'comm': token_dict,
-                    'selectedToken': self.selectedToken,
-                    'step': self.step,
-                    'best': self.best,
-                    'done': False,
-                    'currentTrial': self.currentTrial,
-                    'humanRole': 'parent',
-                    'history':self.history
-                }
-                # visibility should be handel by the environment, not here
-                if abs(int(prey_loc[0, 1]) - int(predator_loc[0, 1])) > 1 or abs(
-                    int(prey_loc[0, 0]) - int(predator_loc[0, 0])) > 1:
-                    self.gameState['players'] = {
-                        'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])}
-                    }
-            elif self.currentSession == 'child':
-                predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
-                self.history.append({'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])})
-                self.gameState = {
-                    'players': {
-                        'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
-                        'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
-                    },
-                    'comm': token_dict,
-                    'selectedToken': self.selectedToken,
-                    'step': self.step,
-                    'best': self.best,
-                    'done': False,
-                    'currentTrial': self.currentTrial,
-                    'humanRole': 'child',
-                    'history': self.history
-                }
+            predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
+            self.history.append({'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])})
+            self.gameState = {
+                'players': {
+                    'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
+                    'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
+                },
+                'comm': token_dict,
+                'selectedToken': self.selectedToken,
+                'step': self.step,
+                'best': self.best,
+                'done': False,
+                'currentTrial': self.currentTrial,
+                'humanRole': 'child',
+                'history': self.history
+            }
 
             self.gameStateJson = json.dumps(self.gameState)
             self.startTimer = time.time()
@@ -655,18 +521,14 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             humanRole = message_json["humanRole"]
 
 
-            if self.currentSession != 'parent' or self.step >= self.args.max_steps:
-                print('reject invalid action')
-                return
+            # if self.currentSession != 'parent' or self.step >= self.args.max_steps:
+            #     print('reject invalid action')
+            #     return
 
-            if command["command"] == "up":
+            if command["command"] == "go":
                 self.humanAction = 0
-            elif command["command"] == "right":
+            elif command["command"] == "break":
                 self.humanAction = 1
-            elif command["command"] == "down":
-                self.humanAction = 2
-            elif command["command"] == "left":
-                self.humanAction = 3
             else:
                 return
 
@@ -680,7 +542,107 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             self.step += 1
 
 
+            should_display = False
+            t = self.t
+            misc = dict()
+            if t == 0 and self.args.hard_attn and self.args.commnet:
+                self.info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
 
+            # Hardcoded to record communication for agent 1 (prey)
+            # UNCOMMENT FOR PROTOS
+            # self.info['record_comms'] = 0
+            # either 0 or 1 depending on which agent to inject comm vector for
+
+            # self.info['agent_id_replace'] = 1
+            # self.info['child_comm'] = torch.Tensor(token_dict[message_json['message']]['raw'])
+            # TEST COMM VEC COMMENT THE test_vec OUT WHEN USING ACTUAL MESSAGE
+            # test_vec = [0.6093685361352408, 0.48378074925892295, 0.9301173165918591, 0.10678958236225718,
+            #             0.23254922156143712, 0.1226728540104421, 0.8425635664122217, 0.68843780288164,
+            #             0.10518988427018998]
+            # self.info['child_comm'] = torch.Tensor(test_vec)
+            # self.info['replace_comm'] = True
+
+            # recurrence over time
+            if self.args.recurrent:
+                if self.args.rnn_type == 'LSTM' and t == 0:
+                    self.prev_hid = self.policy_net.init_hidden(batch_size=self.state.shape[0])
+
+                x = [self.state, self.prev_hid]
+                action_out, value, self.prev_hid = self.policy_net(x, self.info)
+
+                if (t + 1) % self.args.detach_gap == 0:
+                    if self.args.rnn_type == 'LSTM':
+                        self.prev_hid = (self.prev_hid[0].detach(), self.prev_hid[1].detach())
+                    else:
+                        self.prev_hid = self.prev_hid.detach()
+            else:
+                x = self.state
+                action_out, value = self.policy_net(x, self.info)
+
+            # print(action_out)
+
+            action = select_action(self.args, action_out)
+            action, actual = translate_action(self.args, self.env, action)
+            actual[0] = self.humanAction
+            next_state, reward, done, info = self.env.step(actual)
+            # print(next_state)
+            # print(self.env.get_pp_loc_wrapper())
+            predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
+            self.history.append({'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])})
+            # print(self.prev_hid)
+            print(reward)
+
+            # store comm_action in info for next step
+            if self.args.hard_attn and self.args.commnet:
+                info['comm_action'] = action[-1] if not self.args.comm_action_one else np.ones(self.args.nagents,
+                                                                                               dtype=int)
+
+                # print("before ", stat.get('comm_action', 0), info['comm_action'][:self.args.nfriendly])
+                self.stat['comm_action'] = self.stat.get('comm_action', 0) + info['comm_action'][
+                                                                             :self.args.nfriendly]
+                self.all_comms.append(info['comm_action'][:self.args.nfriendly])
+                if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
+                    self.stat['enemy_comm'] = self.stat.get('enemy_comm', 0) + info['comm_action'][
+                                                                               self.args.nfriendly:]
+
+            if 'alive_mask' in info:
+                misc['alive_mask'] = info['alive_mask'].reshape(reward.shape)
+            else:
+                misc['alive_mask'] = np.ones_like(reward)
+
+            # env should handle this make sure that reward for dead agents is not counted
+            # reward = reward * misc['alive_mask']
+
+            self.stat['reward'] = self.stat.get('reward', 0) + reward[:self.args.nfriendly]
+            if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
+                self.stat['enemy_reward'] = self.stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
+
+            done = done or t == self.args.max_steps - 1 or bool(self.env.get_reached_prey_wrapper())
+
+            episode_mask = np.ones(reward.shape)
+            episode_mini_mask = np.ones(reward.shape)
+
+            if done:
+                episode_mask = np.zeros(reward.shape)
+            else:
+                if 'is_completed' in info:
+                    episode_mini_mask = 1 - info['is_completed'].reshape(-1)
+
+            if should_display:
+                self.env.display()
+
+            trans = Transition(self.state, action, action_out, value, episode_mask, episode_mini_mask, next_state,
+                               reward, misc)
+            self.episode.append(trans)
+            self.state = next_state
+            self.t = t + 1
+            self.info = info
+            self.done = done
+            self.complete = bool(self.env.get_reached_prey_wrapper())
+
+            if self.done:
+                if self.step < self.best:
+                    self.best = self.step
 
 
 
@@ -719,152 +681,16 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                     self.best = self.step
                 self.save_log()
 
-            # visibility should be handel by the environment, not here
-            if not self.done:
-                if abs(int(prey_loc[0, 1]) - int(predator_loc[0, 1])) > 1 or abs(
-                    int(prey_loc[0, 0]) - int(predator_loc[0, 0])) > 1:
-                    self.gameState['players'] = {
-                        'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])}
-                    }
+            # # visibility should be handel by the environment, not here
+            # if not self.done:
+            #     if abs(int(prey_loc[0, 1]) - int(predator_loc[0, 1])) > 1 or abs(
+            #         int(prey_loc[0, 0]) - int(predator_loc[0, 0])) > 1:
+            #         self.gameState['players'] = {
+            #             'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])}
+            #         }
             self.gameStateJson = json.dumps(self.gameState)
 
             self.write_message(self.gameStateJson)
-
-
-        if message_json["type"] == "comm":
-
-            # Pull out human role and check if function is correctly triggered
-            humanRole = message_json["humanRole"]
-
-            if self.currentSession != 'child':
-                return
-            self.currentTrial += 1
-            self.commTimer = time.time()
-            self.commRT = self.commTimer - self.startTimer
-            while not self.done:
-                self.step += 1
-                should_display = False
-                t = self.t
-                misc = dict()
-                if t == 0 and self.args.hard_attn and self.args.commnet:
-                    self.info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
-
-                # Hardcoded to record communication for agent 1 (prey)
-                # UNCOMMENT FOR PROTOS
-                # self.info['record_comms'] = 0
-                # either 0 or 1 depending on which agent to inject comm vector for
-
-                self.info['agent_id_replace'] = 1
-                self.info['child_comm'] = torch.Tensor(token_dict[message_json['message']]['raw'])
-                # TEST COMM VEC COMMENT THE test_vec OUT WHEN USING ACTUAL MESSAGE
-                # test_vec = [0.6093685361352408, 0.48378074925892295, 0.9301173165918591, 0.10678958236225718,
-                #             0.23254922156143712, 0.1226728540104421, 0.8425635664122217, 0.68843780288164,
-                #             0.10518988427018998]
-                # self.info['child_comm'] = torch.Tensor(test_vec)
-                self.info['replace_comm'] = True
-
-                # recurrence over time
-                if self.args.recurrent:
-                    if self.args.rnn_type == 'LSTM' and t == 0:
-                        self.prev_hid = self.policy_net.init_hidden(batch_size=self.state.shape[0])
-
-                    x = [self.state, self.prev_hid]
-                    action_out, value, self.prev_hid = self.policy_net(x, self.info)
-
-                    if (t + 1) % self.args.detach_gap == 0:
-                        if self.args.rnn_type == 'LSTM':
-                            self.prev_hid = (self.prev_hid[0].detach(), self.prev_hid[1].detach())
-                        else:
-                            self.prev_hid = self.prev_hid.detach()
-                else:
-                    x = self.state
-                    action_out, value = self.policy_net(x, self.info)
-
-                # print(action_out)
-
-                action = select_action(self.args, action_out)
-                action, actual = translate_action(self.args, self.env, action)
-                next_state, reward, done, info = self.env.step(actual)
-                # print(next_state)
-                # print(self.env.get_pp_loc_wrapper())
-                predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
-                self.history.append({'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])})
-                # print(self.prev_hid)
-                print(reward)
-
-                # store comm_action in info for next step
-                if self.args.hard_attn and self.args.commnet:
-                    info['comm_action'] = action[-1] if not self.args.comm_action_one else np.ones(self.args.nagents,
-                                                                                                   dtype=int)
-
-                    # print("before ", stat.get('comm_action', 0), info['comm_action'][:self.args.nfriendly])
-                    self.stat['comm_action'] = self.stat.get('comm_action', 0) + info['comm_action'][
-                                                                                 :self.args.nfriendly]
-                    self.all_comms.append(info['comm_action'][:self.args.nfriendly])
-                    if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
-                        self.stat['enemy_comm'] = self.stat.get('enemy_comm', 0) + info['comm_action'][
-                                                                                   self.args.nfriendly:]
-
-                if 'alive_mask' in info:
-                    misc['alive_mask'] = info['alive_mask'].reshape(reward.shape)
-                else:
-                    misc['alive_mask'] = np.ones_like(reward)
-
-                # env should handle this make sure that reward for dead agents is not counted
-                # reward = reward * misc['alive_mask']
-
-                self.stat['reward'] = self.stat.get('reward', 0) + reward[:self.args.nfriendly]
-                if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
-                    self.stat['enemy_reward'] = self.stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
-
-                done = done or t == self.args.max_steps - 1 or bool(self.env.get_reached_prey_wrapper())
-
-                episode_mask = np.ones(reward.shape)
-                episode_mini_mask = np.ones(reward.shape)
-
-                if done:
-                    episode_mask = np.zeros(reward.shape)
-                else:
-                    if 'is_completed' in info:
-                        episode_mini_mask = 1 - info['is_completed'].reshape(-1)
-
-                if should_display:
-                    self.env.display()
-
-                trans = Transition(self.state, action, action_out, value, episode_mask, episode_mini_mask, next_state,
-                                   reward, misc)
-                self.episode.append(trans)
-                self.state = next_state
-                self.t = t + 1
-                self.info = info
-                self.done = done
-                self.complete = bool(self.env.get_reached_prey_wrapper())
-
-                if self.done:
-                    if self.step < self.best:
-                        self.best = self.step
-            predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
-            self.gameState = {
-                'players': {
-                    'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
-                    'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
-                },
-                'comm': token_dict,
-                'selectedToken': message_json['message'],
-                'commRT': self.commRT,
-                'moveRT': None,
-                'step': self.step,
-                'best': self.best,
-                'done': self.done,
-                'complete':self.complete,
-                'currentTrial': self.currentTrial,
-                'humanRole': 'child',
-                'history': self.history
-            }
-            self.gameStateJson = json.dumps(self.gameState)
-
-            self.write_message(self.gameStateJson)
-            self.save_log()
 
         if message_json['type']=='survey':
 
