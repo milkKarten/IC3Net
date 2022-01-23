@@ -119,9 +119,9 @@ class GymWrapper(object):
             return self.env.stat
         else:
             return dict()
-    
-    def get_pp_loc_wrapper(self):
-        return self.env.get_pp_loc()
-    
-    def get_reached_prey_wrapper(self):
-        return self.env.get_reached_prey()
+
+    def get_loc_wrapper(self):
+        return self.env.get_loc()
+
+    def get_reached_wrapper(self):
+        return self.env.get_is_completed()
