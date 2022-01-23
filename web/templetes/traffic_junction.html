@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+
+<html lang="en-US">
+
+  <head>
+    <!-- Boilerplate -->
+    <meta charset="UTF-8" />
+    <title>Human Agent Communication Experiment</title>
+
+   <style>
+      .left {
+        float: left;
+        width:15%;
+        height: 620px;
+        margin-left:10px;
+        background-color: white;
+      }
+      .middleleft {
+        float:left;
+        width: 500px;
+        height: 500px;
+        margin-left:auto;
+        background-color: white;
+        text-align:center;
+      }
+    .middleright {
+        float:left;
+        width: 500px;
+        height: 500px;
+        margin-left:auto;
+        background-color: white;
+        text-align:center;
+      }
+      .right {
+        height: 570px;
+        width:15%;
+        margin-left: auto;
+        margin-top: 50px;
+        background-color: white;
+        text-align:left;
+      }
+      .likert li {
+        float: left;
+        list-style-type: none;
+        }
+    </style>
+
+
+  </head>
+
+<body>
+  <center>
+    <h1>Human Agent Communication Experiment</h1>
+      <div id = 'ending' style = 'visibility:hidden;'>
+          <h2>Thank you for your time and efforts. Your task is submitted. </h2>
+              <h2>Please copy and paste the confirmation code below to MTurk. </h2>
+        <h2 id = 'randomCode'>Confirmation code: Error please contact hul52@pitt.edu</h2>
+      </div>
+  </center>
+
+
+<div class="left">
+    <h1>Instructions</h1>
+    <button  id=Help style="height:40px">View full instructions</button>
+</div>
+<div class="middleleft">
+    <h2>Task Environment</h2>
+    <canvas id="canvas" width="500" height="500"></canvas>
+<p id = 'sessionReminder'> </p>
+
+
+</div>
+
+  <div class="middleright">
+      <h2>Communication Space</h2>
+    <canvas id="comm" width="500" height="500"></canvas>
+
+      <p>&nbsp; <button id=token1 style="height:40px;visibility:hidden;" onclick="commSend(1)" >Token 1</button>
+      <button id=token2 style="height:40px;visibility:hidden;" onclick="commSend(2)">Token 2</button>
+      <button id=token3 style="height:40px;visibility:hidden;" onclick="commSend(3)">Token 3</button>
+      <button id=token4 style="height:40px;visibility:hidden;" onclick="commSend(4)">Token 4</button>
+      <button id=token5 style="height:40px;visibility:hidden;" onclick="commSend(5)">Token 5</button></p>
+      <p>&nbsp; <button id=token6 style="height:40px;visibility:hidden;" onclick="commSend(6)">Token 6</button>
+      <button id=token7 style="height:40px;visibility:hidden;" onclick="commSend(7)">Token 7</button>
+      <button id=token8 style="height:40px;visibility:hidden;" onclick="commSend(8)">Token 8</button>
+      <button id=token9 style="height:40px;visibility:hidden;" onclick="commSend(9)">Token 9</button>
+      <button id=token10 style="height:40px;visibility:hidden;" onclick="commSend(10)">Token 10</button></p>
+</div>
+<div class="right">
+  <h1>Progress</h1>
+  <p> &nbsp; Trial <span id="trial"></span> / 40</p>
+  <p> &nbsp; Step taken: <span id="step"></span> (steps)</p>
+    <p> &nbsp; Best performance: <span id="best"></span> (steps)</p>
+  <p>&nbsp; <button id=startGame style="height:40px">Start Game</button></p>
+</div>
+  <div style="display:none;">
+  <img id="car"
+       src="{{ static_url('cars.png') }}">
+</div>
+      <div style="display:none;">
+  <img id="heart"
+       src="{{ static_url('heart.png') }}">
+</div>
+      <div style="display:none;">
+  <img id="failure"
+       src="{{ static_url('failure.png') }}">
+</div>
+
+<br>
+<form id = 'survey' style = 'visibility:hidden;'>
+    <h3>How helpful are those communication tokens in completing the task?</h3><br>
+    <ul class="likert">
+  <li> Not Helpful </li>
+  <li><input type="radio" name="helpful" value="1" /></li>
+  <li><input type="radio" name="helpful" value="2" /></li>
+  <li><input type="radio" name="helpful" value="3" /></li>
+  <li><input type="radio" name="helpful" value="4" /></li>
+  <li><input type="radio" name="helpful" value="5" /></li>
+  <li> Very Helpful </li>
+    </ul>
+    <br>
+    <h3>How good do you understand the meanings of those communication tokens?</h3><br>
+    <ul class="likert">
+  <li> Not at all </li>
+  <li><input type="radio" name="understand" value="1" /></li>
+  <li><input type="radio" name="understand" value="2" /></li>
+  <li><input type="radio" name="understand" value="3" /></li>
+  <li><input type="radio" name="understand" value="4" /></li>
+  <li><input type="radio" name="understand" value="5" /></li>
+  <li> Very good </li>
+</ul>
+    <br>
+<h3>Do you satisfy with your AI partner's performance?</h3><br>
+    <ul class="likert">
+  <li> Not satisfy </li>
+  <li><input type="radio" name="satisfy" value="1" /></li>
+  <li><input type="radio" name="satisfy" value="2" /></li>
+  <li><input type="radio" name="satisfy" value="3" /></li>
+  <li><input type="radio" name="satisfy" value="4" /></li>
+  <li><input type="radio" name="satisfy" value="5" /></li>
+  <li> Very satisfy </li>
+</ul>
+    <br>
+<h3>How hard do you feel about this task? What was the most difficult / confusing part?</h3><br>
+<textarea name='Post_difficulty' ROWS="4"  COLS="60">
+</textarea>
+<h3>What did you learn about the communication tokens?</h3><br>
+<textarea name="Post_how" ROWS="4"  COLS="60">
+</textarea>
+<h3>Is there any other feedback or suggestions you would like to provide?</h3><br>
+<textarea name="Post_feedback" ROWS="4"  COLS="60">
+</textarea>
+<!--<input id="tokenLocation" name="tokenLocation" type="hidden" value="" />-->
+<!--<input id="assignmentId" name="assignmentId" type="hidden" value="" />-->
+<!--<input id="playerId" name="playerId" type="hidden" value="" />-->
+    <br><input type="button" value="Submit" onclick = 'attachResults();'>
+</form>
+
+
+
+
+    <!-- Scripts to interact with game server -->
+    <script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
+    <script src="{{ static_url('traffic_junction.js') }}" type="text/javascript"></script>
+<script type="text/javascript">
+var keyflag = false;
+num_trail = 0
+$("#startGame").click(function(){
+  document.addEventListener('keydown',keyDownCheck,false);
+  var name =  getParams("name");
+  info_send(name);
+  document.getElementById('trial').innerHTML = num_trail;
+});
+$("#Help").click(function(){
+  openwin();
+});
+</script>
+  </body>
+
+</html>
