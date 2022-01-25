@@ -22,7 +22,7 @@ from comm import CommNetMLP
 from utils import *
 from action_utils import parse_action_args
 from evaluator import Evaluator
-from args import get_args
+from args_pp import get_args
 from inspect import getfullargspec
 from action_utils import *
 
@@ -575,7 +575,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                     if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
                         self.stat['enemy_reward'] = self.stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
 
-                    done = done or t >= self.args.max_steps - 1 or bool(self.env.get_reached_prey_wrapper())
+                    done = done or t >= self.args.max_steps - 1 or bool(self.env.get_reached_wrapper())
 
                     episode_mask = np.ones(reward.shape)
                     episode_mini_mask = np.ones(reward.shape)
@@ -600,7 +600,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
 
 
-                predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
+                predator_loc, prey_loc = self.env.get_loc_wrapper()
                 self.history.append({'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])})
 
                 self.gameState = {
@@ -624,7 +624,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                         'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])}
                     }
             elif self.currentSession == 'child':
-                predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
+                predator_loc, prey_loc = self.env.get_loc_wrapper()
                 self.history.append({'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])})
                 self.gameState = {
                     'players': {
@@ -687,9 +687,9 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
             next_state, reward, done, info = self.env.step([self.humanAction])
 
-            self.done = done or self.step >= self.args.max_steps or bool(self.env.get_reached_prey_wrapper())
-            self.complete = bool(self.env.get_reached_prey_wrapper())
-            predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
+            self.done = done or self.step >= self.args.max_steps or bool(self.env.get_reached_wrapper())
+            self.complete = bool(self.env.get_reached_wrapper())
+            predator_loc, prey_loc = self.env.get_loc_wrapper()
             print(predator_loc, prey_loc)
             self.history.append({'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])})
 
@@ -787,7 +787,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 next_state, reward, done, info = self.env.step(actual)
                 # print(next_state)
                 # print(self.env.get_pp_loc_wrapper())
-                predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
+                predator_loc, prey_loc = self.env.get_loc_wrapper()
                 self.history.append({'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])})
                 # print(self.prev_hid)
                 print(reward)
@@ -817,7 +817,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
                     self.stat['enemy_reward'] = self.stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
 
-                done = done or t == self.args.max_steps - 1 or bool(self.env.get_reached_prey_wrapper())
+                done = done or t == self.args.max_steps - 1 or bool(self.env.get_reached_wrapper())
 
                 episode_mask = np.ones(reward.shape)
                 episode_mini_mask = np.ones(reward.shape)
@@ -838,12 +838,12 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.t = t + 1
                 self.info = info
                 self.done = done
-                self.complete = bool(self.env.get_reached_prey_wrapper())
+                self.complete = bool(self.env.get_reached_wrapper())
 
                 if self.done:
                     if self.step < self.best:
                         self.best = self.step
-            predator_loc, prey_loc = self.env.get_pp_loc_wrapper()
+            predator_loc, prey_loc = self.env.get_loc_wrapper()
             self.gameState = {
                 'players': {
                     'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},

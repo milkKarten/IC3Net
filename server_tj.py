@@ -22,7 +22,7 @@ from comm import CommNetMLP
 from utils import *
 from action_utils import parse_action_args
 from evaluator import Evaluator
-from args import get_args
+from args_tj import get_args
 from inspect import getfullargspec
 from action_utils import *
 
