@@ -287,6 +287,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
         sessionList = ['parent', 'child']
         # decide first session
         i = np.random.randint(2)
+        i = 0
         self.firstSession = sessionList[i]
         self.secondSession = sessionList[i - 1]
 
@@ -325,8 +326,8 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             args.seed = 0
             args.exp_name = 'one_hot81'
         else:
-            args.seed = 2
-            args.exp_name = 'proto_fixed1'
+            args.seed = 777
+            args.exp_name = 'tj_EX_fixed_proto_comm_vs_protos_medium_p112_c64_d'
 
         load_path = os.path.join(args.load, args.env_name, args.exp_name, "seed" + str(args.seed), "models")
         print(f"load directory is {load_path}")
