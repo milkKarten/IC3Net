@@ -3,6 +3,7 @@ import time
 import signal
 import argparse
 import time, os
+os.environ["OMP_NUM_THREADS"] = "1"
 import numpy as np
 import torch
 import data
@@ -141,99 +142,141 @@ evaluator = Evaluator(args, policy_net, data.init(args.env_name, args))
 st_time = time.time()
 
 all_stats = []
-all_comms_to_loc = {}
-for i in range(500):
-    ep, stat, all_comms, comms_to_loc = evaluator.run_episode()
+all_comms_to_loc0 = {}
+all_comms_to_loc1 = {}
+all_comms_to_loc2 = {}
+for i in range(5000):
+    ep, stat, all_comms, comms_to_loc, comms_to_act, comms_to_full = evaluator.run_episode()
     all_stats.append(stat)
-    for k, v in comms_to_loc.items():
+    for k, v in comms_to_full.items():
         np_k = k
-        if all_comms_to_loc.get(np_k) is None:
-            all_comms_to_loc[np_k] = {}
-        matching_vals = all_comms_to_loc.get(np_k)
+        if all_comms_to_loc0.get(np_k) is None:
+            all_comms_to_loc0[np_k] = {}
+        matching_vals = all_comms_to_loc0.get(np_k)
         for val in v:
             if val not in matching_vals.keys():
                 matching_vals[val] = 0
             matching_vals[val] += 1
-    print(stat)
-print("All comms to loc", all_comms_to_loc)
-total_episode_time = time.time() - st_time
-average_stat = {}
-for key in all_stats[0].keys():
-    average_stat[key] = np.mean([stat.get(key) for stat in all_stats])
-print("average stats is: ", average_stat)
-print("time taken per step ", total_episode_time/stat['num_steps'])
+    for k, v in comms_to_loc.items():
+        np_k = k
+        if all_comms_to_loc1.get(np_k) is None:
+            all_comms_to_loc1[np_k] = {}
+        matching_vals = all_comms_to_loc1.get(np_k)
+        for val in v:
+            if val not in matching_vals.keys():
+                matching_vals[val] = 0
+            matching_vals[val] += 1
+    for k, v in comms_to_act.items():
+        np_k = k
+        if all_comms_to_loc2.get(np_k) is None:
+            all_comms_to_loc2[np_k] = {}
+        matching_vals = all_comms_to_loc2.get(np_k)
+        for val in v:
+            if val not in matching_vals.keys():
+                matching_vals[val] = 0
+            matching_vals[val] += 1
+    # print(i, stat)
+for action_level, all_comms_to_loc in enumerate([all_comms_to_loc0, all_comms_to_loc1, all_comms_to_loc2]):
+    print("All comms to loc", all_comms_to_loc)
+    total_episode_time = time.time() - st_time
+    average_stat = {}
+    for key in all_stats[0].keys():
+        average_stat[key] = np.mean([stat.get(key) for stat in all_stats])
+    print("average stats is: ", average_stat)
+    print("time taken per step ", total_episode_time/stat['num_steps'])
 
-protos_np = None
-num_proto_cutoff = 9  # Or None if you want all of them.
-try:
-    all_comms_to_loc = {k: v for k, v in sorted(all_comms_to_loc.items(), key=lambda item: sum(item[1].values()))}
-    # A bit gross, but first get proto network and then proto layer
-    protos = policy_net.proto_layer.prototype_layer.prototypes
-    # Pass the prototypes through sigmoid to get the actual values.
-    constrained_protos = torch.sigmoid(protos)
-    protos_np = constrained_protos.detach().cpu().numpy()
-    protos_list = [proto for proto in all_comms_to_loc.keys()]
-    if num_proto_cutoff is not None:
-        protos_list = protos_list[:num_proto_cutoff]
-    protos_np = np.asarray(protos_list)
-    # print("Prototypes", protos_np)
-except AttributeError:
-    print("No prototypes in policy net, so not analyzing that.")
-if protos_np is not None:
-    pca_transform = plot_comms(protos_np)
-    plt.close()
+    protos_np = None
+    num_proto_cutoff = None  # Or None if you want all of them.
+    try:
+        all_comms_to_loc = {k: v for k, v in sorted(all_comms_to_loc.items(), key=lambda item: sum(item[1].values()))}
+        # A bit gross, but first get proto network and then proto layer
+        protos = policy_net.proto_layer.prototype_layer.prototypes
+        # Pass the prototypes through sigmoid to get the actual values.
+        constrained_protos = torch.sigmoid(protos)
+        protos_np = constrained_protos.detach().cpu().numpy()
+        protos_list = [proto for proto in all_comms_to_loc.keys()]
+        # action_list = [proto[1] for proto in all_comms_to_loc.keys()]
+        if num_proto_cutoff is not None:
+            protos_list = protos_list[:num_proto_cutoff]
+        protos_np = np.asarray(protos_list)
+        print("Prototypes", protos_np.shape)
+    except AttributeError:
+        print("No prototypes in policy net, so not analyzing that.")
+    if protos_np is not None:
+        pca_transform = plot_comms(protos_np)
+        plt.close()
 
-all_comms = np.array(all_comms)
-num_agents = len(all_comms[0])
-for i in range(num_agents):
-    print(f"for agent{i} communication is: ", all_comms[:, i])
+    all_comms = np.array(all_comms)
+    num_agents = len(all_comms[0])
+    for i in range(num_agents):
+        print(f"for agent{i} communication is: ", all_comms[:, i])
 
-# Plot the locations associated with each prototype recorded during execution
-proto_idx = 0
-for proto, locs in all_comms_to_loc.items():
-    grid = np.zeros((10, 10))
-    for loc, count in locs.items():
-        grid[loc[0], loc[1]] = count
-    fig, ax = plt.subplots(1, 2)
-    plot_comms(protos_np, np.expand_dims(np.asarray(proto), 0), pca_transform, ax[0])
-    ax[1].imshow(grid, cmap='hot')
-    plt.savefig("Proto" + str(proto_idx))
+    # Plot the locations associated with each prototype recorded during execution
+    proto_idx = 0
+    # print("testtesttest",all_comms_to_loc.items())
+    print("number of protos", len(all_comms_to_loc.items()))
+    print()
+    print()
+    for proto, locs in all_comms_to_loc.items():
+        # grid = np.zeros((10, 10))
+        grid = np.zeros((args.dim, args.dim))
+        # print("locs items", locs.items())
+        for loc, count in locs.items():
+            grid[loc[0], loc[1]] = count
+        print("proto", proto)
+        print("locations:")
+        grid_sum = grid.sum()
+        for loc, count in locs.items():
+            percentage = grid[loc[0], loc[1]] / grid_sum
+            print(loc[0], loc[1], percentage)#, grid[loc[0], loc[1]], grid_sum)
+        print()
+        fig, ax = plt.subplots(1, 2)
+        # print("protos np ", protos_np)
+        plot_comms(protos_np, np.expand_dims(np.asarray(proto), 0), pca_transform, ax[0])
+        im = ax[1].imshow(grid, cmap='gray')
+        plt.colorbar(im)
+        plt.savefig("tj_.5sparse_figs/Proto" + str(proto_idx) + str(action_level))
+        # plt.show()
+        plt.close()
+        proto_idx += 1
+        if num_proto_cutoff is not None and proto_idx >= num_proto_cutoff:
+            break
+
+    def get_weighted_loc(_loc_dict):
+        total_count = 0
+        summed = np.zeros(2)
+        for loc, count in _loc_dict.items():
+            summed += count * np.asarray(loc)
+            total_count += count
+        if total_count != 0:
+            return summed / total_count
+        return summed
+
+    # Lastly, compute a metric of correlation between distance in comm space and distance in grid.
+    proto_dists = []
+    space_dists = []
+    for proto1, locs1 in all_comms_to_loc.items():
+        for proto2, locs2 in all_comms_to_loc.items():
+            if np.array_equal(proto1, proto2):
+                continue
+            proto_dist = np.linalg.norm(np.asarray(proto1) - np.asarray(proto2)) / (np.sqrt(args.comm_dim))
+            avg1 = get_weighted_loc(locs1)
+            avg2 = get_weighted_loc(locs2)
+            space_dist = np.linalg.norm(avg1 - avg2) / (9 * np.sqrt(2))
+            proto_dists.append(proto_dist)
+            space_dists.append(space_dist)
+
+    from sklearn.linear_model import LinearRegression
+    # print(proto_dists)
+    # print(space_dists)
+    reg = LinearRegression().fit(np.asarray(proto_dists).reshape(-1, 1), np.asarray(space_dists).reshape(-1, 1))
+    plt.scatter(proto_dists, space_dists)
+    m = reg.coef_[0]
+    b = reg.intercept_[0]
+    print("M", m, "b", b)
+    plt.plot(proto_dists, m*np.asarray(proto_dists) + b)
+    plt.ylabel("Normalized L2 distance between physical locations")
+    plt.xlabel("Normalized L2 distance between prototype vectors")
+    plt.savefig(f"tj_.5sparse_figs/Correlation{action_level}.png")
     # plt.show()
-    plt.close()
-    proto_idx += 1
-    if num_proto_cutoff is not None and proto_idx >= num_proto_cutoff:
-        break
-
-def get_weighted_loc(_loc_dict):
-    total_count = 0
-    summed = np.zeros(2)
-    for loc, count in _loc_dict.items():
-        summed += count * np.asarray(loc)
-        total_count += count
-    return summed / total_count
-
-# Lastly, compute a metric of correlation between distance in comm space and distance in grid.
-proto_dists = []
-space_dists = []
-for proto1, locs1 in all_comms_to_loc.items():
-    for proto2, locs2 in all_comms_to_loc.items():
-        if np.array_equal(proto1, proto2):
-            continue
-        proto_dist = np.linalg.norm(np.asarray(proto1) - np.asarray(proto2)) / (np.sqrt(args.comm_dim))
-        avg1 = get_weighted_loc(locs1)
-        avg2 = get_weighted_loc(locs2)
-        space_dist = np.linalg.norm(avg1 - avg2) / (9 * np.sqrt(2))
-        proto_dists.append(proto_dist)
-        space_dists.append(space_dist)
-
-from sklearn.linear_model import LinearRegression
-reg = LinearRegression().fit(np.asarray(proto_dists).reshape(-1, 1), np.asarray(space_dists).reshape(-1, 1))
-plt.scatter(proto_dists, space_dists)
-m = reg.coef_[0]
-b = reg.intercept_[0]
-print("M", m, "b", b)
-plt.plot(proto_dists, m*np.asarray(proto_dists) + b)
-plt.ylabel("Normalized L2 distance between physical locations")
-plt.xlabel("Normalized L2 distance between prototype vectors")
-plt.savefig("Correlation.png")
-# plt.show()
+    break

@@ -352,9 +352,12 @@ class CommNetMLP(nn.Module):
         if self.args.recurrent:
             if info.get('record_comms') is not None:
                 # Go through the all comms passes and only pick out comms for the agent you want.
-                filtered_comms = [c[info.get('record_comms')] for c in all_comms]
-                assert len(filtered_comms) == 1, "Only support one agent at a time"
-                return action, value_head, (hidden_state.clone(), cell_state.clone()), filtered_comms[0]
+                # filtered_comms = np.array([c[info.get('record_comms')] for c in all_comms])
+                filtered_comms = np.array([c.numpy() for c in all_comms])
+                if self.args.env_name == 'predator_prey':
+                    assert len(filtered_comms) == 1, "Only support one agent at a time"
+                # print("communication comm.py", c.shape, len(filtered_comms[0]))
+                return action, value_head, (hidden_state.clone(), cell_state.clone()), filtered_comms
             return action, value_head, (hidden_state.clone(), cell_state.clone())
         else:
             if info.get('record_comms') is not None:
