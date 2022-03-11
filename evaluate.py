@@ -279,4 +279,46 @@ for action_level, all_comms_to_loc in enumerate([all_comms_to_loc0, all_comms_to
     plt.xlabel("Normalized L2 distance between prototype vectors")
     plt.savefig(f"tj_.5sparse_figs/Correlation{action_level}.png")
     # plt.show()
-    break
+    plt.close()
+    proto_idx += 1
+    if num_proto_cutoff is not None and proto_idx >= num_proto_cutoff:
+        break
+
+def get_weighted_loc(_loc_dict):
+    total_count = 0
+    summed = np.zeros(2)
+    for loc, count in _loc_dict.items():
+        summed += count * np.asarray(loc)
+        total_count += count
+    return summed / total_count
+
+# Lastly, compute a metric of correlation between distance in comm space and distance in grid.
+proto_dists = []
+space_dists = []
+for proto1, locs1 in all_comms_to_loc.items():
+    avg1 = get_weighted_loc(locs1)
+    pca1 = pca_transform.transform(np.reshape(proto1, (1, -1)))
+    print("PCA proto to location")
+    print(proto1)
+    print(pca1)
+    print(avg1)
+    for proto2, locs2 in all_comms_to_loc.items():
+        if np.array_equal(proto1, proto2):
+            continue
+        proto_dist = np.linalg.norm(np.asarray(proto1) - np.asarray(proto2)) / (np.sqrt(args.comm_dim))
+        avg2 = get_weighted_loc(locs2)
+        space_dist = np.linalg.norm(avg1 - avg2) / (9 * np.sqrt(2))
+        proto_dists.append(proto_dist)
+        space_dists.append(space_dist)
+
+from sklearn.linear_model import LinearRegression
+reg = LinearRegression().fit(np.asarray(proto_dists).reshape(-1, 1), np.asarray(space_dists).reshape(-1, 1))
+plt.scatter(proto_dists, space_dists)
+m = reg.coef_[0]
+b = reg.intercept_[0]
+print("M", m, "b", b)
+plt.plot(proto_dists, m*np.asarray(proto_dists) + b)
+plt.ylabel("Normalized L2 distance between physical locations")
+plt.xlabel("Normalized L2 distance between prototype vectors")
+plt.savefig("Correlation.png")
+# plt.show()
