@@ -16,7 +16,7 @@ seeds = [777]
 # methods = ["fixed_proto_comm_vs_protos_junction_easy"]
 # methods = ["medium_baseline_fixed_proto", "medium_baseline_fixed_continuous", "medium_baseline_G_proto", "medium_baseline_G_continuous"]
 # methods = ["easy_baseline_fixed_proto", "easy_baseline_fixed_continuous", "easy_baseline_G_proto", "easy_baseline_G_continuous"]
-methods = ["strict_easy_proto"]
+methods = ["hard_proto_baseline", "hard_baseline"]
 # methods = ["strict_medium_proto"]
 # methods = ["medium_fixed_continuous", "medium_G_proto", "medium_G_continuous"]
 # run baseline with no reward on the gating function
@@ -40,12 +40,13 @@ if True:
             comms_list = [64]
             num_epochs = 3000
         elif 'hard' in method:
-            protos_list = [144, 72, 288]
-            comms_list = [64]
+            # protos_list = [144, 72, 288]
+            protos_list = [128]
+            comms_list = [128]
             num_epochs = 4000
         for num_proto in protos_list:
             for comm_dim in comms_list:
-                exp_name = "tj_EX_" + method
+                exp_name = "tj_" + method
                 # exp_name = "tj_EX_" + method + "_p" + str(num_proto) + "_c" + str(comm_dim)
                 vision = 0
                 # discrete comm is true if you want to use learnable prototype based communication.
@@ -58,11 +59,8 @@ if True:
                 comm_action_one = False
                 comm_action_zero = False
                 # weight of the gating penalty. 0 means no penalty.
-                # gating_head_cost_factor = rew
                 gating_head_cost_factor = 0.1
-                if "baseline" in method:
-                    gating_head_cost_factor = 0
-                if "fixed" in method:
+                if "fixed" in method or "baseline" in method:
                     if not "var" in method:
                         gating_head_cost_factor = 0
                     comm_action_one = True
@@ -111,7 +109,7 @@ if True:
                 run_str = f"python main.py --env_name {env} --nprocesses {nprocesses} --display "+\
                           f"--num_epochs {num_epochs} --epoch_size 10 "+\
                           f"--gating_head_cost_factor {gating_head_cost_factor} "+\
-                          f"--hid_size {hid_size} --budget 0.3 "+\
+                          f"--hid_size {hid_size} --budget 1. "+\
                           f" --detach_gap 10 --lrate {lr} --ic3net --vision {vision} "+\
                           f"--recurrent "+\
                           f"--max_steps {max_steps} --dim {dim} --nagents {nagents} --add_rate_min {add_rate_min} --add_rate_max {add_rate_max} --curr_epochs 1000 --difficulty {difficulty} "+\
