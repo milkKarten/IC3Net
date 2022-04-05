@@ -29,7 +29,7 @@ class MultiProcessWorker(mp.Process):
             elif task == 'run_batch':
                 batch, stat = self.trainer.run_batch(epoch)
                 self.trainer.optimizer.zero_grad()
-                s = self.trainer.compute_grad(batch)
+                s = self.trainer.compute_grad(batch, other_stat=stat)
                 merge_stat(s, stat)
                 self.comm.send(stat)
             elif task == 'send_grads':
