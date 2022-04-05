@@ -96,7 +96,7 @@ class MultiProcessTrainer(object):
 
         grad_st = time.time()
         self.trainer.optimizer.zero_grad()
-        s = self.trainer.compute_grad(batch)
+        s = self.trainer.compute_grad(batch, other_stat=stat)
 
         print(f"time for grad {time.time() - grad_st}")
 

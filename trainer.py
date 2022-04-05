@@ -359,7 +359,7 @@ class Trainer(object):
         # print("stat are ", stat)
         return (episode, stat)
 
-    def compute_grad(self, batch):
+    def compute_grad(self, batch, other_stat=None):
         stat = dict()
         num_actions = self.args.num_actions
         dim_actions = self.args.dim_actions
@@ -453,7 +453,7 @@ class Trainer(object):
         # adding regularization term to minimize communication
         loss = action_loss + self.args.value_coeff * value_loss
         if self.args.min_comm_loss:
-            loss -= self.args.eta_comm_loss * torch.Tensor(stat['comm_action']).to(self.device)
+            loss -= self.args.eta_comm_loss * torch.Tensor(other_stat['comm_action']).to(self.device)
         if self.args.max_info:
             loss -= self.args.eta_info * 0   # TODO: add euclidean distance between memory cells
 
@@ -502,7 +502,7 @@ class Trainer(object):
         self.optimizer.zero_grad()
 
         # grad_st_time = time.time()
-        s = self.compute_grad(batch)
+        s = self.compute_grad(batch, other_stat=stat)
         # print(f"time taken for grad computation {time.time() - grad_st_time}")
 
         merge_stat(s, stat)
