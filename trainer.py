@@ -132,7 +132,7 @@ class Trainer(object):
                     self.tj_success = 0
                 self.tj_epoch_success = 0
             if self.tj_success >= 20:
-                self.begin_tj_currich = True
+                self.begin_tj_curric = True
 
     def communication_curriculum(self, success_rate, num_episodes):
         if not self.end_comm_curric and not self.args.variable_gate:
@@ -252,7 +252,7 @@ class Trainer(object):
                     # print(gating_head_rew, stat['comm_action'] / stat['num_steps'], info['comm_budget'])
                     if self.policy_net.budget != 1:
                         # gating_head_rew = (np.abs(info['comm_action'] - info['comm_budget'])).astype(np.float64)
-                        # gating_head_rew = (np.abs(info['comm_action'] - info['comm_budget']) / (1 - self.policy_net.budget)).astype(np.float64)
+                        # gating_head_rew = (np.abs(info['comm_action'] - info['comm_budget']) / (1 - self.policy_net.''budget'')).astype(np.float64)
                         # punish excessive and strengthen current communication
                         # gating_head_rew = (np.abs(gating_head_rew - info['comm_budget'])).astype(np.float64)
                         # only punish excessive communication
@@ -450,7 +450,12 @@ class Trainer(object):
         value_loss = value_loss.sum()
 
         stat['value_loss'] = value_loss.item()
+        # adding regularization term to minimize communication
         loss = action_loss + self.args.value_coeff * value_loss
+        if self.min_comm_loss:
+            loss -= self.eta_comm_loss * torch.Tensor(stat['comm_action']).to(self.device)
+        if self.max_info:
+            loss -= self.eta_info * 0   # TODO: add euclidean distance between memory cells
 
         if not self.args.continuous:
             # entropy regularization term

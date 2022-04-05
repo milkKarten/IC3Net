@@ -174,6 +174,16 @@ parser.add_argument('--load_pretrain', action='store_true', default=False,
 parser.add_argument('--pretrain_exp_name', type=str,
                     help='pretrain model name')
 
+# objective function communication regularization terms
+parser.add_argument('--min_comm_loss', action='store_true', default=False,
+                    help='minimize communication loss')
+parser.add_argument('--eta_comm_loss', type=float, default=1.0,
+                    help='Communication budget hyperparameter')
+parser.add_argument('--max_info', action='store_true', default=False,
+                    help='maximize mutual information')
+parser.add_argument('--eta_info', type=float, default=1.0,
+                    help='maximize mutual information hyperparameter')   
+
 # first add environment specific args to the parser
 init_args_for_env(parser)
 
