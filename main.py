@@ -182,7 +182,7 @@ parser.add_argument('--eta_comm_loss', type=float, default=1.0,
 parser.add_argument('--max_info', action='store_true', default=False,
                     help='maximize mutual information')
 parser.add_argument('--eta_info', type=float, default=1.0,
-                    help='maximize mutual information hyperparameter')   
+                    help='maximize mutual information hyperparameter')
 
 # first add environment specific args to the parser
 init_args_for_env(parser)
@@ -467,7 +467,7 @@ signal.signal(signal.SIGINT, signal_handler)
 # if args.load != '':
 #     load(args.load)
 
-if args.restore:
+if args.restore and not args.load_pretrain:
     load_path = os.path.join(args.load, args.env_name, args.exp_name, "seed" + str(args.seed), "models")
     # print(f"load directory is {load_path}")
     print("load directory is "+str(load_path))
