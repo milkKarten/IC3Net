@@ -457,6 +457,10 @@ class Trainer(object):
             comm_losses = other_stat['comm_action'] / float(other_stat['num_steps'])
             comm_losses = torch.Tensor(comm_losses).to(self.device).mean()
             comm_losses = torch.abs((self.args.soft_budget-comm_losses))
+            if comm_losses < self.args.soft_budget:
+                comm_losses /= self.args.soft_budget
+            else:
+                comm_losses /= (1.-self.args.soft_budget)
             stat['regularization_loss'] = comm_losses.item()
             # print(stat['regularization_loss'], stat['action_loss'], self.args.value_coeff * stat['value_loss'])
             loss += self.args.eta_comm_loss * comm_losses
@@ -499,7 +503,6 @@ class Trainer(object):
 
     # only used when nprocesses=1
     def train_batch(self, epoch):
-
         # run_st_time = time.time()
         batch, stat = self.run_batch(epoch)
 
@@ -527,6 +530,7 @@ class Trainer(object):
                 p._grad.data /= stat['num_steps']
         self.optimizer.step()
         if self.args.scheduleLR:
+            print("LR step")
             self.scheduler.step()
         return stat
 

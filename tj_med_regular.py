@@ -17,7 +17,7 @@ seeds = [777]
 # methods = ["medium_baseline_fixed_proto", "medium_baseline_fixed_continuous", "medium_baseline_G_proto", "medium_baseline_G_continuous"]
 # methods = ["easy_baseline_fixed_proto", "easy_baseline_fixed_continuous", "easy_baseline_G_proto", "easy_baseline_G_continuous"]
 # methods = ["soft_easy_proto_rew_cur"]
-methods = ["easy_baseline"]
+methods = ["easy_proto_soft_minComm"]
 # methods = ["medium_fixed_continuous", "medium_G_proto", "medium_G_continuous"]
 # run baseline with no reward on the gating function
 # G - IC3net with learned gating function
@@ -48,6 +48,7 @@ if True:
                 exp_name = "tj_test_" + method
                 # exp_name = "tj_EX_" + method + "_p" + str(num_proto) + "_c" + str(comm_dim)
                 vision = 0
+                soft_budget = 0.75
                 # discrete comm is true if you want to use learnable prototype based communication.
                 discrete_comm = False
                 if "proto" in method:
@@ -109,7 +110,7 @@ if True:
                 run_str = f"python main.py --env_name {env} --nprocesses {nprocesses} "+\
                           f"--num_epochs {num_epochs} --epoch_size 10 "+\
                           f"--gating_head_cost_factor {gating_head_cost_factor} "+\
-                          f"--hid_size {hid_size} "+\
+                          f"--hid_size {hid_size} --soft_budget {soft_budget} "+\
                           f" --detach_gap 10 --lrate {lr} --ic3net --vision {vision} "+\
                           f"--recurrent "+\
                           f"--max_steps {max_steps} --dim {dim} --nagents {nagents} --add_rate_min {add_rate_min} --add_rate_max {add_rate_max} --curr_epochs 1000 --difficulty {difficulty} "+\
