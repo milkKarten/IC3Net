@@ -456,7 +456,7 @@ class Trainer(object):
             comm_losses = other_stat['comm_action'] / float(other_stat['num_steps'])
             comm_losses = torch.Tensor(comm_losses).to(self.device).mean()
             stat['regularization_loss'] = comm_losses.item()
-            loss -= self.args.eta_comm_loss * (0.5-comm_losses)**2
+            loss -= self.args.eta_comm_loss * torch.abs(2*(0.5-comm_losses))
         if self.args.max_info:
             loss -= self.args.eta_info * 0   # TODO: add euclidean distance between memory cells
 
