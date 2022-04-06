@@ -459,7 +459,7 @@ class Trainer(object):
             comm_losses = torch.abs(2*(0.5-comm_losses))
             stat['regularization_loss'] = comm_losses.item()
             # print(stat['regularization_loss'], stat['action_loss'], self.args.value_coeff * stat['value_loss'])
-            loss += self.args.eta_comm_loss * comm_losses)
+            loss += self.args.eta_comm_loss * comm_losses
         if self.args.max_info:
             loss += self.args.eta_info * 0   # TODO: add euclidean distance between memory cells
 
