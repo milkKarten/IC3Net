@@ -80,7 +80,7 @@ class Trainer(object):
 
         # if comunication has converged at budget
         self.comm_converge = False
-        self.comm_scheduler = optim.lr_scheduler.ConstantLR(self.optimizer, factor=0.01)
+        # self.comm_scheduler = optim.lr_scheduler.ConstantLR(self.optimizer, factor=0.01)
 
 
     def success_curriculum(self, success_rate, num_episodes):
