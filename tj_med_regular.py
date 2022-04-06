@@ -17,15 +17,16 @@ seeds = [777]
 # methods = ["medium_baseline_fixed_proto", "medium_baseline_fixed_continuous", "medium_baseline_G_proto", "medium_baseline_G_continuous"]
 # methods = ["easy_baseline_fixed_proto", "easy_baseline_fixed_continuous", "easy_baseline_G_proto", "easy_baseline_G_continuous"]
 # methods = ["soft_easy_proto_rew_cur"]
-methods = ["soft_medium_proto_rew_cur_minComm"]
+methods = ["easy_baseline"]
 # methods = ["medium_fixed_continuous", "medium_G_proto", "medium_G_continuous"]
 # run baseline with no reward on the gating function
 # G - IC3net with learned gating function
 # exp_name = "tj_g0.01_test"
 # for reward_curr_start, reward_curr_end in zip([1500, 1250, 1800],[1900, 2000, 2000]):
-# pretrain_exp_name = 'tj_EX_fixed_proto_comm_vs_protos_easy_p56_c32'
-pretrain_exp_name = 'tj_EX_fixed_proto_comm_vs_protos_medium_p112_c64_d'
-for soft_budget in [.5]:
+pretrain_exp_name = 'tj_EX_fixed_proto_comm_vs_protos_easy_p56_c32'
+# pretrain_exp_name = 'tj_EX_fixed_proto_comm_vs_protos_medium_p112_c64_d'
+# for soft_budget in [.5]:
+if True:
     for method in methods:
         if "easy" in method:
             # protos_list = [14, 28, 56]
@@ -44,7 +45,7 @@ for soft_budget in [.5]:
             num_epochs = 4000
         for num_proto in protos_list:
             for comm_dim in comms_list:
-                exp_name = "tj_EX_" + method + '_sb_' + str(soft_budget)
+                exp_name = "tj_test_" + method
                 # exp_name = "tj_EX_" + method + "_p" + str(num_proto) + "_c" + str(comm_dim)
                 vision = 0
                 # discrete comm is true if you want to use learnable prototype based communication.
@@ -59,9 +60,7 @@ for soft_budget in [.5]:
                 # weight of the gating penalty. 0 means no penalty.
                 # gating_head_cost_factor = rew
                 gating_head_cost_factor = 0.1
-                if "baseline" in method:
-                    gating_head_cost_factor = 0
-                if "fixed" in method:
+                if "fixed" in method or "baseline" in method:
                     if not "var" in method:
                         gating_head_cost_factor = 0
                     comm_action_one = True
@@ -75,7 +74,7 @@ for soft_budget in [.5]:
                 if "var" in method:
                     variable_gate = True
                 nprocesses = 16
-                lr = 0.001
+                lr = 0.003
                 if "medium" in method:
                     nagents = 10
                     max_steps = 40
@@ -107,10 +106,10 @@ for soft_budget in [.5]:
                     difficulty = 'easy'
 
 
-                run_str = f"python main.py --env_name {env} --nprocesses {nprocesses} --display "+\
+                run_str = f"python main.py --env_name {env} --nprocesses {nprocesses} "+\
                           f"--num_epochs {num_epochs} --epoch_size 10 "+\
                           f"--gating_head_cost_factor {gating_head_cost_factor} "+\
-                          f"--hid_size {hid_size} --soft_budget {soft_budget} "+\
+                          f"--hid_size {hid_size} "+\
                           f" --detach_gap 10 --lrate {lr} --ic3net --vision {vision} "+\
                           f"--recurrent "+\
                           f"--max_steps {max_steps} --dim {dim} --nagents {nagents} --add_rate_min {add_rate_min} --add_rate_max {add_rate_max} --curr_epochs 1000 --difficulty {difficulty} "+\
@@ -132,7 +131,7 @@ for soft_budget in [.5]:
                     run_str += f"--load_pretrain --pretrain_exp_name {pretrain_exp_name} "
 
                 if "minComm" in method:
-                    run_str += "--min_comm_loss --eta_comm_loss 0.3 "
+                    run_str += "--min_comm_loss --eta_comm_loss 100 "
                 if "maxInfo" in method:
                     run_str += "--max_info --eta_info 0.5"
 
