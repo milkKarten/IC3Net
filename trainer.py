@@ -453,7 +453,9 @@ class Trainer(object):
         # adding regularization term to minimize communication
         loss = action_loss + self.args.value_coeff * value_loss
         if self.args.min_comm_loss:
-            loss -= self.args.eta_comm_loss * torch.Tensor(other_stat['comm_action']).to(self.device).sum()
+            comm_losses = other_stat['comm_action'] / float(other_stat['num_steps'])
+            comm_losses = torch.Tensor(comm_losses).to(self.device).mean()
+            loss -= self.args.eta_comm_loss * (0.5-comm_losses)**2
         if self.args.max_info:
             loss -= self.args.eta_info * 0   # TODO: add euclidean distance between memory cells
 
