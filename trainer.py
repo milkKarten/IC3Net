@@ -417,8 +417,9 @@ class Trainer(object):
             advantages[i] = returns[i] - values.data[i]
         '''
         advantages = returns - values.data
+        # print(advantages, returns, values.data,"\n")
 
-        if self.args.normalize_rewards:
+        if self.args.normalize_rewards or True:
             advantages = (advantages - advantages.mean()) / advantages.std()
 
         if self.args.continuous:
@@ -455,10 +456,12 @@ class Trainer(object):
         if self.args.min_comm_loss:
             comm_losses = other_stat['comm_action'] / float(other_stat['num_steps'])
             comm_losses = torch.Tensor(comm_losses).to(self.device).mean()
+            comm_losses = torch.abs(2*(0.5-comm_losses))
             stat['regularization_loss'] = comm_losses.item()
-            loss -= self.args.eta_comm_loss * torch.abs(2*(0.5-comm_losses))
+            # print(stat['regularization_loss'], stat['action_loss'], self.args.value_coeff * stat['value_loss'])
+            loss += self.args.eta_comm_loss * comm_losses)
         if self.args.max_info:
-            loss -= self.args.eta_info * 0   # TODO: add euclidean distance between memory cells
+            loss += self.args.eta_info * 0   # TODO: add euclidean distance between memory cells
 
         if not self.args.continuous:
             # entropy regularization term
