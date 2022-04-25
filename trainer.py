@@ -81,7 +81,7 @@ class Trainer(object):
         # if comunication has converged at budget
         self.comm_converge = False
         # self.comm_scheduler = optim.lr_scheduler.ConstantLR(self.optimizer, factor=0.01)
-
+        self.loss_autoencoder = None
 
     def success_curriculum(self, success_rate, num_episodes):
         if self.args.variable_gate:
@@ -154,6 +154,36 @@ class Trainer(object):
             if self.policy_net.budget <= self.min_budget:
                 self.end_comm_curric = True
 
+    def autoencoder(self):
+        print("running autoencoder")
+        self.stats = dict()
+        opt = optim.Adadelta(self.policy_net.parameters())
+        _b_size = 64
+        for e in range(1000):
+            b = 0
+            while b < _b_size:
+                loss = None
+                stat = dict()
+                stat['autoencoder_epoch'] = e
+                for i in range(1, self.args.nagents+1):
+                    a = torch.full((1, 5, 17), i/17.)
+                    torch.bernoulli(a)
+                    prev_hid = self.policy_net.init_hidden(batch_size=1)
+                    # prev_hid = torch.zeros(1, self.args.nagents, self.args.hid_size)
+                    state_x = a
+                    x = [state_x, prev_hid]
+                    comm_decoded = self.policy_net.forward_comm(x)
+                    if loss == None:
+                        loss = torch.nn.functional.mse_loss(state_x, comm_decoded)
+                    else:
+                        loss += torch.nn.functional.mse_loss(state_x, comm_decoded)
+                    b += 1
+            loss.backward()
+            opt.step()
+            stat['autoencoder_loss'] = loss.item() / b
+            merge_stat(stat, self.stat)
+        print("finished running autoencoder")
+        return
 
     def get_episode(self, epoch):
         episode = []
@@ -164,7 +194,6 @@ class Trainer(object):
         else:
             state = self.env.reset()
         should_display = self.display and self.last_step
-
         if should_display:
             self.env.display()
         stat = dict()
@@ -191,7 +220,14 @@ class Trainer(object):
 
                 x = [state, prev_hid]
                 action_out, value, prev_hid = self.policy_net(x, info)
-
+                if self.args.autoencoder:
+                    decoded = self.policy_net.decode()
+                    x_all = x[0].sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
+                    # print("x all", x_all.shape, decoded.shape)
+                    if self.loss_autoencoder == None:
+                        self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
+                    else:
+                        self.loss_autoencoder += torch.nn.functional.mse_loss(decoded, x_all)
                 # this seems to be limiting how much BPTT happens.
                 if (t + 1) % self.args.detach_gap == 0:
                     if self.args.rnn_type == 'LSTM':
@@ -364,6 +400,16 @@ class Trainer(object):
         num_actions = self.args.num_actions
         dim_actions = self.args.dim_actions
 
+        # if self.epoch_num >= 10 and self.epoch_num <= 500:
+        #     self.set_lr(0.03)
+        #     if self.args.autoencoder:
+        #         stat['autoencoder_loss'] = self.loss_autoencoder.item()
+        #         loss = self.loss_autoencoder
+        #     loss.backward()
+        #     if self.args.autoencoder:
+        #         self.loss_autoencoder = None
+        #     return stat
+
         n = self.args.nagents
         batch_size = len(batch.state)
         rewards = torch.Tensor(np.array(batch.reward)).to(self.device)
@@ -476,7 +522,12 @@ class Trainer(object):
             if self.args.entr > 0:
                 loss -= self.args.entr * entropy
 
+        if self.args.autoencoder:
+            stat['autoencoder_loss'] = self.loss_autoencoder.item()
+            loss = 0.5 * loss + 0.5 * self.loss_autoencoder
         loss.backward()
+        if self.args.autoencoder:
+            self.loss_autoencoder = None
 
         return stat
 
@@ -484,6 +535,7 @@ class Trainer(object):
         # self.reward_curriculum(epoch)
         if epoch >= 250 and self.args.use_tj_curric:
             self.begin_tj_curric = True
+        self.epoch_num = epoch
         batch = []
         self.stats = dict()
         self.stats['num_episodes'] = 0

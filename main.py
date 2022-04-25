@@ -184,6 +184,10 @@ parser.add_argument('--max_info', action='store_true', default=False,
 parser.add_argument('--eta_info', type=float, default=1.0,
                     help='maximize mutual information hyperparameter')
 
+# autoencoder
+parser.add_argument('--autoencoder', action='store_true', default=False,
+                    help='use autoencoder to learn comms')
+
 # first add environment specific args to the parser
 init_args_for_env(parser)
 
@@ -305,6 +309,8 @@ log['value_loss'] = LogField(list(), True, 'epoch', 'num_steps')
 log['action_loss'] = LogField(list(), True, 'epoch', 'num_steps')
 log['regularization_loss'] = LogField(list(), True, 'epoch', None)
 log['entropy'] = LogField(list(), True, 'epoch', 'num_steps')
+log['autoencoder_loss'] = LogField(list(), True, 'epoch', 'num_steps')
+# log['autoencoder_epoch'] = LogField(list(), False, None, None)
 
 # define save directory
 # logs will also be saved under the same directory

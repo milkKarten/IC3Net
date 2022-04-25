@@ -156,6 +156,8 @@ class CommNetMLP(nn.Module):
         self.comm_budget = torch.tensor([self.args.max_steps+1] * self.nagents)
         self.budget = args.budget
 
+        # autoencoder decoder
+        self.decoderNet = nn.Linear(args.hid_size, num_inputs)
 
     def get_agent_mask(self, batch_size, info):
         n = self.nagents
@@ -194,6 +196,17 @@ class CommNetMLP(nn.Module):
 
         return x, hidden_state, cell_state
 
+    def forward_comm(self, x):
+        # print(self.forward_state_encoder(x))
+        x, hidden_state, cell_state = self.forward_state_encoder(x)
+        comm = hidden_state
+        comm_decoded = self.decoder(comm)
+        return comm_decoded # (n, num_inputs)
+
+    def decode(self):
+        y = self.h_state + self.comms_all
+        y = self.decoderNet(y)
+        return y
 
     def forward(self, x, info={}):
         # TODO: Update dimensions
@@ -224,9 +237,13 @@ class CommNetMLP(nn.Module):
         #     x = torch.cat([x, maxi], dim=-1)
         #     x = self.tanh(x)
 
-
+        # print(x[0].size(), x[0],"\n")
         x, hidden_state, cell_state = self.forward_state_encoder(x)
-
+        if self.args.autoencoder:
+            self.h_state = hidden_state.clone()
+        # print(x, hidden_state, cell_state)
+        # import sys
+        # sys.exit(0)
         batch_size = x.size()[0]
         n = self.nagents
 
@@ -285,6 +302,7 @@ class CommNetMLP(nn.Module):
             else:
                 # print(f"inside else {hidden_state.size()}")
                 comm = hidden_state
+                # print("before", comm.shape, comm) # (5,32)
                 all_comms.append(torch.squeeze(comm, 0).detach().clone())
                 assert self.args.comm_dim == self.args.hid_size , "If not using protos comm dim should be same as hid"
 
@@ -298,6 +316,7 @@ class CommNetMLP(nn.Module):
 
             # Create mask for masking self communication
             mask = self.comm_mask.view(1, n, n)
+
             mask = mask.expand(comm.shape[0], n, n)
             mask = mask.unsqueeze(-1)
 
@@ -314,12 +333,12 @@ class CommNetMLP(nn.Module):
             comm = comm * agent_mask
             # Mask communication to dead agents
             comm = comm * agent_mask_transpose
-
             # Combine all of C_j for an ith agent which essentially are h_j
             comm_sum = comm.sum(dim=1)
 
             c = self.C_modules[i](comm_sum)
-
+            if self.args.autoencoder:
+                self.comms_all = c.clone()  # encoded received communciations for autoencoder
 
             if self.args.recurrent:
                 # skip connection - combine comm. matrix and encoded input for all agents
