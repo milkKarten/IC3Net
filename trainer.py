@@ -83,6 +83,9 @@ class Trainer(object):
         # self.comm_scheduler = optim.lr_scheduler.ConstantLR(self.optimizer, factor=0.01)
         self.loss_autoencoder = None
         self.loss_min_comm = None
+        # self.counter = 0
+        # self.summer = 0
+        # self.summer1 = 0
 
     def success_curriculum(self, success_rate, num_episodes):
         if self.args.variable_gate:
@@ -222,20 +225,24 @@ class Trainer(object):
                 # since we treat this as reward so probability of 0 being high is rewarded
                 gating_head_rew = np.array([p[1] for p in gating_probs])
                 if self.args.min_comm_loss and t != 0:
-                    comm_prob = p_a[0][0]
-                    comm_prob = comm_prob.T[0]
+                    comm_prob = p_a[1][0]
+                    comm_prob = comm_prob.T[1]
                     comm_losses = torch.zeros_like(comm_prob)
-                    comm_losses[comm_prob < self.args.soft_budget] = 1. - (self.args.soft_budget - comm_prob[comm_prob < self.args.soft_budget]) / self.args.soft_budget
-                    comm_losses[comm_prob >= self.args.soft_budget] = (self.args.soft_budget - comm_prob[comm_prob >= self.args.soft_budget]) / (1. - self.args.soft_budget)
+                    comm_losses[comm_prob < self.args.soft_budget] = (self.args.soft_budget - comm_prob[comm_prob < self.args.soft_budget]) / self.args.soft_budget
+                    comm_losses[comm_prob >= self.args.soft_budget] = (comm_prob[comm_prob >= self.args.soft_budget] - self.args.soft_budget) / (1. - self.args.soft_budget)
                     # print(p_a)
-                    # print(comm_losses, self.args.soft_budget)
+                    # print(comm_prob, comm_losses, self.args.soft_budget)
                     # print(torch.square(comm_losses))
-                    comm_losses = torch.square(comm_losses).mean()
+                    comm_losses = torch.abs(comm_losses).mean()
                     # print(comm_losses)
                     if self.loss_min_comm == None:
                         self.loss_min_comm = comm_losses
                     else:
                         self.loss_min_comm += comm_losses
+                    # self.counter += 1
+                    # self.summer += comm_losses.item()
+                    # self.summer1 += comm_prob.mean().item()
+                    # print(self.summer / self.counter, self.summer1 / self.counter)
 
                 if self.args.gating_punish:
                     # encourage communication to be at thresh %
@@ -250,7 +257,7 @@ class Trainer(object):
                     # gating_head_rew[gating_head_rew < 0.05] = 10
                     # error = (gating_head_rew - (0.5*(thresh_top+thresh_bot))) ** 2
                     error = np.zeros_like(gating_head_rew)
-                    error[gating_head_rew < thresh] = 1. - (thresh - gating_head_rew[gating_head_rew < thresh]) / thresh
+                    error[gating_head_rew < thresh] = (thresh - gating_head_rew[gating_head_rew < thresh]) / thresh
                     error[gating_head_rew >= thresh] = (thresh - gating_head_rew[gating_head_rew >= thresh]) / (1. - thresh)
                     if self.last_error is None:
                         self.last_error = error
@@ -524,6 +531,9 @@ class Trainer(object):
         if self.args.min_comm_loss:
             self.loss_min_comm = None
 
+        # self.counter = 0
+        # self.summer = 0
+        # self.summer1 = 0
         return stat
 
     def run_batch(self, epoch):
