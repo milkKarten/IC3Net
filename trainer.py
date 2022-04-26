@@ -189,14 +189,13 @@ class Trainer(object):
 
                 x = [state, prev_hid]
                 action_out, value, prev_hid = self.policy_net(x, info)
-                # if self.args.autoencoder:
-                #     decoded = self.policy_net.decode()
-                #     x_all = x[0].sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
-                #     # print("x all", x_all.shape, decoded.shape)
-                #     if self.loss_autoencoder == None:
-                #         self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
-                #     else:
-                #         self.loss_autoencoder += torch.nn.functional.mse_loss(decoded, x_all)
+                if self.args.autoencoder and not self.args.autoencoder_action:
+                    decoded = self.policy_net.decode()
+                    x_all = x[0].sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
+                    if self.loss_autoencoder == None:
+                        self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
+                    else:
+                        self.loss_autoencoder += torch.nn.functional.mse_loss(decoded, x_all)
                 # this seems to be limiting how much BPTT happens.
                 if (t + 1) % self.args.detach_gap == 0:
                     if self.args.rnn_type == 'LSTM':
@@ -286,16 +285,11 @@ class Trainer(object):
             action, actual = translate_action(self.args, self.env, action)
             # print(actual[0])
             # decode intent + observation autoencoder
-            if self.args.autoencoder:
+            if self.args.autoencoder and self.args.autoencoder_action:
                 decoded = self.policy_net.decode()
                 x_all = torch.zeros_like(decoded)
                 x_all[0,:,:-self.args.nagents] = x[0].sum(dim=1).expand(self.args.nagents, -1)
-                # x_all = x_all.reshape((1, *x_all.shape))
                 x_all[0,:,-self.args.nagents:] = torch.tensor(actual[0])
-                # x_all = torch.concat((x_all, torch.tensor(actual[0]).reshape((1,1,self.args.nagents))), dim=2)
-                # print("x all", x_all.shape, decoded.shape)
-                # print(x_all)
-                # sys.exit()
                 if self.loss_autoencoder == None:
                     self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
                 else:

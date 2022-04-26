@@ -187,6 +187,8 @@ parser.add_argument('--eta_info', type=float, default=1.0,
 # autoencoder
 parser.add_argument('--autoencoder', action='store_true', default=False,
                     help='use autoencoder to learn comms')
+parser.add_argument('--autoencoder_action', action='store_true', default=False,
+                    help='use actions intent in autoencoder')
 
 # first add environment specific args to the parser
 init_args_for_env(parser)

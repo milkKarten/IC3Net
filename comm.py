@@ -157,7 +157,10 @@ class CommNetMLP(nn.Module):
         self.budget = args.budget
 
         # autoencoder decoder
-        self.decoderNet = nn.Linear(args.hid_size, num_inputs)
+        if self.args.autoencoder_action:
+            self.decoderNet = nn.Linear(args.hid_size, num_inputs+self.args.nagents)
+        else:
+            self.decoderNet = nn.Linear(args.hid_size, num_inputs)
 
     def get_agent_mask(self, batch_size, info):
         n = self.nagents
@@ -195,13 +198,6 @@ class CommNetMLP(nn.Module):
             hidden_state = x
 
         return x, hidden_state, cell_state
-
-    def forward_comm(self, x):
-        # print(self.forward_state_encoder(x))
-        x, hidden_state, cell_state = self.forward_state_encoder(x)
-        comm = hidden_state
-        comm_decoded = self.decoder(comm)
-        return comm_decoded # (n, num_inputs)
 
     def decode(self):
         y = self.h_state + self.comms_all
