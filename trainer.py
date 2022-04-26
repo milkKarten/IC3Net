@@ -54,7 +54,7 @@ class Trainer(object):
 
 
         # reward communication when false
-        self.args.gating_punish = False
+        self.args.gating_punish = True
 
         self.reward_epoch_success = 0
         self.reward_success = 0
@@ -82,6 +82,7 @@ class Trainer(object):
         self.comm_converge = False
         # self.comm_scheduler = optim.lr_scheduler.ConstantLR(self.optimizer, factor=0.01)
         self.loss_autoencoder = None
+        self.loss_min_comm = None
 
     def success_curriculum(self, success_rate, num_episodes):
         if self.args.variable_gate:
@@ -213,13 +214,29 @@ class Trainer(object):
             if not self.args.continuous and self.args.gating_head_cost_factor != 0:
                 log_p_a = action_out
                 p_a = [[z.exp() for z in x] for x in log_p_a]
-                # print("p_a", p_a)
                 gating_probs = p_a[1][0].detach().numpy()
+
                 # if self.first_print:
                 #     print(f"Gating probabilities are {gating_probs}")
                 #     self.first_print = False
                 # since we treat this as reward so probability of 0 being high is rewarded
                 gating_head_rew = np.array([p[1] for p in gating_probs])
+                if self.args.min_comm_loss and t != 0:
+                    comm_prob = p_a[0][0]
+                    comm_prob = comm_prob.T[0]
+                    comm_losses = torch.zeros_like(comm_prob)
+                    comm_losses[comm_prob < self.args.soft_budget] = 1. - (self.args.soft_budget - comm_prob[comm_prob < self.args.soft_budget]) / self.args.soft_budget
+                    comm_losses[comm_prob >= self.args.soft_budget] = (self.args.soft_budget - comm_prob[comm_prob >= self.args.soft_budget]) / (1. - self.args.soft_budget)
+                    # print(p_a)
+                    # print(comm_losses, self.args.soft_budget)
+                    # print(torch.square(comm_losses))
+                    comm_losses = torch.square(comm_losses).mean()
+                    # print(comm_losses)
+                    if self.loss_min_comm == None:
+                        self.loss_min_comm = comm_losses
+                    else:
+                        self.loss_min_comm += comm_losses
+
                 if self.args.gating_punish:
                     # encourage communication to be at thresh %
                     # thresh = 0.125
@@ -233,7 +250,7 @@ class Trainer(object):
                     # gating_head_rew[gating_head_rew < 0.05] = 10
                     # error = (gating_head_rew - (0.5*(thresh_top+thresh_bot))) ** 2
                     error = np.zeros_like(gating_head_rew)
-                    error[gating_head_rew < thresh] = (thresh - gating_head_rew[gating_head_rew < thresh]) / thresh
+                    error[gating_head_rew < thresh] = 1. - (thresh - gating_head_rew[gating_head_rew < thresh]) / thresh
                     error[gating_head_rew >= thresh] = (thresh - gating_head_rew[gating_head_rew >= thresh]) / (1. - thresh)
                     if self.last_error is None:
                         self.last_error = error
@@ -468,6 +485,7 @@ class Trainer(object):
         stat['value_loss'] = value_loss.item()
         # adding regularization term to minimize communication
         loss = action_loss + self.args.value_coeff * value_loss
+        '''
         if self.args.min_comm_loss:
             comm_losses = other_stat['comm_action'] / float(other_stat['num_steps'])
             comm_losses = torch.Tensor(comm_losses).to(self.device).mean()
@@ -475,10 +493,12 @@ class Trainer(object):
             if comm_losses < self.args.soft_budget:
                 comm_losses /= self.args.soft_budget
             else:
-                comm_losses /= (1.-self.args.soft_budget)
+                comm_losses /= (1. - self.args.soft_budget)
+            comm_losses *= self.args.eta_comm_loss
             stat['regularization_loss'] = comm_losses.item()
             # print(stat['regularization_loss'], stat['action_loss'], self.args.value_coeff * stat['value_loss'])
-            loss += self.args.eta_comm_loss * comm_losses
+            loss += comm_losses
+        '''
         if self.args.max_info:
             loss += self.args.eta_info * 0   # TODO: add euclidean distance between memory cells
 
@@ -491,12 +511,18 @@ class Trainer(object):
             if self.args.entr > 0:
                 loss -= self.args.entr * entropy
 
+        if self.args.min_comm_loss:
+            self.loss_min_comm *= self.args.eta_comm_loss
+            stat['regularization_loss'] = self.loss_min_comm.item()
+            loss += self.loss_min_comm
         if self.args.autoencoder:
             stat['autoencoder_loss'] = self.loss_autoencoder.item()
             loss = 0.5 * loss + 0.5 * self.loss_autoencoder
         loss.backward()
         if self.args.autoencoder:
             self.loss_autoencoder = None
+        if self.args.min_comm_loss:
+            self.loss_min_comm = None
 
         return stat
 
