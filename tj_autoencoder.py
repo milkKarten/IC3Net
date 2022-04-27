@@ -2,12 +2,14 @@ import os, sys, subprocess
 
 os.environ["OMP_NUM_THREADS"] = "1"
 env = "traffic_junction"
-# seeds = [1, 2]
-seeds = [777]
+seeds = [1, 2, 3]
+# seeds = [777]
 # seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
-methods = ["easy_proto_soft_minComm_autoencoder", "easy_proto_soft_minComm_autoencoder_action"]
+# methods = ["easy_proto_soft_minComm_autoencoder", "easy_proto_soft_minComm_autoencoder_action"]
 # methods = ["easy_proto_soft_minComm_autoencoder"]
+# methods = ["easy_proto_autoencoder_minComm"]
+methods = ['easy_fixed', 'easy_fixed_autoencoder']
 # methods = ["easy_proto_soft_minComm_autoencoder_action"]
 pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder'
 # pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder_action'
@@ -45,7 +47,7 @@ if True:
             comm_action_zero = False
             # weight of the gating penalty. 0 means no penalty.
             # gating_head_cost_factor = rew
-            gating_head_cost_factor = 0.1
+            gating_head_cost_factor = 0.
             if "fixed" in method or "baseline" in method:
                 if not "var" in method:
                     gating_head_cost_factor = 0
@@ -108,7 +110,7 @@ if True:
                 run_str += f"--load_pretrain --pretrain_exp_name {pretrain_exp_name} "
 
             if "minComm" in method:
-                run_str += "--min_comm_loss --eta_comm_loss 100 "
+                run_str += "--min_comm_loss --eta_comm_loss 1. "
             if "maxInfo" in method:
                 run_str += "--max_info --eta_info 0.5 "
             if "autoencoder" in method:
@@ -119,7 +121,8 @@ if True:
             # Important: If you want to restore training just use the --restore tag
             # run for all seeds
             for seed in seeds:
-                log_path = os.path.join("trained_models", env, exp_name, "seed" + str(seed), "logs")
+                # log_path = os.path.join("trained_models", env, exp_name, "seed" + str(seed), "logs")
+                log_path = os.path.join("paper_models", env, exp_name, "seed" + str(seed), "logs")
                 if os.path.exists(log_path):
                     run_str += f"--restore  "
                 # run_str += "> runLogs/" + exp_name + "Log.txt 2>&1 &"

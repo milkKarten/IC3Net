@@ -34,7 +34,6 @@ class Trainer(object):
         if multi:
             self.device = torch.device('cpu')
         print("Device:", self.device)
-        self.first_print = False
         self.success_metric = 0
         self.epoch_success = 0
         self.cur_epoch_i = 0
@@ -83,9 +82,6 @@ class Trainer(object):
         # self.comm_scheduler = optim.lr_scheduler.ConstantLR(self.optimizer, factor=0.01)
         self.loss_autoencoder = None
         self.loss_min_comm = None
-        # self.counter = 0
-        # self.summer = 0
-        # self.summer1 = 0
 
     def success_curriculum(self, success_rate, num_episodes):
         if self.args.variable_gate:
@@ -214,14 +210,11 @@ class Trainer(object):
             # this is actually giving you actions from logits
             action = select_action(self.args, action_out)
             # this is for the gating head penalty
-            if not self.args.continuous and self.args.gating_head_cost_factor != 0:
+            if not self.args.continuous:
                 log_p_a = action_out
                 p_a = [[z.exp() for z in x] for x in log_p_a]
                 gating_probs = p_a[1][0].detach().numpy()
 
-                # if self.first_print:
-                #     print(f"Gating probabilities are {gating_probs}")
-                #     self.first_print = False
                 # since we treat this as reward so probability of 0 being high is rewarded
                 gating_head_rew = np.array([p[1] for p in gating_probs])
                 if self.args.min_comm_loss and t != 0:
@@ -230,84 +223,75 @@ class Trainer(object):
                     comm_losses = torch.zeros_like(comm_prob)
                     comm_losses[comm_prob < self.args.soft_budget] = (self.args.soft_budget - comm_prob[comm_prob < self.args.soft_budget]) / self.args.soft_budget
                     comm_losses[comm_prob >= self.args.soft_budget] = (comm_prob[comm_prob >= self.args.soft_budget] - self.args.soft_budget) / (1. - self.args.soft_budget)
-                    # print(p_a)
-                    # print(comm_prob, comm_losses, self.args.soft_budget)
-                    # print(torch.square(comm_losses))
                     comm_losses = torch.abs(comm_losses).mean()
-                    # print(comm_losses)
                     if self.loss_min_comm == None:
                         self.loss_min_comm = comm_losses
                     else:
                         self.loss_min_comm += comm_losses
-                    # self.counter += 1
-                    # self.summer += comm_losses.item()
-                    # self.summer1 += comm_prob.mean().item()
-                    # print(self.summer / self.counter, self.summer1 / self.counter)
-
-                if self.args.gating_punish:
-                    # encourage communication to be at thresh %
-                    # thresh = 0.125
-                    thresh = self.args.soft_budget
-                    Kp = 1.
-                    # Kd = 3.2
-                    Kd = 1.6
-                    Ki = 0.026
-                    Kpdi = 1.
-                    # 0.05 is the minimum comm rate to ensure success
-                    # gating_head_rew[gating_head_rew < 0.05] = 10
-                    # error = (gating_head_rew - (0.5*(thresh_top+thresh_bot))) ** 2
-                    error = np.zeros_like(gating_head_rew)
-                    error[gating_head_rew < thresh] = (thresh - gating_head_rew[gating_head_rew < thresh]) / thresh
-                    error[gating_head_rew >= thresh] = (thresh - gating_head_rew[gating_head_rew >= thresh]) / (1. - thresh)
-                    if self.last_error is None:
+                if self.args.gating_head_cost_factor != 0:
+                    if self.args.gating_punish:
+                        # encourage communication to be at thresh %
+                        # thresh = 0.125
+                        thresh = self.args.soft_budget
+                        Kp = 1.
+                        # Kd = 3.2
+                        Kd = 1.6
+                        Ki = 0.026
+                        Kpdi = 1.
+                        # 0.05 is the minimum comm rate to ensure success
+                        # gating_head_rew[gating_head_rew < 0.05] = 10
+                        # error = (gating_head_rew - (0.5*(thresh_top+thresh_bot))) ** 2
+                        error = np.zeros_like(gating_head_rew)
+                        error[gating_head_rew < thresh] = (thresh - gating_head_rew[gating_head_rew < thresh]) / thresh
+                        error[gating_head_rew >= thresh] = (thresh - gating_head_rew[gating_head_rew >= thresh]) / (1. - thresh)
+                        if self.last_error is None:
+                            self.last_error = error
+                        derivative = error - self.last_error
+                        if self.total_error is None:
+                            self.total_error = np.zeros_like(error)
+                        gating_head_rew = Kpdi * np.abs(Kp * error + Kd * derivative + Ki * self.total_error)
                         self.last_error = error
-                    derivative = error - self.last_error
-                    if self.total_error is None:
-                        self.total_error = np.zeros_like(error)
-                    gating_head_rew = Kpdi * np.abs(Kp * error + Kd * derivative + Ki * self.total_error)
-                    self.last_error = error
-                    self.total_error += error
-                    self.total_error = np.clip(self.total_error, -50, 50)
-                    # gating_head_rew[gating_head_rew < 0.05] = (gating_head_rew[gating_head_rew < 0.05] - (0.5*(thresh_top+thresh_bot))) ** 2
-                    # gating_head_rew[np.logical_and((gating_head_rew <= thresh_top), (gating_head_rew >= thresh_bot))] = 0
-                    # gating_head_rew[gating_head_rew > 0.05] = (gating_head_rew[gating_head_rew > 0.05] - (0.5*(thresh_top+thresh_bot))) ** 2
-                    # print("here punish", gating_head_rew, gating_probs)
-                else:
-                    # encourage communication to be high
-                    # gating_head_rew = (gating_head_rew - 1) ** 2
-                    # gating_head_rew = (gating_head_rew - self.policy_net.budget) ** 2
-                    # punish trying to communicate over budget scaled to [0,1]
-                    # print(gating_head_rew, stat['comm_action'] / stat['num_steps'], info['comm_budget'])
-                    if self.policy_net.budget != 1:
-                        # gating_head_rew = (np.abs(info['comm_action'] - info['comm_budget'])).astype(np.float64)
-                        # gating_head_rew = (np.abs(info['comm_action'] - info['comm_budget']) / (1 - self.policy_net.''budget'')).astype(np.float64)
-                        # punish excessive and strengthen current communication
-                        # gating_head_rew = (np.abs(gating_head_rew - info['comm_budget'])).astype(np.float64)
-                        # only punish excessive communication
-                        # mask_rew = info['comm_action'] != info['comm_budget']
-                        # error = np.zeros_like(gating_head_rew)
-                        # error[mask_rew] = np.abs(gating_head_rew[mask_rew] - info['comm_budget'][mask_rew]).astype(np.float64)
-                        gating_head_rew = np.abs(gating_head_rew - info['comm_budget']).astype(np.float64)
-                        # gating_head_rew = error
+                        self.total_error += error
+                        self.total_error = np.clip(self.total_error, -50, 50)
+                        # gating_head_rew[gating_head_rew < 0.05] = (gating_head_rew[gating_head_rew < 0.05] - (0.5*(thresh_top+thresh_bot))) ** 2
+                        # gating_head_rew[np.logical_and((gating_head_rew <= thresh_top), (gating_head_rew >= thresh_bot))] = 0
+                        # gating_head_rew[gating_head_rew > 0.05] = (gating_head_rew[gating_head_rew > 0.05] - (0.5*(thresh_top+thresh_bot))) ** 2
+                        # print("here punish", gating_head_rew, gating_probs)
                     else:
-                        # max communication when budget is full
-                        # gating_head_rew = np.abs(info['comm_action'] - 1).astype(np.float64)
-                        gating_head_rew = np.abs(gating_head_rew - 1).astype(np.float64)
-                    # punish communication under budget scaled to [0,1]
-                    # gating_head_rew += np.abs(info['comm_budget'] - self.policy_net.budget) / (self.policy_net.budget)
-                    # print("here", gating_head_rew, gating_probs)
-                gating_head_rew *= -1 * np.abs(self.args.gating_head_cost_factor)
-                # try these methods:
-                    # A) negative reward when not rate expected
-                    # B) positive reward when <= comm rate expected, negative reward when > comm rate
-                    # C) adaptive
-                        # like A/B but comm rate is adaptive based on success rate
-                stat['gating_reward'] = stat.get('gating_reward', 0) + gating_head_rew
-                # print(gating_head_rew)
+                        # encourage communication to be high
+                        # gating_head_rew = (gating_head_rew - 1) ** 2
+                        # gating_head_rew = (gating_head_rew - self.policy_net.budget) ** 2
+                        # punish trying to communicate over budget scaled to [0,1]
+                        # print(gating_head_rew, stat['comm_action'] / stat['num_steps'], info['comm_budget'])
+                        if self.policy_net.budget != 1:
+                            # gating_head_rew = (np.abs(info['comm_action'] - info['comm_budget'])).astype(np.float64)
+                            # gating_head_rew = (np.abs(info['comm_action'] - info['comm_budget']) / (1 - self.policy_net.''budget'')).astype(np.float64)
+                            # punish excessive and strengthen current communication
+                            # gating_head_rew = (np.abs(gating_head_rew - info['comm_budget'])).astype(np.float64)
+                            # only punish excessive communication
+                            # mask_rew = info['comm_action'] != info['comm_budget']
+                            # error = np.zeros_like(gating_head_rew)
+                            # error[mask_rew] = np.abs(gating_head_rew[mask_rew] - info['comm_budget'][mask_rew]).astype(np.float64)
+                            gating_head_rew = np.abs(gating_head_rew - info['comm_budget']).astype(np.float64)
+                            # gating_head_rew = error
+                        else:
+                            # max communication when budget is full
+                            # gating_head_rew = np.abs(info['comm_action'] - 1).astype(np.float64)
+                            gating_head_rew = np.abs(gating_head_rew - 1).astype(np.float64)
+                        # punish communication under budget scaled to [0,1]
+                        # gating_head_rew += np.abs(info['comm_budget'] - self.policy_net.budget) / (self.policy_net.budget)
+                        # print("here", gating_head_rew, gating_probs)
+                    gating_head_rew *= -1 * np.abs(self.args.gating_head_cost_factor)
+                    # try these methods:
+                        # A) negative reward when not rate expected
+                        # B) positive reward when <= comm rate expected, negative reward when > comm rate
+                        # C) adaptive
+                            # like A/B but comm rate is adaptive based on success rate
+                    stat['gating_reward'] = stat.get('gating_reward', 0) + gating_head_rew
+                    # print(gating_head_rew)
 
             # this converts stuff to numpy
             action, actual = translate_action(self.args, self.env, action)
-            # print(actual[0])
             # decode intent + observation autoencoder
             if self.args.autoencoder and self.args.autoencoder_action:
                 decoded = self.policy_net.decode()
@@ -320,15 +304,9 @@ class Trainer(object):
                     self.loss_autoencoder += torch.nn.functional.mse_loss(decoded, x_all)
             comm_budget = info['comm_budget']
             next_state, reward, done, info = self.env.step(actual)
-            # print(f"general reward is {reward}")
-            # print(f"type of gating reward {type(gating_head_rew)}, type of reward {type(reward)}")
-            # import time
-            # time.sleep(10)
+
             stat['env_reward'] = stat.get('env_reward', 0) + reward[:self.args.nfriendly]
             if not self.args.continuous and self.args.gating_head_cost_factor != 0:
-                # if self.first_print:
-                #     print(f"gating head reward is {gating_head_rew}, general reward {reward}")
-                #     self.first_print = False
                 if not self.args.variable_gate: # TODO: remove or True later
                     reward += gating_head_rew
 
@@ -384,7 +362,6 @@ class Trainer(object):
             # We are not multiplying in case of reward terminal with alive agent
             # If terminal reward is masked environment should do
             # reward = reward * misc['alive_mask']
-
             episode[-1] = episode[-1]._replace(reward = episode[-1].reward + reward)
             stat['reward'] = stat.get('reward', 0) + reward[:self.args.nfriendly]
             if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
@@ -394,8 +371,6 @@ class Trainer(object):
         if hasattr(self.env, 'get_stat'):
             merge_stat(self.env.get_stat(), stat)
 
-        # print(stat['comm_'])
-        # print("stat are ", stat)
         return (episode, stat)
 
     def compute_grad(self, batch, other_stat=None):
