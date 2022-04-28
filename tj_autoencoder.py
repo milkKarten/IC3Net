@@ -2,6 +2,7 @@ import os, sys, subprocess
 
 os.environ["OMP_NUM_THREADS"] = "1"
 env = "traffic_junction"
+# seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
 seeds = [1, 2, 3]
 # seeds = [777]
 # seeds = [20]
@@ -9,7 +10,8 @@ seeds = [1, 2, 3]
 # methods = ["easy_proto_soft_minComm_autoencoder", "easy_proto_soft_minComm_autoencoder_action"]
 # methods = ["easy_proto_soft_minComm_autoencoder"]
 # methods = ["easy_proto_autoencoder_minComm"]
-methods = ['easy_fixed', 'easy_fixed_autoencoder']
+methods = ['hard_fixed', 'hard_fixed_autoencoder']
+# methods = ['hard_fixed_proto', 'hard_fixed_proto_autoencoder']
 # methods = ["easy_proto_soft_minComm_autoencoder_action"]
 pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder'
 # pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder_action'
@@ -21,16 +23,17 @@ if True:
         if "easy" in method:
             # protos_list = [14, 28, 56]
             protos_list = [56]
-            num_epochs = 2000
+            num_epochs = 500
         elif 'medium' in method:
             # protos_list = [56, 28, 112]
             protos_list = [112] # use 1 layer of redundancy
             comms_list = [64]
-            num_epochs = 3000
+            num_epochs = 1000
         elif 'hard' in method:
-            protos_list = [144, 72, 288]
-            comms_list = [64]
-            num_epochs = 4000
+            # protos_list = [144, 72, 288]
+            protos_list = [144]
+            # comms_list = [64]
+            num_epochs = 2000
         for num_proto in protos_list:
             exp_name = "tj_" + method
             # exp_name = "tj_EX_" + method + "_p" + str(num_proto) + "_c" + str(comm_dim)
@@ -90,7 +93,7 @@ if True:
                       f"--gating_head_cost_factor {gating_head_cost_factor} "+\
                       f"--hid_size {hid_size} --comm_dim {hid_size} --soft_budget {soft_budget} "+\
                       f" --detach_gap 10 --lrate {lr} --ic3net --vision {vision} "+\
-                      f"--recurrent "+\
+                      f"--recurrent --save paper_models --load paper_models "+\
                       f"--max_steps {max_steps} --dim {dim} --nagents {nagents} --add_rate_min {add_rate_min} --add_rate_max {add_rate_max} --curr_epochs 1000 --difficulty {difficulty} "+\
                       f"--exp_name {exp_name} --save_every {save_every} "
 
