@@ -27,7 +27,7 @@ for soft_budget in [0.9, 0.5, 0.3, 0.1]:
             # comms_list = [64]
             num_epochs = 200
         for num_proto in protos_list:
-            exp_name = "tj_" + method
+            exp_name = "tj_" + method + str(soft_budget)
             # exp_name = "tj_EX_" + method + "_p" + str(num_proto) + "_c" + str(comm_dim)
             vision = 0
             soft_budget = 0.7
