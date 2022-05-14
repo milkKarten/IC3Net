@@ -193,9 +193,9 @@ class Trainer(object):
                     decoded = self.policy_net.decode()
                     x_all = x[0].sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
                     if self.loss_autoencoder == None:
-                        self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
+                        self.loss_autoencoder =torch.nn.functional.mse_loss(decoded, x_all)
                     else:
-                        self.loss_autoencoder += torch.nn.functional.mse_loss(decoded, x_all)
+                        self.loss_autoencoder +=torch.nn.functional.mse_loss(decoded, x_all)
                 # this seems to be limiting how much BPTT happens.
                 if (t + 1) % self.args.detach_gap == 0:
                     if self.args.rnn_type == 'LSTM':
