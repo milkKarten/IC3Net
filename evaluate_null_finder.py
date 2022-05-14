@@ -145,8 +145,8 @@ all_stats = []
 all_comms_to_loc0 = {}
 all_comms_to_loc1 = {}
 all_comms_to_loc2 = {}
-for i in range(5000):
-    ep, stat, all_comms, comms_to_loc, comms_to_act, comms_to_full = evaluator.run_episode()
+for i in range(500):
+    ep, stat, all_comms, comms_to_loc, comms_to_act, comms_to_full, comm_action_episode = evaluator.run_episode()
     all_stats.append(stat)
     for k, v in comms_to_full.items():
         np_k = k
@@ -157,30 +157,11 @@ for i in range(5000):
             if val not in matching_vals.keys():
                 matching_vals[val] = 0
             matching_vals[val] += 1
-    for k, v in comms_to_loc.items():
-        np_k = k
-        if all_comms_to_loc1.get(np_k) is None:
-            all_comms_to_loc1[np_k] = {}
-        matching_vals = all_comms_to_loc1.get(np_k)
-        for val in v:
-            if val not in matching_vals.keys():
-                matching_vals[val] = 0
-            matching_vals[val] += 1
-    for k, v in comms_to_act.items():
-        np_k = k
-        if all_comms_to_loc2.get(np_k) is None:
-            all_comms_to_loc2[np_k] = {}
-        matching_vals = all_comms_to_loc2.get(np_k)
-        for val in v:
-            if val not in matching_vals.keys():
-                matching_vals[val] = 0
-            matching_vals[val] += 1
-    # print(i, stat)
 
 # for action_level, all_comms_to_loc in enumerate([all_comms_to_loc0, all_comms_to_loc1, all_comms_to_loc2]):
 for action_level, all_comms_to_loc in enumerate([all_comms_to_loc0]):
     # print("All comms to loc", all_comms_to_loc)
-    print("action level", action_level)
+    # print("action level", action_level)
     total_episode_time = time.time() - st_time
     average_stat = {}
     for key in all_stats[0].keys():
@@ -211,122 +192,63 @@ for action_level, all_comms_to_loc in enumerate([all_comms_to_loc0]):
 
     all_comms = np.array(all_comms)
     num_agents = len(all_comms[0])
-    for i in range(num_agents):
-        print(f"for agent{i} communication is: ", all_comms[:, i])
+    # for i in range(num_agents):
+    #     print(f"for agent{i} communication is: ", all_comms[:, i])
 
     # Plot the locations associated with each prototype recorded during execution
     proto_idx = 0
     # print("testtesttest",all_comms_to_loc.items())
-    print("number of protos", len(all_comms_to_loc.items()))
-    print()
-    print()
+    # print("number of protos", len(all_comms_to_loc.items()))
+    # print()
+    # print()
+    null_protos = []
+    null_comms = 0
+    total_comms = 0.
+    null_str = ''
+    active_protos = 0
     for proto, locs in all_comms_to_loc.items():
         # grid = np.zeros((10, 10))
         grid = np.zeros((args.dim, args.dim))
         # print("locs items", locs.items())
         total_count = 0
         for loc, count in locs.items():
-            print("loc, count", loc, count)
+            # print("loc, count", loc, count)
             total_count += count
             grid[loc[0]-1, loc[1]-1] = count
-        print("proto", proto)
-        print("locations:")
+        total_comms += total_count
+        # print("locations:")
         grid_sum = grid.sum()
+        num_locations = 0
         for loc, count in locs.items():
             percentage = grid[loc[0]-1, loc[1]-1] / grid_sum
-            print(loc[0], loc[1], percentage)#, grid[loc[0], loc[1]], grid_sum)
-        print()
-        fig, ax = plt.subplots(1, 2)
-        # print("protos np ", protos_np)
-        plot_comms(protos_np, np.expand_dims(np.asarray(proto), 0), pca_transform, ax[0])
-        im = ax[1].imshow(grid, cmap='gray')
-        plt.colorbar(im)
-        plt.title(str(total_count))
-        # plt.savefig("tj_.5sparse_figs/Proto" + str(proto_idx) + str(action_level))
-        plt.savefig("/Users/seth/Documents/research/neurips/pca_easy_NON/protos_" + str(proto_idx) + str(action_level))
-        # plt.show()
-        plt.close()
+            if percentage > .1:
+                num_locations += 1
+            # print(loc[0], loc[1], percentage)#, grid[loc[0], loc[1]], grid_sum)
+        # print()
+        active_protos += 1
+        if num_locations > 2:
+            null_comms += total_count
+            # found null proto; save data
+            null_str += str(proto)[1:-1] + '\n'
+            null_protos.append(proto)
+            # print("null proto", *proto)
+
+            fig, ax = plt.subplots(1, 2)
+            # print("protos np ", protos_np)
+            plot_comms(protos_np, np.expand_dims(np.asarray(proto), 0), pca_transform, ax[0])
+            im = ax[1].imshow(grid, cmap='gray')
+            plt.colorbar(im)
+            plt.title(str(total_count))
+            # plt.savefig("tj_.5sparse_figs/Proto" + str(proto_idx) + str(action_level))
+            plt.savefig("/Users/seth/Documents/research/neurips/nulls/"+args.exp_name+"/seed"+str(args.seed)+"/"+str(proto_idx))
+            # plt.show()
+            plt.close()
         proto_idx += 1
         if num_proto_cutoff is not None and proto_idx >= num_proto_cutoff:
             break
-
-    def get_weighted_loc(_loc_dict):
-        total_count = 0
-        summed = np.zeros(2)
-        for loc, count in _loc_dict.items():
-            summed += count * np.asarray(loc)
-            total_count += count
-        if total_count != 0:
-            return summed / total_count
-        return summed
-
-    # Lastly, compute a metric of correlation between distance in comm space and distance in grid.
-    proto_dists = []
-    space_dists = []
-    for proto1, locs1 in all_comms_to_loc.items():
-        for proto2, locs2 in all_comms_to_loc.items():
-            if np.array_equal(proto1, proto2):
-                continue
-            proto_dist = np.linalg.norm(np.asarray(proto1) - np.asarray(proto2)) / (np.sqrt(args.comm_dim))
-            avg1 = get_weighted_loc(locs1)
-            avg2 = get_weighted_loc(locs2)
-            space_dist = np.linalg.norm(avg1 - avg2) / (9 * np.sqrt(2))
-            proto_dists.append(proto_dist)
-            space_dists.append(space_dist)
-
-    from sklearn.linear_model import LinearRegression
-    # print(proto_dists)
-    # print(space_dists)
-    reg = LinearRegression().fit(np.asarray(proto_dists).reshape(-1, 1), np.asarray(space_dists).reshape(-1, 1))
-    plt.scatter(proto_dists, space_dists)
-    m = reg.coef_[0]
-    b = reg.intercept_[0]
-    print("M", m, "b", b)
-    plt.plot(proto_dists, m*np.asarray(proto_dists) + b)
-    plt.ylabel("Normalized L2 distance between physical locations")
-    plt.xlabel("Normalized L2 distance between prototype vectors")
-    # plt.savefig(f"tj_.5sparse_figs/Correlation{action_level}.png")
-    # plt.show()
-    plt.close()
-    proto_idx += 1
-    if num_proto_cutoff is not None and proto_idx >= num_proto_cutoff:
-        break
-
-def get_weighted_loc(_loc_dict):
-    total_count = 0
-    summed = np.zeros(2)
-    for loc, count in _loc_dict.items():
-        summed += count * np.asarray(loc)
-        total_count += count
-    return summed / total_count
-
-# Lastly, compute a metric of correlation between distance in comm space and distance in grid.
-proto_dists = []
-space_dists = []
-for proto1, locs1 in all_comms_to_loc.items():
-    avg1 = get_weighted_loc(locs1)
-    pca1 = pca_transform.transform(np.reshape(proto1, (1, -1)))
-    print("PCA proto to location")
-    print(proto1)
-    print(pca1)
-    print(avg1)
-    for proto2, locs2 in all_comms_to_loc.items():
-        if np.array_equal(proto1, proto2):
-            continue
-        proto_dist = np.linalg.norm(np.asarray(proto1) - np.asarray(proto2)) / (np.sqrt(args.comm_dim))
-        avg2 = get_weighted_loc(locs2)
-        space_dist = np.linalg.norm(avg1 - avg2) / (9 * np.sqrt(2))
-        proto_dists.append(proto_dist)
-        space_dists.append(space_dist)
-
-from sklearn.linear_model import LinearRegression
-reg = LinearRegression().fit(np.asarray(proto_dists).reshape(-1, 1), np.asarray(space_dists).reshape(-1, 1))
-plt.scatter(proto_dists, space_dists)
-m = reg.coef_[0]
-b = reg.intercept_[0]
-print("M", m, "b", b)
-plt.plot(proto_dists, m*np.asarray(proto_dists) + b)
-plt.ylabel("Normalized L2 distance between physical locations")
-plt.xlabel("Normalized L2 distance between prototype vectors")
-# plt.savefig("Correlation.png")
-# plt.show()
+    with open("/Users/seth/Documents/research/neurips/nulls/"+args.exp_name+"/seed"+str(args.seed)+"/nulls.txt", 'w+') as f:
+        f.write(null_str)
+    with open("/Users/seth/Documents/research/neurips/nulls/"+args.exp_name+"/seed"+str(args.seed)+"/percent_nulls.txt", 'w+') as f:
+        percent_nulls = "# null; total " + str(len(null_protos))+ "; "+ str(active_protos) + "\n % null comms" +  str(null_comms / total_comms) + '\n' + str(null_comms) + '/' + str(total_comms)
+        f.write(percent_nulls)
+    print("% null comms: ", null_comms / total_comms)

@@ -118,4 +118,19 @@ def get_args():
 
      parser.add_argument('--budget', type=float, default=1.0,
                          help='Communication budget')
+     # objective function communication regularization terms
+     parser.add_argument('--min_comm_loss', action='store_true', default=False,
+                         help='minimize communication loss')
+     parser.add_argument('--eta_comm_loss', type=float, default=1.0,
+                         help='Communication budget hyperparameter')
+     parser.add_argument('--max_info', action='store_true', default=False,
+                         help='maximize mutual information')
+     parser.add_argument('--eta_info', type=float, default=1.0,
+                         help='maximize mutual information hyperparameter')
+
+     # autoencoder
+     parser.add_argument('--autoencoder', action='store_true', default=False,
+                         help='use autoencoder to learn comms')
+     parser.add_argument('--autoencoder_action', action='store_true', default=False,
+                         help='use actions intent in autoencoder')
      return parser
