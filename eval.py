@@ -8,9 +8,11 @@ env = "traffic_junction"
 seeds = [0,1,2,3,4,5,6,7,8,9]
 # seeds = [0]
 # methods = ['easy_fixed_proto', 'easy_fixed_proto_autoencoder', 'easy_proto_soft_minComm_autoencoder']
-methods = ['easy_proto_soft_minComm_autoencoder']
+methods = ['easy_proto_soft_minComm_autoencoder', 'easy_soft_minComm_autoencoder', 'hard_soft_minComm_autoencoder']
 # methods = ['easy_proto_soft_minComm_autoencoder']
 for method in methods:
+    if 'hard' in method:
+        seeds = [1,2,3,4,6,7]
     # method = 'easy_fixed_autoencoder'
     exp_name = "tj_" + method
     discrete_comm = False
