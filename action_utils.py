@@ -41,9 +41,9 @@ def select_action(args, action_out, eval_mode=False):
         #     tensor([[0.5344, 0.4656],
         #             [0.5307, 0.4693],
         #             [0.5179, 0.4821]], grad_fn= < ExpBackward >)]]
-        if eval_mode:
-            ret = torch.stack([torch.stack([torch.argmax(x, 1).detach() for x in p]) for p in p_a])
-            return ret
+        # if eval_mode:
+        #     ret = torch.stack([torch.stack([torch.argmax(x, 1).detach() for x in p]) for p in p_a])
+        #     return ret
 
         ret = torch.stack([torch.stack([torch.multinomial(x, 1).detach() for x in p]) for p in p_a])
         return ret

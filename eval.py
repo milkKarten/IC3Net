@@ -3,47 +3,74 @@ os.environ["OMP_NUM_THREADS"] = "1"
 # TODO: Run proto version
 
 env = "traffic_junction"
-seed = 777
-method = 'G_Proto'
-exp_name = "tj_" + method
-nagents = 5
-# discrete comm is true if you want to use learnable prototype based communication.
-discrete_comm = False
-if "proto" in method:
-    discrete_comm = True
-num_epochs = 1
-hid_size= 128
-dim = 6
-max_steps = 20
-vision = 0
-save_every = 100
-# g=1. If this is set to true agents will communicate at every step.
-comm_action_one = False
-# weight of the gating penalty. 0 means no penalty.
-gating_head_cost_factor = 0.01
-if "fixed" in method:
-    gating_head_cost_factor = 0
-    comm_action_one = True
-# specify the number of prototypes you wish to use.
-num_proto = 25
-# dimension of the communication vector.
-comm_dim = 16
-if not discrete_comm:
-    comm_dim = hid_size
+# seed = 1
+# method = 'easy_fixed_proto'
+seeds = [0,1,2,3,4,5,6,7,8,9]
+# seeds = [0]
+# methods = ['easy_fixed_proto', 'easy_fixed_proto_autoencoder', 'easy_proto_soft_minComm_autoencoder']
+methods = ['easy_proto_soft_minComm_autoencoder']
+# methods = ['easy_proto_soft_minComm_autoencoder']
+for method in methods:
+    # method = 'easy_fixed_autoencoder'
+    exp_name = "tj_" + method
+    discrete_comm = False
+    if "proto" in method:
+        discrete_comm = True
+    vision = 0
+    num_epochs = 1
+    hid_size= 64
+    save_every = 100
+    # g=1. If this is set to true agents will communicate at every step.
+    comm_action_one = False
+    comm_action_zero = False
+    if "fixed" in method or "baseline" in method:
+        comm_action_one = True
 
-run_str = f"python evaluate.py --env_name {env} --nagents {nagents} "+\
-          f"--load /home/milkkarten/Documents/IC3Net/trained_models "+\
-          f"--num_epochs {num_epochs} "+\
-          f"--gating_head_cost_factor {gating_head_cost_factor} "+\
-          f"--hid_size {hid_size} "+\
-          f"--detach_gap 10 --lrate 0.001  --dim {dim} --max_steps {max_steps} --ic3net --vision {vision} "+\
-          f"--recurrent "+\
-          f"--add_rate_min 0.1 --add_rate_max 0.3 --curr_start 250 --curr_end 1250 --difficulty easy "+\
-          f"--exp_name {exp_name} "+\
-          f"--use_proto --comm_dim {comm_dim} --num_proto {num_proto} " # may need to change this to not use prototypes
-if discrete_comm:
-    run_str += f"--discrete_comm "
-if comm_action_one:
-    run_str += f"--comm_action_one  "
-print(run_str)
-os.system(run_str + f"--seed {seed}")
+    if "medium" in method:
+        nagents = 10
+        max_steps = 40
+        dim = 14
+        add_rate_min = 0.05
+        add_rate_max = 0.2
+        difficulty = 'medium'
+        num_proto = 112
+    elif "hard" in method:
+        nagents = 20
+        max_steps = 80
+        dim = 18
+        add_rate_min = 0.02
+        add_rate_max = 0.05
+        difficulty = 'hard'
+        num_proto = 256
+    else:
+        # easy
+        nagents = 5
+        max_steps = 20
+        dim = 6
+        add_rate_min = 0.1
+        add_rate_max = 0.3
+        difficulty = 'easy'
+        num_proto = 56
+
+
+
+    # run_str = f"python evaluate_null_finder.py --env_name {env} --nagents {nagents} --nprocesses 0 "+\
+    run_str = f"python evaluate_comm_action.py --env_name {env} --nagents {nagents} --nprocesses 0 "+\
+              f"--load /Users/seth/Documents/research/neurips/paper_models "+\
+              f"--num_epochs {num_epochs}  --epoch_size 10 "+\
+              f"--hid_size {hid_size} "+\
+              f" --detach_gap 10 --ic3net --vision {vision} "+\
+              f"--recurrent --comm_dim {hid_size} "+\
+              f"--max_steps {max_steps} --dim {dim} --nagents {nagents} --add_rate_min {add_rate_min} --add_rate_max {add_rate_max} --curr_epochs 1000 --difficulty {difficulty} "+\
+              f"--exp_name {exp_name} --save_every {save_every} "
+    if discrete_comm:
+        run_str += f"--discrete_comm --use_proto --num_proto {num_proto} "
+    if comm_action_one:
+        run_str += f"--comm_action_one  "
+    if comm_action_zero:
+        run_str += f"--comm_action_zero "
+    if "autoencoder" in method:
+        run_str += "--autoencoder "
+    # print(run_str)
+    for seed in seeds:
+        os.system(run_str + f"--seed {seed}")

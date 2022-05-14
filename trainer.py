@@ -41,8 +41,8 @@ class Trainer(object):
         # traffic junction success
         if self.args.env_name == "traffic_junction":
             if self.args.difficulty == 'easy':
-                self.success_thresh = .90
-                # self.success_thresh = .95
+                # self.success_thresh = .90
+                self.success_thresh = .97
             elif self.args.difficulty == 'medium':
                 self.success_thresh = .86
                 # self.success_thresh = .9
@@ -467,20 +467,6 @@ class Trainer(object):
         stat['value_loss'] = value_loss.item()
         # adding regularization term to minimize communication
         loss = action_loss + self.args.value_coeff * value_loss
-        '''
-        if self.args.min_comm_loss:
-            comm_losses = other_stat['comm_action'] / float(other_stat['num_steps'])
-            comm_losses = torch.Tensor(comm_losses).to(self.device).mean()
-            comm_losses = torch.abs((self.args.soft_budget-comm_losses))
-            if comm_losses < self.args.soft_budget:
-                comm_losses /= self.args.soft_budget
-            else:
-                comm_losses /= (1. - self.args.soft_budget)
-            comm_losses *= self.args.eta_comm_loss
-            stat['regularization_loss'] = comm_losses.item()
-            # print(stat['regularization_loss'], stat['action_loss'], self.args.value_coeff * stat['value_loss'])
-            loss += comm_losses
-        '''
         if self.args.max_info:
             loss += self.args.eta_info * 0   # TODO: add euclidean distance between memory cells
 
