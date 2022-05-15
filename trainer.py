@@ -83,6 +83,7 @@ class Trainer(object):
         self.loss_autoencoder = None
         self.loss_min_comm = None
 
+
     def success_curriculum(self, success_rate, num_episodes):
         if self.args.variable_gate:
             self.cur_epoch_i += 1
@@ -221,8 +222,11 @@ class Trainer(object):
                     comm_prob = p_a[1][0]
                     comm_prob = comm_prob.T[1]
                     comm_losses = torch.zeros_like(comm_prob)
-                    comm_losses[comm_prob < self.args.soft_budget] = (self.args.soft_budget - comm_prob[comm_prob < self.args.soft_budget]) / self.args.soft_budget
-                    comm_losses[comm_prob >= self.args.soft_budget] = (comm_prob[comm_prob >= self.args.soft_budget] - self.args.soft_budget) / (1. - self.args.soft_budget)
+                    ind_budget = np.ones(self.args.nagents) * self.args.max_steps * self.args.soft_budget
+                    ind_budget += np.ones(self.args.nagents) * self.policy_net.get_null_action()
+                    ind_budget = torch.tensor(ind_budget / self.args.max_steps)
+                    comm_losses[comm_prob < ind_budget] = (ind_budget[comm_prob < ind_budget] - comm_prob[comm_prob < ind_budget]) / ind_budget[comm_prob < ind_budget]
+                    comm_losses[comm_prob >= ind_budget] = (comm_prob[comm_prob >= ind_budget] - ind_budget[comm_prob >= ind_budget]) / (1. - ind_budget[comm_prob >= ind_budget])
                     comm_losses = torch.abs(comm_losses).mean()
                     if self.loss_min_comm == None:
                         self.loss_min_comm = comm_losses

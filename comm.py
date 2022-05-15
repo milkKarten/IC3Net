@@ -162,6 +162,14 @@ class CommNetMLP(nn.Module):
         else:
             self.decoderNet = nn.Linear(args.hid_size, num_inputs)
 
+        # remove null messages
+        # with open('/Users/seth/Documents/research/neurips/nulls/'+self.args.pretrain_exp_name+'/seed' + str(self.args.seed) + '/nulls.txt', 'r') as f:
+        with open('/IC3Net/nulls/'+self.args.pretrain_exp_name+'/seed' + str(self.args.seed) + '/nulls.txt', 'r') as f:
+            protos = f.readlines()
+            for i in range(len(protos)):
+                protos[i] = protos[i].replace("\n", "").split(',')
+            self.null_dict = torch.tensor(np.array(protos).astype(np.float32))
+
     def get_agent_mask(self, batch_size, info):
         n = self.nagents
 
@@ -203,6 +211,9 @@ class CommNetMLP(nn.Module):
         y = self.h_state + self.comms_all
         y = self.decoderNet(y)
         return y
+
+    def get_null_action(self):
+        return self.null_action
 
     def forward(self, x, info={}):
         # TODO: Update dimensions
@@ -288,6 +299,25 @@ class CommNetMLP(nn.Module):
                     # Generates samples from a zero-mean unit gaussian, which we rescale by the std parameter.
                     noise = torch.randn_like(comm) * std
                     comm += noise
+                # check if comm contains null vector
+                # print(comm.shape) # 1,5,64
+                # sys.exit()
+                # if self.args.null_regularization:
+                if True:
+                    self.num_null = 0
+                    null_mask = torch.ones_like(comm)
+                    for j in range(comm.shape[1]):
+                        # print(comm[0,j].shape, self.null_dict[0].shape)
+                        for null_i in range(len(self.null_dict)):
+                            if torch.nn.functional.mse_loss(self.null_dict[null_i], comm[0,j]) < 0.1:
+                                null_mask[0,j] *= 0
+                                break
+                    self.null_action = np.zeros(self.args.nagents)
+                    for j in range(self.args.nagents):
+                        if null_mask[0,j].sum() == 0:
+                            if info['comm_action'][j] == 1:    # we cut an additional communication
+                                self.null_action[j] = 1 # get one comm back for later
+                    comm = comm * null_mask
             elif self.args.discrete_comm:  #one-hot
                 raw_outputs = self.proto_layer(hidden_state)
                 raw_outputs = torch.squeeze(raw_outputs, 0)
