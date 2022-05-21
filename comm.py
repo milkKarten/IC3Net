@@ -163,12 +163,23 @@ class CommNetMLP(nn.Module):
             self.decoderNet = nn.Linear(args.hid_size, num_inputs)
 
         # remove null messages
-        # with open('/Users/seth/Documents/research/neurips/nulls/'+self.args.pretrain_exp_name+'/seed' + str(self.args.seed) + '/nulls.txt', 'r') as f:
-        with open('/IC3Net/nulls/'+self.args.pretrain_exp_name+'/seed' + str(self.args.seed) + '/nulls.txt', 'r') as f:
-            protos = f.readlines()
-            for i in range(len(protos)):
-                protos[i] = protos[i].replace("\n", "").split(',')
-            self.null_dict = torch.tensor(np.array(protos).astype(np.float32))
+        # with open('IC3Net/nulls/'+self.args.pretrain_exp_name+'/seed' + str(self.args.seed) + '/nulls.txt', 'r') as f:
+        # with open('/Users/seth/Documents/research/neurips/nulls/tj_easy_proto_soft_minComm_autoencoder/seed' + str(self.args.seed) + '/nulls.txt', 'r') as f:
+        # with open('/Users/seth/Documents/research/neurips/nulls/'+self.args.exp_name+'/seed' + str(self.args.seed) + '/nulls.txt', 'r') as f:
+        if self.args.remove_null:
+            null_path = os.path.join(self.args.null_dict_dir, exp_name, "seed" + str(seed), 'nulls.txt')
+            with open(null_path) as f:
+                protos = f.readlines()
+                for i in range(len(protos)):
+                    protos[i] = protos[i].replace("\n", "").split(',')
+                self.null_dict = torch.tensor(np.array(protos).astype(np.float32))
+
+        self.num_null = 0
+        self.num_good_comms = 0
+        self.num_cut_comms = 0
+        self.num_comms = 0
+
+        self.null_action = np.zeros(self.args.nagents)
 
     def get_agent_mask(self, batch_size, info):
         n = self.nagents
@@ -260,6 +271,11 @@ class CommNetMLP(nn.Module):
         # Hard Attention - action whether an agent communicates or not
         if self.args.hard_attn:
             comm_action = torch.tensor(info['comm_action'])
+            for c in range(self.args.nagents):
+                if agent_mask[0,0,c] == 0: continue
+                # if info['comm_action'][c] == 0:
+                #     self.num_cut_comms += 1
+            self.num_comms += num_agents_alive
             # not sure if this passes batch sizes larger than 1
             # assert batch_size == 1
             # if info['step_t'] == 0:
@@ -303,21 +319,7 @@ class CommNetMLP(nn.Module):
                 # print(comm.shape) # 1,5,64
                 # sys.exit()
                 # if self.args.null_regularization:
-                if True:
-                    self.num_null = 0
-                    null_mask = torch.ones_like(comm)
-                    for j in range(comm.shape[1]):
-                        # print(comm[0,j].shape, self.null_dict[0].shape)
-                        for null_i in range(len(self.null_dict)):
-                            if torch.nn.functional.mse_loss(self.null_dict[null_i], comm[0,j]) < 0.1:
-                                null_mask[0,j] *= 0
-                                break
-                    self.null_action = np.zeros(self.args.nagents)
-                    for j in range(self.args.nagents):
-                        if null_mask[0,j].sum() == 0:
-                            if info['comm_action'][j] == 1:    # we cut an additional communication
-                                self.null_action[j] = 1 # get one comm back for later
-                    comm = comm * null_mask
+
             elif self.args.discrete_comm:  #one-hot
                 raw_outputs = self.proto_layer(hidden_state)
                 raw_outputs = torch.squeeze(raw_outputs, 0)
@@ -332,6 +334,35 @@ class CommNetMLP(nn.Module):
                 all_comms.append(torch.squeeze(comm, 0).detach().clone())
                 assert self.args.comm_dim == self.args.hid_size , "If not using protos comm dim should be same as hid"
 
+            if self.args.remove_null:
+                null_mask = torch.ones_like(comm)
+                for j in range(self.args.nagents):
+                    if agent_mask[0,0,j] == 0:
+                        continue
+                    # print(comm[0,j].shape, self.null_dict[0].shape)
+                    found_null = False
+                    for null_i in range(len(self.null_dict)):
+                        # print(torch.nn.functional.mse_loss(self.null_dict[null_i], comm[0,j]))
+                        if torch.nn.functional.mse_loss(self.null_dict[null_i], comm[0,j]) < 0.1:
+                            null_mask[0,j] *= 0
+                            found_null = True
+                            break
+                    if not found_null:
+                        # track non null communicated
+                        if info['comm_action'][j] == 1:
+                            self.num_good_comms += 1
+                    # else:
+                    #     if info['comm_action'][j] == 0:
+                    #         self.num_null += 1
+                self.null_action = np.zeros(self.args.nagents)
+                if 'null' in self.args.exp_name or True:
+                    for j in range(self.args.nagents):
+                        if null_mask[0,j].sum() == 0:
+                            if info['comm_action'][j] == 1:    # we cut an additional communication
+                                self.null_action[j] = 1 # get one comm back for later
+                                self.num_null += 1
+                                self.num_cut_comms += 1
+                    comm = comm * null_mask
             # comm = hidden_state.view(batch_size, n, self.hid_size) if self.args.recurrent else hidden_state
             comm  = comm.view(batch_size, n, self.args.comm_dim) if self.args.recurrent else comm
             # Get the next communication vector based on next hidden state
@@ -408,6 +439,7 @@ class CommNetMLP(nn.Module):
                 if self.args.env_name == 'predator_prey':
                     assert len(filtered_comms) == 1, "Only support one agent at a time"
                 # print("communication comm.py", c.shape, len(filtered_comms[0]))
+                # print(info['comm_action'])
                 return action, value_head, (hidden_state.clone(), cell_state.clone()), filtered_comms
             return action, value_head, (hidden_state.clone(), cell_state.clone())
         else:

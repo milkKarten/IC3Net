@@ -190,6 +190,12 @@ parser.add_argument('--autoencoder', action='store_true', default=False,
 parser.add_argument('--autoencoder_action', action='store_true', default=False,
                     help='use actions intent in autoencoder')
 
+# null comm removal
+parser.add_argument('--remove_null', action='store_true', default=False,
+                    help='remove null communications from being communicated')
+parser.add_argument('--null_dict_dir', type=str, default='',
+                    help='null dictionary directory')
+
 # first add environment specific args to the parser
 init_args_for_env(parser)
 
@@ -522,6 +528,7 @@ if args.load_pretrain:
     d = torch.load(model_path)
     policy_net.load_state_dict(d['policy_net'])
     policy_net.budget = args.budget
+    trainer.load_state_dict(d['trainer'])
 
 run(args.num_epochs)
 
