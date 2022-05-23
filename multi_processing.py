@@ -89,25 +89,25 @@ class MultiProcessTrainer(object):
 
         # run its own trainer
         st = time.time()
-        print(f"multi process run batch called")
+        # print(f"multi process run batch called")
         batch, stat = self.trainer.run_batch(epoch)
 
-        print("time taken for data collection computation ", time.time() - st)
+        # print("time taken for data collection computation ", time.time() - st)
 
         grad_st = time.time()
         self.trainer.optimizer.zero_grad()
         s = self.trainer.compute_grad(batch, other_stat=stat)
 
-        print(f"time for grad {time.time() - grad_st}")
+        # print(f"time for grad {time.time() - grad_st}")
 
         merge_stat(s, stat)
-        print(f"merge stat completed")
+        # print(f"merge stat completed")
 
         # check if workers are finished
         for comm in self.comms:
             s = comm.recv()
             merge_stat(s, stat)
-        print(f"other merge stat completed")
+        # print(f"other merge stat completed")
 
         # add gradients of workers
         self.obtain_grad_pointers()
@@ -116,38 +116,38 @@ class MultiProcessTrainer(object):
                 self.grads[i] += g[i]
             self.grads[i] /= stat['num_steps']
 
-        print(f"calling step")
+        # print(f"calling step")
         op_st = time.time()
         self.trainer.optimizer.step()
-        if self.trainer.args.scheduleLR:
-            self.trainer.scheduler.step()
+        # if self.trainer.args.scheduleLR:
+        #     self.trainer.scheduler.step()
 
 
         # Check if success has converged for curriculum learning
-        for comm in self.comms:
-            comm.send(['success_curriculum', stat['success'], stat['num_episodes']])
-        self.trainer.success_curriculum(stat['success'], stat['num_episodes'])
-        # Check if success has converged for reward to start to punish communication
-        for comm in self.comms:
-            comm.send(['reward_curriculum', stat['success'], stat['num_episodes']])
-        self.trainer.reward_curriculum(stat['success'], stat['num_episodes'])
-        # print(f"time taken for step {time.time() - op_st}")
-        # increase spawn rate in traffic junction
-        for comm in self.comms:
-            comm.send(['tj_curriculum', stat['success'], stat['num_episodes']])
-        self.trainer.tj_curriculum(stat['success'], stat['num_episodes'])
-        # decrease hard limit of communication over time
-        for comm in self.comms:
-            comm.send(['communication_curriculum', stat['success'], stat['num_episodes']])
-        self.trainer.communication_curriculum(stat['success'], stat['num_episodes'])
-        # converge on comm_action
-        if not self.trainer.comm_converge and False:
-            self.trainer.set_lr()
-            if stat['success'] / stat['num_episodes'] >= self.trainer.success_thresh and\
-                np.abs(np.mean(stat['comm_action'] / stat['num_steps']) - self.trainer.args.soft_budget) < 0.025:
-                self.trainer.comm_converge = True
-                self.trainer.args.lrate = self.trainer.args.lrate * .01
-                self.trainer.set_lr()
+        # for comm in self.comms:
+        #     comm.send(['success_curriculum', stat['success'], stat['num_episodes']])
+        # self.trainer.success_curriculum(stat['success'], stat['num_episodes'])
+        # # Check if success has converged for reward to start to punish communication
+        # for comm in self.comms:
+        #     comm.send(['reward_curriculum', stat['success'], stat['num_episodes']])
+        # self.trainer.reward_curriculum(stat['success'], stat['num_episodes'])
+        # # print(f"time taken for step {time.time() - op_st}")
+        # # increase spawn rate in traffic junction
+        # for comm in self.comms:
+        #     comm.send(['tj_curriculum', stat['success'], stat['num_episodes']])
+        # self.trainer.tj_curriculum(stat['success'], stat['num_episodes'])
+        # # decrease hard limit of communication over time
+        # for comm in self.comms:
+        #     comm.send(['communication_curriculum', stat['success'], stat['num_episodes']])
+        # self.trainer.communication_curriculum(stat['success'], stat['num_episodes'])
+        # # converge on comm_action
+        # if not self.trainer.comm_converge and False:
+        #     self.trainer.set_lr()
+        #     if stat['success'] / stat['num_episodes'] >= self.trainer.success_thresh and\
+        #         np.abs(np.mean(stat['comm_action'] / stat['num_steps']) - self.trainer.args.soft_budget) < 0.025:
+        #         self.trainer.comm_converge = True
+        #         self.trainer.args.lrate = self.trainer.args.lrate * .01
+        #         self.trainer.set_lr()
 
         stat['learning_rate'] = self.trainer.get_lr(self.trainer.optimizer)
         return stat

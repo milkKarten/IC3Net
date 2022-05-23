@@ -20,7 +20,6 @@ class GymWrapper(object):
         '''
         for multi-agent, this is the obs per agent
         '''
-
         # tuple space
         if hasattr(self.env.observation_space, 'spaces'):
             total_obs_dim = 0
@@ -119,3 +118,96 @@ class GymWrapper(object):
             return self.env.stat
         else:
             return dict()
+
+
+class StarcraftWrapper(object):
+    """
+    for multi-agent
+    """
+    def __init__(self, env):
+        # print("gym init", getfullargspec(env.reset).args)
+        # import traceback
+        # for line in traceback.format_stack():
+        #    print(line.strip())
+        self.env = env
+        self.env_info = env.get_env_info()
+        self.n_actions = self.env_info["n_actions"]
+        self.n_agents = self.env_info["n_agents"]
+
+    @property
+    def observation_dim(self):
+        '''
+        for multi-agent, this is the obs per agent
+        '''
+        return self.env.get_obs_size()
+
+    @property
+    def num_actions(self):
+        return self.env.get_total_actions()
+
+    @property
+    def dim_actions(self):
+        # Discrete => only 1 action takes place at a time.
+        return 1
+
+    @property
+    def action_space(self):
+        return spaces.Discrete(self.env.get_total_actions())
+
+    def reset(self, epoch, success=False):
+        obs, full_state = self.env.reset()
+        obs = np.array(obs)
+        obs = self._flatten_obs(obs)
+        return obs
+
+    def display(self):
+        raise NotImplementedError
+
+    def end_display(self):
+        raise NotImplementedError
+
+    def step(self, action):
+        # TODO: Modify all environments to take list of action
+        # instead of doing this
+
+        if self.dim_actions == 1:
+            # this basically makes sure you are ignoring the gating action.
+            action = action[0]
+        for i in range(len(action)):
+            if not self.env.get_avail_agent_actions(i)[action[i]]:
+                if self.env.get_avail_agent_actions(i)[0]:
+                    # agent is dead, take no-op
+                    action[i] = 0
+                else:
+                    action[i] = 1 # stop by default when invalid action
+        # print(action)
+        # print(self.env.get_avail_actions())
+        r, done, info = self.env.step(action)
+        r = np.ones(self.n_agents) * r
+        obs = np.array(self.env.get_obs())
+        obs = self._flatten_obs(obs)
+
+        return (obs, r, done, info)
+
+    def reward_terminal(self):
+        if hasattr(self.env, 'reward_terminal'):
+            return self.env.reward_terminal()
+        else:
+            return np.zeros(1)
+
+    def _flatten_obs(self, obs):
+        if isinstance(obs, tuple):
+            _obs=[]
+            for agent in obs: #list/tuple of observations.
+                ag_obs = []
+                for obs_kind in agent:
+                    ag_obs.append(np.array(obs_kind).flatten())
+                _obs.append(np.concatenate(ag_obs))
+            obs = np.stack(_obs)
+
+        obs = obs.reshape(1, -1, self.observation_dim)
+        obs = torch.from_numpy(obs).double()
+        return obs
+
+    def get_stat(self):
+        return self.env.get_stats()

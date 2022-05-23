@@ -539,13 +539,13 @@ class Trainer(object):
         merge_stat(s, stat)
 
         # Check if success has converged for curriculum learning
-        self.success_curriculum(self.stats['success'], self.stats['num_episodes'])
+        # self.success_curriculum(self.stats['success'], self.stats['num_episodes'])
         # check if time to introduce reward to decrease communication
-        self.reward_curriculum(self.stats['success'], self.stats['num_episodes'])
+        # self.reward_curriculum(self.stats['success'], self.stats['num_episodes'])
         # increase spawn rate in traffic junction
         # self.tj_curriculum(self.stats['success'], self.stats['num_episodes'])
         # decrease hard limit of communication over time
-        self.communication_curriculum(self.stats['success'], self.stats['num_episodes'])
+        # self.communication_curriculum(self.stats['success'], self.stats['num_episodes'])
 
         for p in self.params:
             if p._grad is not None:
