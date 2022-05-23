@@ -2,7 +2,12 @@ import sys
 import gym
 import ic3net_envs
 from env_wrappers import *
-from smac.env import StarCraft2Env
+try:
+    from smac.env import StarCraft2Env
+except ImportError as e:
+    pass  # starcraft experiments not enabled
+
+
 
 def init(env_name, args, final_init=True):
     if env_name == 'levers':
