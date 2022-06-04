@@ -207,7 +207,10 @@ class Trainer(object):
                 x = state
                 action_out, value = self.policy_net(x, info)
 
-
+            # mask action if not available
+            #print(action_out, '\n', self.env.env.get_avail_actions())
+            if self.policy_net.training and hasattr(self.env.env, 'get_avail_actions'):
+                action_out[0][self.env.env.get_avail_actions()==0] = -1e10
             # this is actually giving you actions from logits
             action = select_action(self.args, action_out)
             # this is for the gating head penalty

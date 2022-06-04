@@ -7,7 +7,7 @@ env = "starcraft"
 seeds = [777]
 # seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
-methods = ['baseline_autoencoder']
+methods = ['baseline']
 pretrain_exp_name = ''
 # for soft_budget in [.5]:
 if True:
@@ -28,7 +28,7 @@ if True:
         gating_head_cost_factor = 0.
         if "fixed" in method or "baseline" in method:
             comm_action_one = True
-        nprocesses = 6
+        nprocesses = 0
         lr = 0.001
         nagents = 3
         max_steps = 60
@@ -38,7 +38,7 @@ if True:
                   f"--gating_head_cost_factor {gating_head_cost_factor} "+\
                   f"--hid_size {hid_size} --comm_dim {hid_size} --soft_budget {soft_budget} "+\
                   f" --detach_gap 10 --lrate {lr} --ic3net "+\
-                  f"--recurrent --save trained_models --load trained_models "+\
+                  f"--recurrent --save SC2_models --load SC2_models "+\
                   f"--max_steps {max_steps} --nagents {nagents} "+\
                   f"--exp_name {exp_name} --save_every {save_every} "
 
@@ -59,7 +59,7 @@ if True:
         # run for all seeds
         for seed in seeds:
             # log_path = os.path.join("trained_models", env, exp_name, "seed" + str(seed), "logs")
-            log_path = os.path.join("trained_models", env, exp_name, "seed" + str(seed), "logs")
+            log_path = os.path.join("SC2_models", env, exp_name, "seed" + str(seed), "logs")
             if os.path.exists(log_path):
                 run_str += f"--restore  "
             # with open("runLogs/" + exp_name + "Log.txt","wb") as out:
