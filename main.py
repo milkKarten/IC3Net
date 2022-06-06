@@ -42,7 +42,7 @@ parser.add_argument('--hid_size', default=64, type=int,
 parser.add_argument('--recurrent', action='store_true', default=False,
                     help='make the model recurrent in time')
 # optimization
-parser.add_argument('--gamma', type=float, default=1.0,
+parser.add_argument('--gamma', type=float, default=.95,
                     help='discount factor')
 parser.add_argument('--tau', type=float, default=1.0,
                     help='gae (remove?)')
