@@ -5,8 +5,10 @@ import time
 from models import MLP
 from action_utils import select_action, translate_action
 from networks import ProtoNetwork, ProtoLayer
+from network_utils import gumbel_softmax
 from noise import OUNoise
 import numpy as np
+import os
 
 class CommNetMLP(nn.Module):
     """
@@ -61,8 +63,9 @@ class CommNetMLP(nn.Module):
             self.action_mean = nn.Linear(args.hid_size, args.dim_actions)
             self.action_log_std = nn.Parameter(torch.zeros(1, args.dim_actions))
         else:
-            self.heads = nn.ModuleList([nn.Linear(args.hid_size, o)
-                                        for o in args.naction_heads])
+            # self.heads = nn.ModuleList([nn.Linear(args.hid_size, o)
+            #                             for o in args.naction_heads])
+            self.action_head = nn.Linear(args.hid_size, args.dim_actions)
 
 
         self.init_std = args.init_std if hasattr(args, 'comm_init_std') else 0.2
@@ -106,7 +109,8 @@ class CommNetMLP(nn.Module):
 
             # Old code when the input size was equal to the hidden size.
             # self.f_module = nn.LSTMCell(args.hid_size, args.hid_size)
-
+            # comm, gating module
+            # action module
             self.f_module = nn.LSTMCell(args.comm_dim, args.hid_size)
 
 
@@ -149,6 +153,7 @@ class CommNetMLP(nn.Module):
         # self.C.weight.data.zero_()
         # Init weights for linear layers
         # self.apply(self.init_weights)
+        self.gating_head = nn.Linear(self.hid_size, 2)
 
         self.value_head = nn.Linear(self.hid_size, 1)
 
@@ -167,13 +172,14 @@ class CommNetMLP(nn.Module):
         # with open('/Users/seth/Documents/research/neurips/nulls/tj_easy_proto_soft_minComm_autoencoder/seed' + str(self.args.seed) + '/nulls.txt', 'r') as f:
         # with open('/Users/seth/Documents/research/neurips/nulls/'+self.args.exp_name+'/seed' + str(self.args.seed) + '/nulls.txt', 'r') as f:
         if self.args.remove_null:
-            null_path = os.path.join(self.args.null_dict_dir, exp_name, "seed" + str(seed), 'nulls.txt')
+            null_path = os.path.join(self.args.null_dict_dir, self.args.exp_name, "seed" + str(self.args.seed), 'nulls.txt')
             with open(null_path) as f:
                 protos = f.readlines()
                 for i in range(len(protos)):
                     protos[i] = protos[i].replace("\n", "").split(',')
                 self.null_dict = torch.tensor(np.array(protos).astype(np.float32))
-
+                # for i in range(len(protos)):
+                #     print(self.null_dict[i].shape)
         self.num_null = 0
         self.num_good_comms = 0
         self.num_cut_comms = 0
@@ -255,43 +261,62 @@ class CommNetMLP(nn.Module):
         #     x = torch.cat([x, maxi], dim=-1)
         #     x = self.tanh(x)
 
-        # print(x[0].size(), x[0],"\n")
         x, hidden_state, cell_state = self.forward_state_encoder(x)
-        if self.args.autoencoder:
-            self.h_state = hidden_state.clone()
-        # print(x, hidden_state, cell_state)
-        # import sys
-        # sys.exit(0)
         batch_size = x.size()[0]
         n = self.nagents
+        # better comm generation
+        x = x.view(batch_size * n, self.args.comm_dim)
+        hidden_state, cell_state = self.f_module(x, (hidden_state, cell_state))
+
+        if self.args.autoencoder:
+            self.h_state = hidden_state.clone()
 
         # this should remain regardless of using prototypes or not.
         num_agents_alive, agent_mask = self.get_agent_mask(batch_size, info)
 
         # Hard Attention - action whether an agent communicates or not
         if self.args.hard_attn:
-            comm_action = torch.tensor(info['comm_action'])
+            # comm_action = torch.tensor(info['comm_action'])
+            # comm_prob = comm_action
+            # print(comm_action)
+            comm_prob = None
+            if self.args.comm_action_one:
+                comm_action = torch.ones(self.nagents)
+            elif self.args.comm_action_zero:
+                comm_action = torch.zeros(self.nagents)
+            else:
+                h = hidden_state.view(batch_size, n, self.hid_size)
+                # comm_prob = F.relu(self.gating_head(h))[0]
+                # comm_prob = gumbel_softmax(comm_prob, temperature=1, hard=True)
+                # print(comm_prob)
+                comm_prob = F.log_softmax(self.gating_head(h), dim=-1)[0].exp()
+
+                comm_prob = gumbel_softmax(comm_prob, temperature=1, hard=True)
+                # print(comm_prob, torch.argmax(comm_prob, axis=-1))
+                comm_prob = comm_prob[:, 1].reshape(self.nagents)
+                # print(comm_prob)
+                # comm_prob = torch.multinomial(comm_prob, 1).reshape(self.nagents)
+                # print(comm_prob)
+                comm_action = comm_prob
+                # print(comm_action, comm_prob)
+                # comm_prob = comm_prob[torch.arange(self.nagents), comm_action]
+            # print("comm action", comm_action)
+            #     comm_prob = torch.argmax(comm_action, axis=-1)
+            #     # comm_prob = torch.max(comm_action, axis=-1).values
+            #     # print(comm_action)
+            #     comm_action = torch.argmax(comm_action, axis=-1).detach()
+                # print(comm_action)
+            # info['comm_action'] = comm_action.clone().detach().numpy()
+            # print(comm_action)
             for c in range(self.args.nagents):
                 if agent_mask[0,0,c] == 0: continue
-                # if info['comm_action'][c] == 0:
-                #     self.num_cut_comms += 1
+
             self.num_comms += num_agents_alive
-            # not sure if this passes batch sizes larger than 1
-            # assert batch_size == 1
-            # if info['step_t'] == 0:
-            #     # reset communication budget at the beginning of the episode
-            #     self.comm_budget = self.budget * torch.tensor([self.args.max_steps] * self.nagents
-            # # self.comm_budget -= comm_action
-            # if self.budget != 1:
-            #     comm_action[self.comm_budget <= 0] = 0
-            # Add random masking according to the budget
-            if self.train_mode:
-                info['comm_budget'] = np.random.choice([1.,0.], size=self.nagents, p=[self.budget, 1-self.budget])
-                comm_action = comm_action * info['comm_budget']
-            # print("comm action, budget", comm_action, self.comm_budget, info['step_t'])
             comm_action_mask = comm_action.expand(batch_size, n, n).unsqueeze(-1)
             # action 1 is talk, 0 is silent i.e. act as dead for comm purposes.
             agent_mask = agent_mask * comm_action_mask.double()
+
+        info['comm_action'] = comm_action.detach().numpy()
 
         agent_mask_transpose = agent_mask.transpose(1, 2)
         all_comms = []
@@ -339,11 +364,12 @@ class CommNetMLP(nn.Module):
                 for j in range(self.args.nagents):
                     if agent_mask[0,0,j] == 0:
                         continue
-                    # print(comm[0,j].shape, self.null_dict[0].shape)
                     found_null = False
                     for null_i in range(len(self.null_dict)):
-                        # print(torch.nn.functional.mse_loss(self.null_dict[null_i], comm[0,j]))
-                        if torch.nn.functional.mse_loss(self.null_dict[null_i], comm[0,j]) < 0.1:
+                        threshold = 0.1
+                        if not self.args.discrete_comm:
+                            threshold = 1.
+                        if torch.nn.functional.mse_loss(self.null_dict[null_i], comm[0,j]) < threshold:
                             null_mask[0,j] *= 0
                             found_null = True
                             break
@@ -399,7 +425,7 @@ class CommNetMLP(nn.Module):
 
             if self.args.recurrent:
                 # skip connection - combine comm. matrix and encoded input for all agents
-                inp = x + c
+                inp = hidden_state + c
 
                 # inp = inp.view(batch_size * n, self.hid_size)
 
@@ -429,7 +455,8 @@ class CommNetMLP(nn.Module):
             action = (action_mean, action_log_std, action_std)
         else:
             # discrete actions
-            action = [F.log_softmax(head(h), dim=-1) for head in self.heads]
+            # action = [F.log_softmax(head(h), dim=-1) for head in self.heads]
+            action = F.log_softmax(self.action_head(h), dim=-1)
             # print(f"uses discrete actions {action}")
         if self.args.recurrent:
             if info.get('record_comms') is not None:
@@ -441,7 +468,7 @@ class CommNetMLP(nn.Module):
                 # print("communication comm.py", c.shape, len(filtered_comms[0]))
                 # print(info['comm_action'])
                 return action, value_head, (hidden_state.clone(), cell_state.clone()), filtered_comms
-            return action, value_head, (hidden_state.clone(), cell_state.clone())
+            return action, value_head, (hidden_state.clone(), cell_state.clone()), comm_prob
         else:
             if info.get('record_comms') is not None:
                 filtered_comms = [c[info.get('record_comms')] for c in all_comms]

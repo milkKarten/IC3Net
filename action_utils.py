@@ -33,7 +33,9 @@ def select_action(args, action_out, eval_mode=False):
         return action.detach()
     else:
         log_p_a = action_out
-        p_a = [[z.exp() for z in x] for x in log_p_a]
+        # p_a = log_p_a.exp()
+        ret = torch.argmax(log_p_a.exp(), -1).detach()
+        # p_a = [[z.exp() for z in x] for x in log_p_a]
 
         # p_a is [[tensor([[0.1887, 0.2079, 0.1943, 0.2028, 0.2064],
         #                  [0.1918, 0.2052, 0.1866, 0.2061, 0.2104],
@@ -41,11 +43,10 @@ def select_action(args, action_out, eval_mode=False):
         #     tensor([[0.5344, 0.4656],
         #             [0.5307, 0.4693],
         #             [0.5179, 0.4821]], grad_fn= < ExpBackward >)]]
-        # if eval_mode:
-        #     ret = torch.stack([torch.stack([torch.argmax(x, 1).detach() for x in p]) for p in p_a])
-        #     return ret
-
-        ret = torch.stack([torch.stack([torch.multinomial(x, 1).detach() for x in p]) for p in p_a])
+        # ret = torch.stack([torch.stack([torch.multinomial(x, 1).detach() for x in p]) for p in p_a])
+        # ret = torch.stack([torch.stack([torch.argmax(x, 1).detach() for x in p]) for p in p_a])
+        if eval_mode:
+            ret = torch.argmax(log_p_a.exp(), -1).detach()
         return ret
 
 def translate_action(args, env, action):

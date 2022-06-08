@@ -83,78 +83,6 @@ class Trainer(object):
         self.loss_autoencoder = None
         self.loss_min_comm = None
 
-
-    def success_curriculum(self, success_rate, num_episodes):
-        if self.args.variable_gate:
-            self.cur_epoch_i += 1
-            self.epoch_success += success_rate
-            # print("cur i", self.cur_epoch_i, self.success_metric, num_episodes, success_rate)
-            if self.cur_epoch_i >= self.args.epoch_size:
-                self.cur_epoch_i = 0
-                if self.epoch_success / float(num_episodes*self.args.epoch_size) > self.success_thresh:
-                    # print(self.epoch_success / float(num_episodes*self.args.epoch_size), self.success_thresh)
-                    self.success_metric += 1
-                else:
-                    self.success_metric = 0
-                self.epoch_success = 0
-
-            # print("success curriculum", self.success_metric / max(1, self.args.nprocesses))
-            if self.success_metric  >= 20: #/ max(1, self.args.nprocesses) >= 20:
-                self.args.comm_action_one = False
-                self.args.variable_gate = False
-
-    def reward_curriculum(self, success_rate, num_episodes):
-        if self.args.gate_reward_curriculum and not self.args.variable_gate:
-            self.cur_reward_epoch_i += 1
-            self.reward_epoch_success += success_rate
-            if self.cur_reward_epoch_i >= self.args.epoch_size:
-                self.cur_reward_epoch_i = 0
-                if self.reward_epoch_success / float(num_episodes*self.args.epoch_size) > self.success_thresh:
-                    self.reward_success += 1
-                else:
-                    self.reward_success = 0
-                self.reward_epoch_success = 0
-            if self.reward_success >= 20:
-                self.args.gating_punish = True
-                self.args.gate_reward_curriculum = False
-                # reset optimizer
-                self.optimizer = optim.RMSprop(self.policy_net.parameters(),
-                    lr = args.lrate, alpha=0.97, eps=1e-6)
-
-    def tj_curriculum(self, success_rate, num_episodes):
-        if not self.begin_tj_curric and False:
-            self.tj_epoch_i += 1
-            self.tj_epoch_success += success_rate
-            if self.tj_epoch_i >= self.args.epoch_size:
-                self.tj_epoch_i = 0
-                if self.tj_epoch_success / float(num_episodes*self.args.epoch_size) > self.success_thresh:
-                    self.tj_success += 1
-                else:
-                    self.tj_success = 0
-                self.tj_epoch_success = 0
-            if self.tj_success >= 20:
-                self.begin_tj_curric = True
-
-    def communication_curriculum(self, success_rate, num_episodes):
-        if not self.end_comm_curric and not self.args.variable_gate:
-            self.comm_epoch_i += 1
-            self.comm_epoch_success += success_rate
-            if self.comm_epoch_i >= self.args.epoch_size:
-                self.comm_epoch_i = 0
-                if self.comm_epoch_success / float(num_episodes*self.args.epoch_size) > self.success_thresh:
-                    self.comm_success += 1
-                else:
-                    self.comm_success = 0
-                self.comm_epoch_success = 0
-            if self.comm_success >= 50:
-                # decrease budget, reset curriculum params
-                self.policy_net.budget -= 0.05
-                self.comm_epoch_i = 0
-                self.comm_epoch_success = 0
-                self.comm_success = 0
-            if self.policy_net.budget <= self.min_budget:
-                self.end_comm_curric = True
-
     def get_episode(self, epoch):
         episode = []
         reset_args = getargspec(self.env.reset).args
@@ -167,7 +95,7 @@ class Trainer(object):
         if should_display:
             self.env.display()
         stat = dict()
-        info = dict()
+        info_comm = dict()
         switch_t = -1
 
         # one is used because of the batch size.
@@ -175,12 +103,15 @@ class Trainer(object):
         if self.args.ic3net:
             stat['budget'] = self.policy_net.budget
 
+        # episode_comm = torch.zeros(self.args.nagents)
+        episode_comm = []
         for t in range(self.args.max_steps):
+            # print(t)
             misc = dict()
             if t == 0 and self.args.hard_attn and self.args.commnet:
-                info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
-                info['comm_budget'] = np.zeros(self.args.nagents, dtype=int)
-                info['step_t'] = t  # episode step for resetting communication budget
+                info_comm['comm_action'] = np.zeros(self.args.nagents, dtype=int)
+                info_comm['comm_budget'] = np.zeros(self.args.nagents, dtype=int)
+                info_comm['step_t'] = t  # episode step for resetting communication budget
                 stat['comm_action'] = np.zeros(self.args.nagents, dtype=int)[:self.args.nfriendly]
 
             # recurrence over time
@@ -189,7 +120,8 @@ class Trainer(object):
                     prev_hid = self.policy_net.init_hidden(batch_size=state.shape[0])
 
                 x = [state, prev_hid]
-                action_out, value, prev_hid = self.policy_net(x, info)
+                action_out, value, prev_hid, comm_prob = self.policy_net(x, info_comm)
+                # episode_comm += comm_action
                 if self.args.autoencoder and not self.args.autoencoder_action:
                     decoded = self.policy_net.decode()
                     x_all = x[0].sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
@@ -205,36 +137,38 @@ class Trainer(object):
                         prev_hid = prev_hid.detach()
             else:
                 x = state
-                action_out, value = self.policy_net(x, info)
-
+                action_out, value = self.policy_net(x, info_comm)
             # mask action if not available
             #print(action_out, '\n', self.env.env.get_avail_actions())
-            if self.policy_net.training and hasattr(self.env.env, 'get_avail_actions'):
+            if hasattr(self.env.env, 'get_avail_actions'):
                 action_out[0][self.env.env.get_avail_actions()==0] = -1e10
             # this is actually giving you actions from logits
             action = select_action(self.args, action_out)
             # this is for the gating head penalty
-            if not self.args.continuous:
-                log_p_a = action_out
-                p_a = [[z.exp() for z in x] for x in log_p_a]
-                gating_probs = p_a[1][0].detach().numpy()
+            if not self.args.continuous and not self.args.comm_action_one:
+                # log_p_a = action_out
+                # p_a = [[z.exp() for z in x] for x in log_p_a]
+                # gating_probs = p_a[1][0].detach().numpy()
+                gating_probs = comm_prob.detach().numpy()
 
                 # since we treat this as reward so probability of 0 being high is rewarded
-                gating_head_rew = np.array([p[1] for p in gating_probs])
-                if self.args.min_comm_loss and t != 0:
-                    comm_prob = p_a[1][0]
-                    comm_prob = comm_prob.T[1]
-                    comm_losses = torch.zeros_like(comm_prob)
-                    ind_budget = np.ones(self.args.nagents) * self.args.max_steps * self.args.soft_budget
-                    ind_budget += np.ones(self.args.nagents) * self.policy_net.get_null_action()
-                    ind_budget = torch.tensor(ind_budget / self.args.max_steps)
-                    comm_losses[comm_prob < ind_budget] = (ind_budget[comm_prob < ind_budget] - comm_prob[comm_prob < ind_budget]) / ind_budget[comm_prob < ind_budget]
-                    comm_losses[comm_prob >= ind_budget] = (comm_prob[comm_prob >= ind_budget] - ind_budget[comm_prob >= ind_budget]) / (1. - ind_budget[comm_prob >= ind_budget])
-                    comm_losses = torch.abs(comm_losses).mean()
-                    if self.loss_min_comm == None:
-                        self.loss_min_comm = comm_losses
-                    else:
-                        self.loss_min_comm += comm_losses
+                # gating_head_rew = np.array([p[1] for p in gating_probs])
+                gating_head_rew = gating_probs
+                if self.args.min_comm_loss:
+                    # print("c prob", comm_prob)
+                    episode_comm.append(comm_prob.double().reshape(1,-1))
+                    # comm_prob = comm_prob.double()
+                    # comm_losses = torch.zeros_like(comm_prob)
+                    # ind_budget = np.ones(self.args.nagents) * self.args.max_steps * self.args.soft_budget
+                    # ind_budget += np.ones(self.args.nagents) * self.policy_net.get_null_action()
+                    # ind_budget = torch.tensor(ind_budget / self.args.max_steps)
+                    # comm_losses[comm_prob < ind_budget] = (ind_budget[comm_prob < ind_budget] - comm_prob[comm_prob < ind_budget]) / ind_budget[comm_prob < ind_budget]
+                    # comm_losses[comm_prob >= ind_budget] = (comm_prob[comm_prob >= ind_budget] - ind_budget[comm_prob >= ind_budget]) / (1. - ind_budget[comm_prob >= ind_budget])
+                    # comm_losses = torch.abs(comm_losses).mean()
+                    # if self.loss_min_comm == None:
+                    #     self.loss_min_comm = comm_losses
+                    # else:
+                    #     self.loss_min_comm += comm_losses
                 if self.args.gating_head_cost_factor != 0:
                     if self.args.gating_punish:
                         # encourage communication to be at thresh %
@@ -309,7 +243,7 @@ class Trainer(object):
                     self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
                 else:
                     self.loss_autoencoder += torch.nn.functional.mse_loss(decoded, x_all)
-            comm_budget = info['comm_budget']
+            comm_budget = info_comm['comm_budget']
             next_state, reward, done, info = self.env.step(actual)
 
             stat['env_reward'] = stat.get('env_reward', 0) + reward[:self.args.nfriendly]
@@ -319,14 +253,14 @@ class Trainer(object):
 
             # store comm_action in info for next step
             if self.args.hard_attn and self.args.commnet:
-                info['comm_action'] = action[-1] if not self.args.comm_action_one else np.ones(self.args.nagents, dtype=int)
-                info['step_t'] = t
+                # info_comm['comm_action'] = action[-1] if not self.args.comm_action_one else np.ones(self.args.nagents, dtype=int)
+                info_comm['step_t'] = t
                 if self.args.comm_action_zero:
-                    info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
-                stat['comm_action'] = stat.get('comm_action', 0) + info['comm_action'][:self.args.nfriendly]
+                    info_comm['comm_action'] = np.zeros(self.args.nagents, dtype=int)
+                stat['comm_action'] = stat.get('comm_action', 0) + info_comm['comm_action'][:self.args.nfriendly]
                 stat['comm_budget'] = stat.get('comm_budget', 0) + comm_budget[:self.args.nfriendly]
                 if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
-                    stat['enemy_comm']  = stat.get('enemy_comm', 0)  + info['comm_action'][self.args.nfriendly:]
+                    stat['enemy_comm']  = stat.get('enemy_comm', 0)  + info_comm['comm_action'][self.args.nfriendly:]
 
 
             if 'alive_mask' in info:
@@ -364,6 +298,24 @@ class Trainer(object):
         stat['num_steps'] = t + 1
         stat['steps_taken'] = stat['num_steps']
 
+        if self.args.min_comm_loss:
+            episode_comm = torch.cat(episode_comm, 0).T
+            episode_comm = episode_comm.mean(1)
+            # print(episode_comm)
+            comm_losses = torch.zeros_like(episode_comm)
+            ind_budget = np.ones(self.args.nagents) * self.args.max_steps * self.args.soft_budget
+            ind_budget += np.ones(self.args.nagents) * self.policy_net.get_null_action()
+            ind_budget = torch.tensor(ind_budget / self.args.max_steps)
+            comm_losses[episode_comm < ind_budget] = (ind_budget[episode_comm < ind_budget] - episode_comm[episode_comm < ind_budget]) / ind_budget[episode_comm < ind_budget]
+            comm_losses[episode_comm >= ind_budget] = (episode_comm[episode_comm >= ind_budget] - ind_budget[episode_comm >= ind_budget]) / (1. - ind_budget[episode_comm >= ind_budget])
+            comm_losses = stat['num_steps'] * torch.abs(comm_losses).mean()
+            # print(episode_comm, ind_budget)
+            # comm_losses = torch.nn.functional.mse_loss(episode_comm, ind_budget)
+            if self.loss_min_comm == None:
+                self.loss_min_comm = comm_losses
+            else:
+                self.loss_min_comm += comm_losses
+
         if hasattr(self.env, 'reward_terminal'):
             reward = self.env.reward_terminal()
             # We are not multiplying in case of reward terminal with alive agent
@@ -383,7 +335,8 @@ class Trainer(object):
     def compute_grad(self, batch, other_stat=None):
         stat = dict()
         num_actions = self.args.num_actions
-        dim_actions = self.args.dim_actions
+        # dim_actions = self.args.dim_actions
+        dim_actions = 1
 
         n = self.args.nagents
         batch_size = len(batch.state)
@@ -424,19 +377,7 @@ class Trainer(object):
 
             returns[i] = (self.args.mean_ratio * coop_returns[i].mean()) \
                         + ((1 - self.args.mean_ratio) * ncoop_returns[i])
-        '''
-	    coop_returns = rewards + self.args.gamma * prev_coop_return * episode_masks
-        ncoop_returns = rewards + self.args.gamma * prev_ncoop_return * episode_masks * episode_mini_masks
 
-        prev_coop_return = coop_returns.clone()
-        prev_ncoop_return = ncoop_returns.clone()
-
-        returns = (self.args.mean_ratio * coop_returns.mean()) \
-                    + ((1 - self.args.mean_ratio) * ncoop_returns)
-
-        for i in reversed(range(rewards.size(0))):
-            advantages[i] = returns[i] - values.data[i]
-        '''
         advantages = returns - values.data
         # print(advantages, returns, values.data,"\n")
 
@@ -540,15 +481,6 @@ class Trainer(object):
         # print(f"time taken for grad computation {time.time() - grad_st_time}")
 
         merge_stat(s, stat)
-
-        # Check if success has converged for curriculum learning
-        # self.success_curriculum(self.stats['success'], self.stats['num_episodes'])
-        # check if time to introduce reward to decrease communication
-        # self.reward_curriculum(self.stats['success'], self.stats['num_episodes'])
-        # increase spawn rate in traffic junction
-        # self.tj_curriculum(self.stats['success'], self.stats['num_episodes'])
-        # decrease hard limit of communication over time
-        # self.communication_curriculum(self.stats['success'], self.stats['num_episodes'])
 
         for p in self.params:
             if p._grad is not None:
