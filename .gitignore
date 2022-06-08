@@ -13,6 +13,7 @@ __pycache__/
 # models
 trained_models
 runLogs
+SC2_models
 
 # Distribution / packaging
 .Python
