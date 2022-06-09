@@ -51,11 +51,7 @@
 <body>
   <center>
     <h1>Human Agent Communication Experiment</h1>
-      <div id = 'ending' style = 'visibility:hidden;'>
-          <h2>Thank you for your time and efforts. Your task is submitted. </h2>
-              <h2>Please copy and paste the confirmation code below to MTurk. </h2>
-        <h2 id = 'randomCode'>Confirmation code: Error please contact hul52@pitt.edu</h2>
-      </div>
+
   </center>
 
 
@@ -66,29 +62,31 @@
 <div class="middleleft">
     <h2>Task Environment</h2>
     <canvas id="canvas" width="500" height="500"></canvas>
+    <button id=go style="height:40px;visibility:hidden;" onclick="action_send(0)" >GO</button>
+      <button id=brake style="height:40px;visibility:hidden;" onclick="action_send(1)">BRAKE</button>
 <p id = 'sessionReminder'> </p>
 
 
 </div>
 
-  <div class="middleright">
-      <h2>Communication Space</h2>
-    <canvas id="comm" width="500" height="500"></canvas>
+<!--  <div class="middleright">-->
+<!--      <h2>Communication Space</h2>-->
+<!--    <canvas id="comm" width="500" height="500"></canvas>-->
 
-      <p>&nbsp; <button id=token1 style="height:40px;visibility:hidden;" onclick="commSend(1)" >Token 1</button>
-      <button id=token2 style="height:40px;visibility:hidden;" onclick="commSend(2)">Token 2</button>
-      <button id=token3 style="height:40px;visibility:hidden;" onclick="commSend(3)">Token 3</button>
-      <button id=token4 style="height:40px;visibility:hidden;" onclick="commSend(4)">Token 4</button>
-      <button id=token5 style="height:40px;visibility:hidden;" onclick="commSend(5)">Token 5</button></p>
-      <p>&nbsp; <button id=token6 style="height:40px;visibility:hidden;" onclick="commSend(6)">Token 6</button>
-      <button id=token7 style="height:40px;visibility:hidden;" onclick="commSend(7)">Token 7</button>
-      <button id=token8 style="height:40px;visibility:hidden;" onclick="commSend(8)">Token 8</button>
-      <button id=token9 style="height:40px;visibility:hidden;" onclick="commSend(9)">Token 9</button>
-      <button id=token10 style="height:40px;visibility:hidden;" onclick="commSend(10)">Token 10</button></p>
-</div>
+<!--      <p>&nbsp; <button id=token1 style="height:40px;visibility:hidden;" onclick="commSend(1)" >Token 1</button>-->
+<!--      <button id=token2 style="height:40px;visibility:hidden;" onclick="commSend(2)">Token 2</button>-->
+<!--      <button id=token3 style="height:40px;visibility:hidden;" onclick="commSend(3)">Token 3</button>-->
+<!--      <button id=token4 style="height:40px;visibility:hidden;" onclick="commSend(4)">Token 4</button>-->
+<!--      <button id=token5 style="height:40px;visibility:hidden;" onclick="commSend(5)">Token 5</button></p>-->
+<!--      <p>&nbsp; <button id=token6 style="height:40px;visibility:hidden;" onclick="commSend(6)">Token 6</button>-->
+<!--      <button id=token7 style="height:40px;visibility:hidden;" onclick="commSend(7)">Token 7</button>-->
+<!--      <button id=token8 style="height:40px;visibility:hidden;" onclick="commSend(8)">Token 8</button>-->
+<!--      <button id=token9 style="height:40px;visibility:hidden;" onclick="commSend(9)">Token 9</button>-->
+<!--      <button id=token10 style="height:40px;visibility:hidden;" onclick="commSend(10)">Token 10</button></p>-->
+<!--</div>-->
 <div class="right">
   <h1>Progress</h1>
-  <p> &nbsp; Trial <span id="trial"></span> / 40</p>
+  <p> &nbsp; Trial <span id="trial"></span> / 20</p>
   <p> &nbsp; Step taken: <span id="step"></span> (steps)</p>
     <p> &nbsp; Best performance: <span id="best"></span> (steps)</p>
   <p>&nbsp; <button id=startGame style="height:40px">Start Game</button></p>
@@ -98,8 +96,8 @@
        src="{{ static_url('cars.png') }}">
 </div>
       <div style="display:none;">
-  <img id="heart"
-       src="{{ static_url('heart.png') }}">
+  <img id="explosion"
+       src="{{ static_url('explosion.png') }}">
 </div>
       <div style="display:none;">
   <img id="failure"
@@ -155,7 +153,13 @@
 <!--<input id="playerId" name="playerId" type="hidden" value="" />-->
     <br><input type="button" value="Submit" onclick = 'attachResults();'>
 </form>
+<div id = 'ending' style = 'visibility:hidden;'>
+          <h2>Thank you for your time and efforts. Your task is submitted. </h2>
+              <h2>Please copy and paste the confirmation code below to MTurk. </h2>
+        <h2 id = 'randomCode'>Confirmation code: Error please contact hul52@pitt.edu</h2>
+          <h2>Prolific code: 59297DCD</h2>
 
+  </div>
 
 
 
@@ -166,7 +170,7 @@
 var keyflag = false;
 num_trail = 0
 $("#startGame").click(function(){
-  document.addEventListener('keydown',keyDownCheck,false);
+<!--  document.addEventListener('keydown',keyDownCheck,false);-->
   var name =  getParams("name");
   info_send(name);
   document.getElementById('trial').innerHTML = num_trail;

@@ -29,6 +29,8 @@
             <li>You will play the role of either a parent or a child and complete the task with an AI partner in the complementary role.</li>
             <li>The parent need to find the lost child, and she can only see the child in a close range.</li>
             <li>The goal of the child is to effectively communicate its location so that the parent can travel to the lost child.</li>
+                        <li>Your compensation is based on your <b>task performance</b> (e.g. number of completed trials and steps taken in each trial).</li>
+                        <li>You <b>must</b> pass an attention check during the experiment.</li>
         </ul>
     </li>
     <li><b>Procedure</b>
@@ -44,7 +46,6 @@
             <li>The child should select a token to inform the parent her location, and the parent should search for the child according to received token.</li>
             <li>Your task is to learn to use those tokens to collaborate with your AI partner in both parent and child roles.</li>
             <li>Your AI partner is trained to have a good understanding of those tokens, please rely on its behavior to learn the communication.</li>
-            <li>Your compensation is based on your <b>task performance</b> (e.g. number of completed trials and steps taken in each trial).</li>
         </ul>
     </li>
     <li><b>Control</b>
@@ -77,8 +78,8 @@
 
           <form action="/login" method="post">
             {% module xsrf_form_html() %}        
-            <p>Please enter your MTurk ID: <input id="name" name="name" type="text" /></p>
-            <input type="submit" value="Log in with your MTurk ID">
+            <p>Please enter your MTurk/Prolific ID: <input id="name" name="name" type="text" /></p>
+            <input type="submit" value="Log in with your ID">
           </form>
  <!--         <p>Then press: <button  id=start>Log in with your ID</button></p> -->       
 <!--        </center>        -->
