@@ -318,6 +318,7 @@ log['action_loss'] = LogField(list(), True, 'epoch', 'num_steps')
 log['regularization_loss'] = LogField(list(), True, 'epoch', 'num_steps')
 log['entropy'] = LogField(list(), True, 'epoch', 'num_steps')
 log['autoencoder_loss'] = LogField(list(), True, 'epoch', 'num_steps')
+log['win_rate'] = LogField(list(), True, 'epoch', 'num_episodes')
 # log['autoencoder_epoch'] = LogField(list(), False, None, None)
 
 # define save directory
@@ -413,13 +414,10 @@ def run(num_epochs):
         if 'enemy_comm' in stat.keys():
             print('Enemy-Comm: {}'.format(stat['enemy_comm']))
 
-        # old visdom code probably not needed anymore.
-
-        # if args.plot:
-        #     for k, v in log.items():
-        #         if v.plot and len(v.data) > 0:
-        #             vis.line(np.asarray(v.data), np.asarray(log[v.x_axis].data[-len(v.data):]),
-        #             win=k, opts=dict(xlabel=v.x_axis, ylabel=k))
+        
+        if stat['agent0/env_reward'] > trainer.best_model_reward:
+            trainer.best_model_reward = stat['agent0/env_reward']
+            save(save_path + '/best_model.pt')
 
         if args.save_every and ep and args.save != '' and ep % args.save_every == 0:
             # fname, ext = args.save.split('.')

@@ -82,6 +82,7 @@ class Trainer(object):
         # self.comm_scheduler = optim.lr_scheduler.ConstantLR(self.optimizer, factor=0.01)
         self.loss_autoencoder = None
         self.loss_min_comm = None
+        self.best_model_reward = -np.inf
 
     def get_episode(self, epoch):
         episode = []
