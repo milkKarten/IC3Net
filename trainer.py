@@ -141,9 +141,13 @@ class Trainer(object):
             # mask action if not available
             #print(action_out, '\n', self.env.env.get_avail_actions())
             if hasattr(self.env.env, 'get_avail_actions'):
-                action_out[0][self.env.env.get_avail_actions()==0] = -1e10
+                avail_actions = np.array(self.env.env.get_avail_actions())
+                action_mask = avail_actions==np.zeros_like(avail_actions)
+                action_out[0, action_mask] = -1e10
+                action_out = torch.nn.functional.log_softmax(action_out, dim=-1)
             # this is actually giving you actions from logits
             action = select_action(self.args, action_out)
+
             # this is for the gating head penalty
             if not self.args.continuous and not self.args.comm_action_one:
                 # log_p_a = action_out

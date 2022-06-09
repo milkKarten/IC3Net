@@ -65,7 +65,7 @@ class CommNetMLP(nn.Module):
         else:
             # self.heads = nn.ModuleList([nn.Linear(args.hid_size, o)
             #                             for o in args.naction_heads])
-            self.action_head = nn.Linear(args.hid_size, args.dim_actions)
+            self.action_head = nn.Linear(args.hid_size, args.num_actions[0])
 
 
         self.init_std = args.init_std if hasattr(args, 'comm_init_std') else 0.2
@@ -456,7 +456,10 @@ class CommNetMLP(nn.Module):
         else:
             # discrete actions
             # action = [F.log_softmax(head(h), dim=-1) for head in self.heads]
-            action = F.log_softmax(self.action_head(h), dim=-1)
+            if self.args.env_name == 'starcraft':
+                action = self.action_head(h)
+            else:
+                action = F.log_softmax(self.action_head(h), dim=-1)
             # print(f"uses discrete actions {action}")
         if self.args.recurrent:
             if info.get('record_comms') is not None:
