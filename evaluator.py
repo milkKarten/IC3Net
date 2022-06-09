@@ -35,7 +35,7 @@ class Evaluator:
         if should_display:
             self.env.display()
         stat = dict()
-        info = dict()
+        info_comm = dict()
         switch_t = -1
 
         prev_hid = torch.zeros(1, self.args.nagents, self.args.hid_size)
