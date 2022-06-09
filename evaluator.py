@@ -141,6 +141,12 @@ class Evaluator:
                                     comms_to_prey_act[tuple_comms] = []
                                 comms_to_prey_act[tuple_comms].append(tuple(p))
 
+
+            if hasattr(self.env.env, 'get_avail_actions'):
+                avail_actions = np.array(self.env.env.get_avail_actions())
+                action_mask = avail_actions==np.zeros_like(avail_actions)
+                action_out[0, action_mask] = -1e10
+                action_out = torch.nn.functional.log_softmax(action_out, dim=-1)
             action = select_action(self.args, action_out, eval_mode=True)
             action, actual = translate_action(self.args, self.env, action)
             next_state, reward, done, info = self.env.step(actual)
@@ -148,7 +154,7 @@ class Evaluator:
                 done = done or self.env.env.has_failed
             # store comm_action in info for next step
             if self.args.hard_attn and self.args.commnet:
-                info['comm_action'] = action[-1] if not self.args.comm_action_one else np.ones(self.args.nagents, dtype=int)
+                # info['comm_action'] = action[-1] if not self.args.comm_action_one else np.ones(self.args.nagents, dtype=int)
                 # print(info['comm_action'][0])
                 comm_action_episode[t] += info['comm_action'][0]
                 # print("before ", stat.get('comm_action', 0), info['comm_action'][:self.args.nfriendly])
