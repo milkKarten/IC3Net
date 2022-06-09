@@ -47,7 +47,7 @@ class Evaluator:
             misc = dict()
             info['step_t'] = t
             if t == 0 and self.args.hard_attn and self.args.commnet:
-                info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
+                info_comm['comm_action'] = np.zeros(self.args.nagents, dtype=int)
             # Hardcoded to record communication for agent 1 (prey)
             info['record_comms'] = 1
             # recurrence over time
@@ -56,14 +56,14 @@ class Evaluator:
                     prev_hid = self.policy_net.init_hidden(batch_size=state.shape[0])
 
                 x = [state, prev_hid]
-                action_out, value, prev_hid, proto_comms = self.policy_net(x, info)
+                action_out, value, prev_hid, proto_comms = self.policy_net(x, info_comm)
                 # if isinstance(self.env.env.env, predator_prey_env.PredatorPreyEnv):
                 if self.args.env_name == 'predator_prey':
                     # tuple_comms = tuple(proto_comms.detach().numpy())
                     for i in range(0, len(self.env.env.predator_loc)):
                         p = self.env.env.predator_loc[i]
                         proto = proto_comms[0][i]
-                        if info['comm_action'][i] == 0 or self.policy_net.get_null_action()[i] == 1:
+                        if info_comm['comm_action'][i] == 0 or self.policy_net.get_null_action()[i] == 1:
                             continue
                         tuple_comms = tuple(proto)
                         if comms_to_loc_full.get(tuple_comms) is None:
@@ -78,11 +78,11 @@ class Evaluator:
                         proto = proto_comms[0][i]
                         action_i = self.env.env.car_last_act[i]
                         if self.env.env.car_route_loc[i] != -1:
-                            if p[0] == 0 and p[1] == 0 or info['comm_action'][i] == 0 or self.policy_net.get_null_action()[i] == 1:
+                            if p[0] == 0 and p[1] == 0 or info_comm['comm_action'][i] == 0 or self.policy_net.get_null_action()[i] == 1:
                                 continue
                             # print("path", p, proto.shape)
                             # print(t, "proto", proto, proto.shape)
-                            # print(info['comm_action'][i])
+                            # print(info_comm['comm_action'][i])
                             tuple_comms = tuple(proto)
                             # print("tuple comms", proto.shape)
                             if comms_to_loc_full.get(tuple_comms) is None:
@@ -107,7 +107,7 @@ class Evaluator:
                         prev_hid = prev_hid.detach()
             else:
                 x = state
-                action_out, value, proto_comms = self.policy_net(x, info)
+                action_out, value, proto_comms = self.policy_net(x, info_comm)
                 # if isinstance(self.env.env.env, predator_prey_env.PredatorPreyEnv):
                 if self.args.env_name == 'predator_prey':
                     tuple_comms = tuple(proto_comms.detach().numpy())
@@ -154,14 +154,14 @@ class Evaluator:
                 done = done or self.env.env.has_failed
             # store comm_action in info for next step
             if self.args.hard_attn and self.args.commnet:
-                # info['comm_action'] = action[-1] if not self.args.comm_action_one else np.ones(self.args.nagents, dtype=int)
-                # print(info['comm_action'][0])
-                comm_action_episode[t] += info['comm_action'][0]
-                # print("before ", stat.get('comm_action', 0), info['comm_action'][:self.args.nfriendly])
-                stat['comm_action'] = stat.get('comm_action', 0) + info['comm_action'][:self.args.nfriendly]
-                all_comms.append(info['comm_action'][:self.args.nfriendly])
+                # info_comm['comm_action'] = action[-1] if not self.args.comm_action_one else np.ones(self.args.nagents, dtype=int)
+                # print(info_comm['comm_action'][0])
+                comm_action_episode[t] += info_comm['comm_action'][0]
+                # print("before ", stat.get('comm_action', 0), info_comm['comm_action'][:self.args.nfriendly])
+                stat['comm_action'] = stat.get('comm_action', 0) + info_comm['comm_action'][:self.args.nfriendly]
+                all_comms.append(info_comm['comm_action'][:self.args.nfriendly])
                 if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
-                    stat['enemy_comm']  = stat.get('enemy_comm', 0)  + info['comm_action'][self.args.nfriendly:]
+                    stat['enemy_comm']  = stat.get('enemy_comm', 0)  + info_comm['comm_action'][self.args.nfriendly:]
 
 
             if 'alive_mask' in info:
