@@ -146,7 +146,7 @@ evaluator = Evaluator(args, policy_net, data.init(args.env_name, args))
 st_time = time.time()
 
 all_stats = []
-for i in range(50):
+for i in range(500):
     ep, stat, all_comms, comms_to_loc, comms_to_act, comms_to_full, comm_action_episode = evaluator.run_episode()
     all_stats.append(stat)
 total_episode_time = time.time() - st_time
@@ -155,4 +155,4 @@ for key in all_stats[0].keys():
     average_stat[key] = np.mean([stat.get(key) for stat in all_stats])
 print("average stats is: ", average_stat)
 print("time taken per step ", total_episode_time/stat['num_steps'])
-print('win rate ', average_stat['win_rate'] / average_stat['num_episodes'])
+print('win rate ', average_stat['win_rate'])
