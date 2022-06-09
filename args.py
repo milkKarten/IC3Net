@@ -133,4 +133,9 @@ def get_args():
                          help='use autoencoder to learn comms')
      parser.add_argument('--autoencoder_action', action='store_true', default=False,
                          help='use actions intent in autoencoder')
+     # null comm removal
+     parser.add_argument('--remove_null', action='store_true', default=False,
+                         help='remove null communications from being communicated')
+     parser.add_argument('--null_dict_dir', type=str, default='',
+                         help='null dictionary directory')
      return parser

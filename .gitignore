@@ -13,6 +13,16 @@ __pycache__/
 # models
 trained_models
 runLogs
+paper_models
+*.png
+
+# figures
+tj_sparse_figs
+tj_figs
+tj_.5sparse_figs
+tj_.3sparse_figs
+figures
+figures_sparse
 
 # Distribution / packaging
 .Python
