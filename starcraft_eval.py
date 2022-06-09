@@ -38,7 +38,7 @@ if True:
                   f"--gating_head_cost_factor {gating_head_cost_factor} "+\
                   f"--hid_size {hid_size} --comm_dim {hid_size} "+\
                   f" --detach_gap 10 --ic3net "+\
-                  f"--recurrent --load /Users/seth/Documents/research/IC3Net/SC2_models "+\
+                  f"--recurrent --load SC2_models "+\
                   f"--max_steps {max_steps} --nagents {nagents} "+\
                   f"--exp_name {exp_name} --save_every {save_every} "
 
@@ -48,6 +48,10 @@ if True:
             run_str += f"--comm_action_one  "
         if comm_action_zero:
             run_str += f"--comm_action_zero "
+        if "autoencoder" in method:
+            run_str += "--autoencoder "
+        if "action" in method:
+            run_str += "--autoencoder_action "
 
         # Important: If you want to restore training just use the --restore tag
         # run for all seeds
