@@ -82,6 +82,7 @@ ws.onmessage = function(e)
 {
     //console.log("Received: '" + e.data + "'");
     var jsonObject = JSON.parse(e.data);
+    console.log('condition'+jsonObject.condition);
     if (jsonObject.currentTrial>40){survey()}
     else{
         if (jsonObject.humanRole=='parent'){
@@ -89,8 +90,8 @@ ws.onmessage = function(e)
             draw(jsonObject);
         }
         else{
-            displayButtons();
-            if (jsonObject.done==false){draw(jsonObject);}
+            displayButtons(Object.keys(jsonObject.comm).length);
+            if (jsonObject.done==false || jsonObject.hasOwnProperty('attentionCheck')){draw(jsonObject);}
             else{drawC(jsonObject);}
 
         }
@@ -136,11 +137,52 @@ var token8 = new Token(350, 350, 8);
 var token9 = new Token(400, 400, 9);
 var token10 = new Token(450, 450, 10);
 
+var originalTokenLocation = {
+        1: {"x":token1.x, "y":token1.y},
+        2: {"x":token2.x, "y":token2.y},
+        3: {"x":token3.x, "y":token3.y},
+        4: {"x":token4.x, "y":token4.y},
+        5: {"x":token5.x, "y":token5.y},
+        6: {"x":token6.x, "y":token6.y},
+        7: {"x":token7.x, "y":token7.y},
+        8: {"x":token8.x, "y":token8.y},
+        9: {"x":token9.x, "y":token9.y},
+        10: {"x":token10.x, "y":token10.y},
+}
+
+
+//tokenState = {"1": {"x": 111, "y": 231}, "2": {"x": 420, "y": 311}, "3": {"x": 291, "y": 102}, "4": {"x": 133, "y": 106}, "5": {"x": 416, "y": 170}, "6": {"x": 189, "y": 171}, "7": {"x": 329, "y": 455}, "8": {"x": 350, "y": 350}, "9": {"x": 177, "y": 465}, "10": {"x": 129, "y": 318}}
+//tokenState = {"1": {"x": 194, "y": 106}, "2": {"x": 126, "y": 68}, "3": {"x": 266, "y": 423}, "4": {"x": 132, "y": 110}, "5": {"x": 470, "y": 262}, "6": {"x": 159, "y": 418}, "7": {"x": 415, "y": 376}, "8": {"x": 112, "y": 262}, "9": {"x": 393, "y": 120}, "10": {"x": 268, "y": 271}}
+tokenState = {"1": {"x": 53, "y": 71}, "2": {"x": 61, "y": 115}, "3": {"x": 74, "y": 166}, "4": {"x": 77, "y": 206}, "5": {"x": 72, "y": 268}, "6": {"x": 68, "y": 315}, "7": {"x": 73, "y": 367}, "8": {"x": 65, "y": 415}, "9": {"x": 56, "y": 460}, "10": {"x": 265, "y": 267}}
+
+
+function reconstructSurveyResults(){
+    var canvas = document.getElementById('canvas');
+    var ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBoard(ctx);
+    for (let i =1;i<=10;i++){
+        let index = i.toString();
+        ctx.beginPath();
+        ctx.rect(tokenState[index].x - 24 * 0.5, tokenState[index].y - 24 * 0.5, 24, 24);
+        ctx.fillStyle = 'gray';
+        ctx.fill();
+        ctx.font = '24px serif';
+        ctx.strokeStyle = "black";
+        ctx.strokeText(index,tokenState[index].x - 24 * 0.25,tokenState[index].y + 24 * 0.5);
+    }
+}
+
 
 function survey(){
     console.log('enter survey')
     document.getElementById('survey').style.visibility = 'visible';
+    document.getElementById('surveyInstructions').style.visibility = 'visible';
+
     document.removeEventListener('keydown',keyDownCheck,false);
+    document.getElementsByClassName("middleleft")[0].style.visibility = 'hidden';
+    document.getElementsByClassName("right")[0].style.visibility = 'hidden';
+    document.getElementsByClassName("left")[0].style.visibility = 'hidden';
     hideButtons();
 
 
@@ -206,8 +248,7 @@ function survey(){
     var startY = 0;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawBoard(ctx);
-    document.getElementById('sessionReminder').innerHTML = 'Please drag tokens to corresponding locations you think they refer to, and fill the following survey.'
-
+    document.getElementById('sessionReminder').innerHTML = 'Please drag tokens to corresponding child locations you think they refer to, and fill the following survey.'
 
 
     token1.render(ctx);
@@ -374,7 +415,11 @@ function attachResults(){
         9: {"x":token9.x, "y":token9.y},
         10: {"x":token10.x, "y":token10.y},
     }
-
+    if (JSON.stringify(originalTokenLocation) === JSON.stringify(tokenLocation)){
+        window.alert("Please drag tokens to corresponding child locations you think they refer to.");
+        document.getElementById("surveyInstructions").innerHTML = 'Failed to submit your task. Please drag tokens to corresponding child locations you think they refer to. ';
+        return
+    }
 
     var message = new Object();
     message.type = "survey";
@@ -393,9 +438,11 @@ function attachResults(){
     document.getElementsByClassName("left")[0].style.visibility = 'hidden';
     document.getElementsByClassName("middleleft")[0].style.visibility = 'hidden';
     document.getElementsByClassName("middleright")[0].style.visibility = 'hidden';
+    document.getElementById('surveyInstructions').style.visibility = 'hidden';
     document.getElementById("survey").style.visibility = 'hidden';
     document.getElementById("ending").style.visibility = 'visible';
     document.getElementById("randomCode").innerHTML = 'Confirmation code: '+ message.randomCode;
+    window.alert('Task submitted. Prolific code: 59297DCD; MTurk code: '+ message.randomCode);
 }
 
 function hideButtons(){
@@ -411,7 +458,7 @@ function hideButtons(){
     document.getElementById('token10').style.visibility = 'hidden';
     }
 
-function displayButtons(){
+function displayButtons(length){
     document.getElementById('token1').style.visibility = 'visible';
     document.getElementById('token2').style.visibility = 'visible';
     document.getElementById('token3').style.visibility = 'visible';
@@ -420,8 +467,10 @@ function displayButtons(){
     document.getElementById('token6').style.visibility = 'visible';
     document.getElementById('token7').style.visibility = 'visible';
     document.getElementById('token8').style.visibility = 'visible';
-    document.getElementById('token9').style.visibility = 'visible';
-    document.getElementById('token10').style.visibility = 'visible';
+    if (length>8){
+        document.getElementById('token9').style.visibility = 'visible';
+        document.getElementById('token10').style.visibility = 'visible';
+    }
     }
 
 function info_send(name){
@@ -435,6 +484,7 @@ function info_send(name){
 
 
 function draw(frame_info){
+    console.log('start draw');
     var canvas = document.getElementById("canvas");
     var ctx = canvas.getContext("2d");
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -445,6 +495,11 @@ function draw(frame_info){
     }
     if (frame_info.humanRole == 'parent'){
         document.getElementById('sessionReminder').innerHTML = 'You are the parent, use WASD to move and search for the child based on the communication your received.'
+    }
+    if (frame_info.hasOwnProperty('attentionCheck')){
+        console.log('first if');
+        document.getElementById('sessionReminder').innerHTML = 'This is an attention check. Please select token 8 to pass the check.'
+        if (frame_info.attentionCheck){console.log('second if');info_send();}
     }
     document.getElementById('best').innerHTML = frame_info.best.toString();
     document.getElementById('step').innerHTML = frame_info.step.toString();
@@ -524,7 +579,7 @@ function drawC(frame_info){
     }
     console.log('new_trial');
     setTimeout(() => {drawResult(ctx,frame_info.players['child'].x,frame_info.players['child'].y,frame_info);}, i*500+500);
-    setTimeout(() => {displayButtons();info_send();}, i*500+2500);
+    setTimeout(() => {displayButtons(Object.keys(frame_info.comm).length);info_send();}, i*500+2500);
 }
 
 
