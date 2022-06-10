@@ -42,15 +42,15 @@ from tornado.options import define, options
 import datetime
 import dateutil.tz
 
-LOG_ROOT = os.path.abspath("/home/huaol/data")
+LOG_ROOT = os.path.abspath("/home/huaol/data/0129randomonehot")
 
-define("port", default=8001, help="run on the given port", type=int)
+define("port", default=8002, help="run on the given port", type=int)
 
 Transition = namedtuple('Transition',
                         ('state', 'action', 'action_out', 'value', 'episode_mask', 'episode_mini_mask', 'next_state',
                          'reward', 'misc'))
 
-token_dict = {
+token_dict = [{
     1:{
         'raw':[0.23801799161900206, 0.7325141653996786, 0.19846114195194223, 0.5393944003862026, 0.4613124880046595, 0.10604421127378937, 0.3634451356342147, 0.6636483076769099, 0.8419504100027456],
         'pca':[0.15182869,-0.47542515],
@@ -93,7 +93,7 @@ token_dict = {
     },
     9: {
         'raw': [0.07422709275573385, 0.3387281696740808, 0.824552561563955, 0.6714906195213651, 0.12512868302052751, 0.10874550678310316, 0.7718508278402992, 0.7991284059181146, 0.6097104212735481],
-        'pca': [ 0.73384669,-0.36342538],
+        'pca': [0.73384669,-0.36342538],
         'loc': [5.65254237,1.52542373]
     },
     10: {
@@ -101,8 +101,164 @@ token_dict = {
         'pca': [0.79654476,0.40897997],
         'loc': [4.04,3.778]
     },
-}
-
+},
+{
+    1:{
+        'raw':[0.8830476085698017, 0.2421770048820867, 0.6417319436588336, 0.7960443566264426, 0.2560441294018934, 0.9030344461748867, 0.21696497854135846, 0.14097354536149337, 0.4936403704122023],
+        'pca':[-0.39471949,-0.50866918],
+        'loc':[6.55555556,1.44444444]
+    },
+    2: {
+        'raw': [0.14351402705422842, 0.33030939212406746, 0.9158078077360784, 0.20186693786993512, 0.08784475933154115, 0.39638027376317264, 0.10073004492581149, 0.2141968941508983, 0.3238668686814056],
+        'pca': [0.43181636,-0.64323601],
+        'loc': [2.65217391,0.73913043]
+    },
+    3: {
+        'raw': [0.8444627266221769, 0.0919314990998223, 0.8385295383724413, 0.4244050562509851, 0.6680379551811706, 0.7372323669545578, 0.8315077829963542, 0.31143542664397816, 0.8506959655708524],
+        'pca': [-0.76526173,-0.23805912],
+        'loc': [7.35714286,1.67857143]
+    },
+    4: {
+        'raw': [0.08947565256885831, 0.9069627920918946, 0.20745037083098045, 0.8849682371424255, 0.8591534979365013, 0.2445128072996251, 0.8230117878933763, 0.9304251558843827, 0.15647307492976525],
+        'pca': [0.39995019,0.97890259],
+        'loc': [2.48,7.32]
+    },
+    5: {
+        'raw': [0.8577679514422842, 0.5696885398531044, 0.8348755896194836, 0.2535510717104772, 0.21588261670756928, 0.43734324103790445, 0.12057228767419578, 0.20314668904317448, 0.873832064167431],
+        'pca': [-0.13134187,-0.73184064],
+        'loc': [4.8,1.3]
+    },
+    6: {
+        'raw': [0.10493058027762386, 0.8761699068673027, 0.7240745417815555, 0.1707159933721597, 0.18753930380892236, 0.1621771545542456, 0.16518433081631256, 0.4860069542340781, 0.0975996268469547],
+        'pca': [0.88274901,-0.2594784],
+        'loc': [0.98412698,1.74603175]
+    },
+    7: {
+        'raw': [0.7977907658378769, 0.33214199992442184, 0.1613125188022111, 0.8825094834379714, 0.8691995715878833, 0.6570574363334462, 0.7589085508020058, 0.2786803307522193, 0.920358103433871],
+        'pca': [-0.79918901,0.35470868],
+        'loc': [6.91891892,4.43243243]
+    },
+    8: {
+        'raw': [0.18500526787193358, 0.8743911010559485, 0.13941338954862437, 0.5224037607966995, 0.347082142681408, 0.3300542984455445, 0.12070992700266334, 0.8719318400334788, 0.0860307781596471],
+        'pca': [0.7912972,0.29404954],
+        'loc': [1.58333333,5.21296296]
+    },
+    9: {
+        'raw': [0.16560419626983203, 0.15925389596909142, 0.16403208089378207, 0.8895494525467008, 0.8007711159187556, 0.1951028363748561, 0.9560200253119149, 0.5620622331016353, 0.859532681074243],
+        'pca': [-0.41530065,0.75362254],
+        'loc': [4.11692845,4.48516579]
+    }
+},
+{
+    1:{
+        'raw':[0.8053961119012601, 0.25729302003867893, 0.8762253072816232, 0.9023988640721541, 0.8368612989456136, 0.9133370748126364, 0.0974823200200066, 0.4537469801132665, 0.14927134672968326],
+        'pca':[-0.76014528,0.28309524],
+        'loc':[3.5,0. ]
+    },
+    2: {
+        'raw': [0.07461749228339119, 0.35591053760529723, 0.13528010075129215, 0.08062908701781177, 0.6682304478400094, 0.09773669783044012, 0.8409811496735111, 0.8129044844919217, 0.6416479326082483],
+        'pca': [0.81393815,-0.27362899],
+        'loc': [5.64285714,7.14285714]
+    },
+    3: {
+        'raw': [0.6432915827468368, 0.8007424422909014, 0.6996667523815047, 0.8457660417210343, 0.645850233527049, 0.08444037456074503, 0.8294484610899422, 0.29901674725272487, 0.5524299062014388],
+        'pca': [-0.25650759,-0.49745751],
+        'loc': [2.36842105,5.63157895]
+    },
+    4: {
+        'raw': [0.748950407064908, 0.5739301687314147, 0.21433903171325788, 0.3962942134535594, 0.4070126438112658, 0.8977213254323109, 0.4491114108284965, 0.159965066853338, 0.7219985054940758],
+        'pca': [-0.19725823,0.51623918],
+        'loc': [4.86363636,0.54545455]
+    },
+    5: {
+        'raw': [0.8243721187870915, 0.7202507239674864, 0.7142623808095644, 0.7044009648854183, 0.9220867202300865, 0.2865837643492861, 0.6227624972701177, 0.7445400911849646, 0.7526572629607332],
+        'pca': [-0.37416876,-0.56872765],
+        'loc': [1.85416667,5.6875]
+    },
+    6: {
+        'raw': [0.15135057911168331, 0.09398970380640383, 0.10938253587228085, 0.3492038202839343, 0.06905316352156614, 0.7765433361275056, 0.41277652854807106, 0.09739797760893158, 0.181875013886112],
+        'pca': [0.41373047,0.89430826],
+        'loc': [5.6, 1.76363636]
+    },
+    7: {
+        'raw': [0.31984023185924115, 0.438463202060933, 0.8887325742913778, 0.4999649121998074, 0.7344330202454433, 0.09669990523226203, 0.9034610243824901, 0.5418115251147537, 0.18499075524410286],
+        'pca': [0.17507101,-0.49492079],
+        'loc': [3.79365079,6.6984127]
+    },
+    8: {
+        'raw': [0.06706793847086868, 0.07687954196229116, 0.26943413685675693, 0.06422945764501409, 0.2054911025544022, 0.22887298477137177, 0.8764949009696171, 0.8392570523989308, 0.5071762126742125],
+        'pca': [0.96753181,0.01505732],
+        'loc': [7.03389831,4.51694915]
+    },
+    9: {
+        'raw': [0.7765514482190591, 0.6002246016492883, 0.7352072691032661, 0.857263263663709, 0.7329679658095458, 0.6458265360531885, 0.14539781496950963, 0.10610263769113008, 0.8909690246141759],
+        'pca': [-0.78219158,0.12603493],
+        'loc': [1.16176471,2.61029412]
+    },
+    10: {
+        'raw': [0.6503524371489842, 0.42378374154551995, 0.11844582046635745, 0.784865927252023, 0.8698959205983262, 0.15769731757945618, 0.8881475067855843, 0.5730261105125649, 0.12909819960951172],
+        'pca': [0.10696453,-0.29819107],
+        'loc': [3.89920949,4.]
+    },
+}]
+one_hot_dict=[{
+    1:{'raw':[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0.],'loc':[3.5,0. ]},
+    2:{'raw':[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0.],'loc': [5.64285714,7.14285714]},
+    3:{'raw':[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0.],'loc': [2.36842105,5.63157895]},
+    4:{'raw':[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0.],'loc': [4.86363636,0.54545455]},
+    5:{'raw':[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0.],'loc': [1.85416667,5.6875]},
+    6:{'raw':[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0.],'loc': [5.6, 1.76363636]},
+    7:{'raw':[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0.],'loc': [3.79365079,6.6984127]},
+    8:{'raw':[0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0.],'loc': [7.03389831,4.51694915]},
+    9: {
+        'raw': [1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0.],
+        'loc': [1.16176471,2.61029412]
+    },
+    10: {
+        'raw': [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0., 0., 0., 0., 0., 0., 0., 1.],
+        'loc': [3.89920949,4.]
+    }
+}]
 
 class TSFServerProxy():
     """
@@ -287,6 +443,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
         sessionList = ['parent', 'child']
         # decide first session
         i = np.random.randint(2)
+        # i = 0
         self.firstSession = sessionList[i]
         self.secondSession = sessionList[i - 1]
 
@@ -296,8 +453,8 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
         self.playerCommand = None
 
         model_conditions = ['proto_fixed1', 'one_hot81']
-        # self.condition = np.random.randint(2)
-        self.condition = 0
+        self.condition = np.random.randint(2)
+        #self.condition = 1
 
     def on_close(self):
         """
@@ -305,8 +462,8 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
         """
 
         # Perform a Game Over in order to close out, e.g., logger
-        if hasattr(self, 'gameState'):
-            self.on_game_over()
+        # if hasattr(self, 'gameState'):
+        #     self.on_game_over()
 
         # Kill the agent thread
         #        self.agent.stop()
@@ -317,6 +474,19 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
     #        del self.agent
 
+
+    def randomArrage(self):
+        reOrder = [3,2,4,5,1,8,9,10,7,6]
+        random.shuffle(reOrder)
+        print(reOrder)
+        locList=[]
+        for j in range(1,11):
+            locList.append(self.tokens[j]['loc'])
+        for i in range(1,11):
+            self.tokens[i]['loc'] = locList[reOrder[i-1]-1]
+
+
+
     def load(self, args, path):
         # d = torch.load(path)
         # policy_net.load_state_dict(d['policy_net'])
@@ -324,10 +494,13 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
         if(self.condition):
             args.seed = 0
             args.exp_name = 'one_hot81'
+            self.tokens = one_hot_dict[args.seed]
+            self.randomArrage()
+            print(self.tokens)
         else:
             args.seed = 2
             args.exp_name = 'proto_fixed1'
-
+            self.tokens = token_dict[args.seed]
         load_path = os.path.join(args.load, args.env_name, args.exp_name, "seed" + str(args.seed), "models")
         print(f"load directory is {load_path}")
         log_path = os.path.join(args.load, args.env_name, args.exp_name, "seed" + str(args.seed), "logs")
@@ -394,7 +567,8 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 args.hid_size = 81  # Was 128 for proto; 81 for one-hot
                 args.num_proto = 81
                 args.comm_dim = 81
-                args.use_protos = False
+                args.use_proto = False
+                args.discrete_comm = True
 
             if args.ic3net:
                 args.commnet = 1
@@ -504,98 +678,98 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
             if self.currentSession == 'parent':
                 self.done = True
-                while self.selectedToken == None or self.done:
+                while self.done:
                     if 'epoch' in reset_args:
                         self.state = self.env.reset(epoch)
                     else:
                         self.state = self.env.reset()
-                    should_display = False
-                    t = self.t
-                    misc = dict()
-                    if t == 0 and self.args.hard_attn and self.args.commnet:
-                        self.info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
+                    for k in range(2):
+                        should_display = False
+                        t = self.t
+                        misc = dict()
+                        if t == 0 and self.args.hard_attn and self.args.commnet:
+                            self.info['comm_action'] = np.zeros(self.args.nagents, dtype=int)
 
-                    self.info['record_comms'] = 1
-                    # recurrence over time
-                    if self.args.recurrent:
-                        if self.args.rnn_type == 'LSTM' and t == 0:
-                            self.prev_hid = self.policy_net.init_hidden(batch_size=self.state.shape[0])
+                        self.info['record_comms'] = 1
+                        # recurrence over time
+                        if self.args.recurrent:
+                            if self.args.rnn_type == 'LSTM' and t == 0:
+                                self.prev_hid = self.policy_net.init_hidden(batch_size=self.state.shape[0])
 
-                        x = [self.state, self.prev_hid]
-                        action_out, value, self.prev_hid, filtered_comms = self.policy_net(x, self.info)
+                            x = [self.state, self.prev_hid]
+                            action_out, value, self.prev_hid, filtered_comms = self.policy_net(x, self.info)
 
-                        if (t + 1) % self.args.detach_gap == 0:
-                            if self.args.rnn_type == 'LSTM':
-                                self.prev_hid = (self.prev_hid[0].detach(), self.prev_hid[1].detach())
-                            else:
-                                self.prev_hid = self.prev_hid.detach()
-                    else:
-                        x = self.state
-                        action_out, value, filtered_comms = self.policy_net(x, self.info)
+                            if (t + 1) % self.args.detach_gap == 0:
+                                if self.args.rnn_type == 'LSTM':
+                                    self.prev_hid = (self.prev_hid[0].detach(), self.prev_hid[1].detach())
+                                else:
+                                    self.prev_hid = self.prev_hid.detach()
+                        else:
+                            x = self.state
+                            action_out, value, filtered_comms = self.policy_net(x, self.info)
 
-                    # print(action_out)
-                    print('filtered_comms', filtered_comms)
-                    for i in token_dict.keys():
-                        if torch.allclose(torch.tensor(token_dict[i]['raw']), filtered_comms, atol=1e-04):
-                            if i != 10:
+                        # print(action_out)
+                        print('filtered_comms', filtered_comms)
+                        for i in self.tokens.keys():
+                            if torch.allclose(torch.tensor(self.tokens[i]['raw']), filtered_comms, atol=1e-04):
                                 self.selectedToken = i
 
-                    print(self.selectedToken)
+                        print(self.selectedToken)
 
-                    action = select_action(self.args, action_out)
-                    # print(action)
-                    action, actual = translate_action(self.args, self.env, action)
-                    # actual[0] = self.humanAction
-                    next_state, reward, done, info = self.env.step(actual)
-                    # print(next_state)
-                    # print(self.env.get_pp_loc_wrapper())
+                        action = select_action(self.args, action_out)
+                        # print(action)
+                        action, actual = translate_action(self.args, self.env, action)
+                        # actual[0] = self.humanAction
+                        next_state, reward, done, info = self.env.step(actual)
+                        # print(next_state)
+                        # print(self.env.get_pp_loc_wrapper())
 
-                    # store comm_action in info for next step
-                    if self.args.hard_attn and self.args.commnet:
-                        info['comm_action'] = action[-1] if not self.args.comm_action_one else np.ones(self.args.nagents,
-                                                                                                       dtype=int)
+                        # store comm_action in info for next step
+                        if self.args.hard_attn and self.args.commnet:
+                            info['comm_action'] = action[-1] if not self.args.comm_action_one else np.ones(self.args.nagents,
+                                                                                                           dtype=int)
 
-                        # print("before ", stat.get('comm_action', 0), info['comm_action'][:self.args.nfriendly])
-                        self.stat['comm_action'] = self.stat.get('comm_action', 0) + info['comm_action'][
-                                                                                     :self.args.nfriendly]
-                        self.all_comms.append(info['comm_action'][:self.args.nfriendly])
+                            # print("before ", stat.get('comm_action', 0), info['comm_action'][:self.args.nfriendly])
+                            self.stat['comm_action'] = self.stat.get('comm_action', 0) + info['comm_action'][
+                                                                                         :self.args.nfriendly]
+                            self.all_comms.append(info['comm_action'][:self.args.nfriendly])
+                            if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
+                                self.stat['enemy_comm'] = self.stat.get('enemy_comm', 0) + info['comm_action'][
+                                                                                           self.args.nfriendly:]
+
+                        if 'alive_mask' in info:
+                            misc['alive_mask'] = info['alive_mask'].reshape(reward.shape)
+                        else:
+                            misc['alive_mask'] = np.ones_like(reward)
+
+                        # env should handle this make sure that reward for dead agents is not counted
+                        # reward = reward * misc['alive_mask']
+
+                        self.stat['reward'] = self.stat.get('reward', 0) + reward[:self.args.nfriendly]
                         if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
-                            self.stat['enemy_comm'] = self.stat.get('enemy_comm', 0) + info['comm_action'][
-                                                                                       self.args.nfriendly:]
+                            self.stat['enemy_reward'] = self.stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
 
-                    if 'alive_mask' in info:
-                        misc['alive_mask'] = info['alive_mask'].reshape(reward.shape)
-                    else:
-                        misc['alive_mask'] = np.ones_like(reward)
+                        done = done or t >= self.args.max_steps - 1 or bool(self.env.get_reached_wrapper())
 
-                    # env should handle this make sure that reward for dead agents is not counted
-                    # reward = reward * misc['alive_mask']
+                        episode_mask = np.ones(reward.shape)
+                        episode_mini_mask = np.ones(reward.shape)
 
-                    self.stat['reward'] = self.stat.get('reward', 0) + reward[:self.args.nfriendly]
-                    if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
-                        self.stat['enemy_reward'] = self.stat.get('enemy_reward', 0) + reward[self.args.nfriendly:]
+                        if done:
+                            episode_mask = np.zeros(reward.shape)
+                        else:
+                            if 'is_completed' in info:
+                                episode_mini_mask = 1 - info['is_completed'].reshape(-1)
 
-                    done = done or t >= self.args.max_steps - 1 or bool(self.env.get_reached_wrapper())
+                        if should_display:
+                            self.env.display()
 
-                    episode_mask = np.ones(reward.shape)
-                    episode_mini_mask = np.ones(reward.shape)
-
-                    if done:
-                        episode_mask = np.zeros(reward.shape)
-                    else:
-                        if 'is_completed' in info:
-                            episode_mini_mask = 1 - info['is_completed'].reshape(-1)
-
-                    if should_display:
-                        self.env.display()
-
-                    trans = Transition(self.state, action, action_out, value, episode_mask, episode_mini_mask, next_state,
-                                       reward, misc)
-                    self.episode.append(trans)
-                    self.state = next_state
-                    self.t = t + 1
-                    self.info = info
-                    self.done = done
+                        trans = Transition(self.state, action, action_out, value, episode_mask, episode_mini_mask, next_state,
+                                           reward, misc)
+                        self.episode.append(trans)
+                        self.state = next_state
+                        self.t = t + 1
+                        self.info = info
+                        self.done = done
 
 
 
@@ -608,14 +782,15 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                         'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
                         'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
                     },
-                    'comm': token_dict,
+                    'comm': self.tokens,
                     'selectedToken': self.selectedToken,
                     'step': self.step,
                     'best': self.best,
                     'done': False,
                     'currentTrial': self.currentTrial,
                     'humanRole': 'parent',
-                    'history':self.history
+                    'history':self.history,
+                    'condition':self.condition
                 }
                 # visibility should be handel by the environment, not here
                 if abs(int(prey_loc[0, 1]) - int(predator_loc[0, 1])) > 1 or abs(
@@ -631,15 +806,32 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                         'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
                         'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
                     },
-                    'comm': token_dict,
+                    'comm': self.tokens,
                     'selectedToken': self.selectedToken,
                     'step': self.step,
                     'best': self.best,
                     'done': False,
                     'currentTrial': self.currentTrial,
                     'humanRole': 'child',
-                    'history': self.history
+                    'history': self.history,
+                    'condition': self.condition
                 }
+                if self.currentTrial == 12 or self.currentTrial == 28:
+                    self.gameState = {
+                        'players': {
+                        },
+                        'attentionCheck':False,
+                        'comm': self.tokens,
+                        'selectedToken': None,
+                        'step': self.step,
+                        'best': self.best,
+                        'done': False,
+                        'currentTrial': self.currentTrial,
+                        'humanRole': 'child',
+                        'history': self.history,
+                        'condition': self.condition
+                    }
+
 
             self.gameStateJson = json.dumps(self.gameState)
             self.startTimer = time.time()
@@ -698,7 +890,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                     'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
                     'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
                 },
-                'comm': token_dict,
+                'comm': self.tokens,
                 'selectedToken': self.selectedToken,
                 'commRT': None,
                 'moveRT': self.moveRT,
@@ -708,8 +900,10 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 'complete': self.complete,
                 'currentTrial': self.currentTrial,
                 'humanRole': 'parent',
-                'history': self.history
+                'history': self.history,
+                'condition':self.condition
             }
+
 
 
 
@@ -738,9 +932,33 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
             if self.currentSession != 'child':
                 return
-            self.currentTrial += 1
             self.commTimer = time.time()
             self.commRT = self.commTimer - self.startTimer
+            if self.currentTrial == 12 or self.currentTrial == 28:
+                self.gameState = {
+                    'players': {
+                    },
+                    'attentionCheck': True,
+                    'comm': self.tokens,
+                    'selectedToken': message_json['message'],
+                    'commRT': self.commRT,
+                    'moveRT': None,
+                    'step': self.step,
+                    'best': self.best,
+                    'done': False,
+                    'complete': False,
+                    'currentTrial': self.currentTrial,
+                    'humanRole': 'child',
+                    'history': self.history,
+                    'condition':self.condition
+                }
+                if message_json['message'] == 8: self.gameState['complete'] = True
+                self.currentTrial += 1
+                self.gameStateJson = json.dumps(self.gameState)
+                self.write_message(self.gameStateJson)
+                self.save_log()
+                return
+            self.currentTrial += 1
             while not self.done:
                 self.step += 1
                 should_display = False
@@ -755,7 +973,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 # either 0 or 1 depending on which agent to inject comm vector for
 
                 self.info['agent_id_replace'] = 1
-                self.info['child_comm'] = torch.Tensor(token_dict[message_json['message']]['raw'])
+                self.info['child_comm'] = torch.Tensor(self.tokens[message_json['message']]['raw'])
                 # TEST COMM VEC COMMENT THE test_vec OUT WHEN USING ACTUAL MESSAGE
                 # test_vec = [0.6093685361352408, 0.48378074925892295, 0.9301173165918591, 0.10678958236225718,
                 #             0.23254922156143712, 0.1226728540104421, 0.8425635664122217, 0.68843780288164,
@@ -849,7 +1067,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                     'child': {'x': int(prey_loc[0, 1]), 'y': int(prey_loc[0, 0])},
                     'parent': {'x': int(predator_loc[0, 1]), 'y': int(predator_loc[0, 0])},
                 },
-                'comm': token_dict,
+                'comm': self.tokens,
                 'selectedToken': message_json['message'],
                 'commRT': self.commRT,
                 'moveRT': None,
@@ -859,7 +1077,8 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
                 'complete':self.complete,
                 'currentTrial': self.currentTrial,
                 'humanRole': 'child',
-                'history': self.history
+                'history': self.history,
+                'condition': self.condition
             }
             self.gameStateJson = json.dumps(self.gameState)
 
@@ -870,6 +1089,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
             self.surveyResults = {
                 'name':self.username,
+                'condition':self.condition,
                 "randomCode":message_json["randomCode"],
                 "helpful":message_json["helpful"],
                 "understand":message_json["understand"],
@@ -901,7 +1121,11 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
             # Create a unique filename
             now = datetime.datetime.now(dateutil.tz.tzlocal()).strftime('%Y_%m_%d_%H_%M_%S')
-            random_string = now + '_' + ''.join(self.username)
+            if self.condition:
+                group = 'onehot'
+            else:
+                group = 'proto'
+            random_string = now + '_' + '_'.join([group,self.username])
             log_filename = 'survey_results_%s.json' % random_string
             # metadata_filename = 'game_log_%s.meta' % random_string
             existing_files = os.listdir(log_path)
@@ -912,7 +1136,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             print("Log filename: %s" % log_file_path)
             # print("Metadata path: %s" % meta_file_path)
 
-            with open(log_file_path, 'a+') as outfile:
+            with open(log_file_path, 'w') as outfile:
                 json.dump(self.surveyResults, outfile)
 
         if self.gameState is not None:
@@ -925,7 +1149,11 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
             # Create a unique filename
             now = datetime.datetime.now(dateutil.tz.tzlocal()).strftime('%Y_%m_%d_%H_%M_%S')
-            random_string = now +'_'+ ''.join(self.username)
+            if self.condition:
+                group = 'onehot'
+            else:
+                group = 'proto'
+            random_string = now + '_' + '_'.join([group, self.username, str(self.currentTrial)])
             log_filename = 'game_log_%s.json' % random_string
             # metadata_filename = 'game_log_%s.meta' % random_string
             existing_files = os.listdir(log_path)
@@ -937,7 +1165,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             print("Log filename: %s" % log_file_path)
             # print("Metadata path: %s" % meta_file_path)
 
-            with open(log_file_path, 'a+') as outfile:
+            with open(log_file_path, 'w') as outfile:
                 json.dump(self.gameState, outfile)
 
             # with open(meta_file_path,'w') as meta_file:
@@ -959,7 +1187,11 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
 
             # Create a unique filename
             now = datetime.datetime.now(dateutil.tz.tzlocal()).strftime('%Y_%m_%d_%H_%M_%S')
-            random_string = now +'_'+ ''.join(self.username)
+            if self.condition:
+                group = 'onehot'
+            else:
+                group = 'proto'
+            random_string = now + '_' + '_'.join([group,self.username,str(self.currentTrial)])
             log_filename = 'game_log_%s.json' % random_string
             # metadata_filename = 'game_log_%s.meta' % random_string
             existing_files = os.listdir(log_path)
@@ -970,7 +1202,7 @@ class TSFWebSocketHandler(tornado.websocket.WebSocketHandler):
             print("Log filename: %s" % log_file_path)
             # print("Metadata path: %s" % meta_file_path)
 
-            with open(log_file_path, 'a+') as outfile:
+            with open(log_file_path, 'w') as outfile:
                 json.dump(self.gameState, outfile)
 
             # with open(meta_file_path,'w') as meta_file:

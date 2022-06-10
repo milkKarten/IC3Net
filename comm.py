@@ -53,7 +53,7 @@ class CommNetMLP(nn.Module):
 
         # this is discrete/proto communication which is not to be confused with discrete action. T
         # Although since the communication is being added to the encoded state directly, it makes things a bit tricky.
-        if args.use_proto:
+        if args.discrete_comm:
             self.proto_layer = ProtoNetwork(args.hid_size, args.comm_dim, args.discrete_comm, num_layers=2,
                                             hidden_dim=64, num_protos=args.num_proto, constrain_out=False)
 
@@ -267,12 +267,12 @@ class CommNetMLP(nn.Module):
                     all_comms.append(comm.detach().clone())
                 # Comm assumes shape (1, num_agents, num_protos), so just add that dimension back in.
                 # First, check if we need to replace prey comm
-                print('comm', comm)
+                # print('comm', comm)
                 if info.get('replace_comm', False) == True:
                     replace_agent_idx = info.get('agent_id_replace', 0)
                     comm[replace_agent_idx] = info.get('child_comm', comm)
                 comm = torch.unsqueeze(comm, 0)
-                print('modified comm', comm)
+
 
                 if self.add_comm_noise:
                     # Currently, just hardcoded. We want enough noise to have an effect but not too much to prevent
@@ -282,10 +282,21 @@ class CommNetMLP(nn.Module):
                     noise = torch.randn_like(comm) * std
                     comm += noise
 
+            elif self.args.discrete_comm:  #one-hot
+                raw_outputs = self.proto_layer(hidden_state)
+                raw_outputs = torch.squeeze(raw_outputs, 0)
+                comm = self.proto_layer.onehot_step(raw_outputs, self.train_mode)
+                all_comms.append(comm.detach().clone())
+                if info.get('replace_comm', False) == True:
+                    replace_agent_idx = info.get('agent_id_replace', 0)
+                    comm[replace_agent_idx] = info.get('child_comm', comm)
+                comm = torch.unsqueeze(comm, 0)
+
             else:
                 # print(f"inside else {hidden_state.size()}")
                 comm = hidden_state
                 assert self.args.comm_dim == self.args.hid_size , "If not using protos comm dim should be same as hid"
+
 
             # comm = hidden_state.view(batch_size, n, self.hid_size) if self.args.recurrent else hidden_state
             comm  = comm.view(batch_size, n, self.args.comm_dim) if self.args.recurrent else comm
@@ -356,10 +367,12 @@ class CommNetMLP(nn.Module):
             # print(f"uses discrete actions {action}")
         if self.args.recurrent:
             if info.get('record_comms') is not None:
+                if info.get('record_comms') == 99:
+                    return action, value_head, (hidden_state.clone(), cell_state.clone()), all_comms[0]
                 # Go through the all comms passes and only pick out comms for the agent you want.
                 filtered_comms = [c[info.get('record_comms')] for c in all_comms]
                 assert len(filtered_comms) == 1, "Only support one agent at a time"
-                print('filtered_comms', filtered_comms)
+                # print('filtered_comms', filtered_comms)
                 return action, value_head, (hidden_state.clone(), cell_state.clone()), filtered_comms[0]
             return action, value_head, (hidden_state.clone(), cell_state.clone())
         else:

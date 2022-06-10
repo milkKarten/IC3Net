@@ -111,3 +111,9 @@ class ProtoNetwork(nn.Module):
         closest_proto_idx = torch.argmin(dists_to_protos, dim=1)
         closest_proto = torch.sigmoid(self.prototype_layer.prototypes[closest_proto_idx])
         return closest_proto
+
+    def onehot_step(self, raw_output, explore):
+        assert self.discrete
+        masked = raw_output
+        onehot_pred = gumbel_softmax(masked, temperature=1, hard=True) if explore else onehot_from_logits(raw_output)
+        return onehot_pred

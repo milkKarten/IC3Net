@@ -15,6 +15,7 @@ def onehot_from_logits(logits, eps=0.0):
     # get best (according to current policy) actions in one-hot form
 
     argmax_acs = (logits == logits.max(1, keepdim=True)[0]).float()
+    # argmax_acs = (logits == logits.max(1, keepdim=True)[0]).float()
     # done for IC3Net
     argmax_acs = argmax_acs.double()
 
