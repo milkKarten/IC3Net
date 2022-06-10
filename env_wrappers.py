@@ -125,3 +125,9 @@ class GymWrapper(object):
 
     def get_reached_wrapper(self):
         return self.env.get_is_completed()
+
+    def get_alive_wrapper(self,i):
+        return self.env.get_alive(i)
+
+    def get_path_wrapper(self, i):
+        return self.env.get_path(i)
