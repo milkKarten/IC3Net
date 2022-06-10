@@ -47,6 +47,7 @@ class TrafficJunctionEnv(gym.Env):
 
         self.episode_over = False
         self.has_failed = 0
+        self.collision_location = []
 
     def init_curses(self):
         self.stdscr = curses.initscr()
@@ -391,6 +392,11 @@ class TrafficJunctionEnv(gym.Env):
 
                 # chose dead car on random
                 idx = self._choose_dead()
+                while idx ==0 and self.alive_mask.sum() <4:
+                    idx = self._choose_dead()
+
+                if self.alive_mask[0] == 0 and self.alive_mask.sum() > 3:
+                    idx = 0
                 # make it alive
                 self.alive_mask[idx] = 1
 
@@ -604,7 +610,9 @@ class TrafficJunctionEnv(gym.Env):
             if (len(np.where(np.all(self.car_loc[:i] == l,axis=1))[0]) or \
                len(np.where(np.all(self.car_loc[i+1:] == l,axis=1))[0])) and l.any():
                reward[i] += self.CRASH_PENALTY
+               self.collision_location = l.tolist()
                self.has_failed = 1
+
 
         reward = self.alive_mask * reward
         return reward
@@ -650,5 +658,11 @@ class TrafficJunctionEnv(gym.Env):
     def get_loc(self):
         return self.car_loc
 
-    def get_is_compelted(self):
-        return np.all(self.is_completed == 1)
+    def get_is_completed(self):
+        return self.has_failed, self.collision_location
+
+    def get_alive(self,i):
+        return self.alive_mask[i]
+
+    def get_path(self,i):
+        return self.chosen_path[i]
