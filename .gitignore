@@ -24,6 +24,7 @@ tj_.3sparse_figs
 figures
 figures_sparse
 SC2_models
+*.txt
 
 # Distribution / packaging
 .Python
