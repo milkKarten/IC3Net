@@ -27,12 +27,12 @@ def init(env_name, args, final_init=True):
         env = GymWrapper(env)
     elif env_name == 'traffic_junction':
         env = gym.make('TrafficJunction-v0')
-        if args.display:
-            env.init_curses()
+        # if args.display:
+        #     env.init_curses()
         env.multi_agent_init(args)
         env = GymWrapper(env)
     elif env_name == 'starcraft':
-        env = StarCraft2Env(map_name="3m", seed=args.seed, reward_only_positive=False)
+        env = StarCraft2Env(map_name=args.map_name, seed=args.seed, reward_only_positive=True)
         env = StarcraftWrapper(env)
 
     else:

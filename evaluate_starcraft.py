@@ -55,7 +55,7 @@ def load(path):
 
     if 'model.pt' in os.listdir(load_path):
         print(load_path)
-        model_path = os.path.join(load_path, "model.pt")
+        model_path = os.path.join(load_path, "best_model.pt")
 
     else:
         all_models = sort([int(f.split('.pt')[0]) for f in os.listdir(load_path)])
@@ -148,6 +148,7 @@ st_time = time.time()
 all_stats = []
 for i in range(500):
     ep, stat, all_comms, comms_to_loc, comms_to_act, comms_to_full, comm_action_episode = evaluator.run_episode()
+    evaluator.env.env.save_replay()
     all_stats.append(stat)
 total_episode_time = time.time() - st_time
 average_stat = {}

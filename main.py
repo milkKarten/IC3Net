@@ -196,6 +196,10 @@ parser.add_argument('--remove_null', action='store_true', default=False,
 parser.add_argument('--null_dict_dir', type=str, default='',
                     help='null dictionary directory')
 
+# starcraft maps
+parser.add_argument('--map_name', type=str, default='3m',
+                    help='StarCraft map name')
+
 # first add environment specific args to the parser
 init_args_for_env(parser)
 
@@ -414,9 +418,9 @@ def run(num_epochs):
         if 'enemy_comm' in stat.keys():
             print('Enemy-Comm: {}'.format(stat['enemy_comm']))
 
-        
-        if stat['agent0/env_reward'] > trainer.best_model_reward:
-            trainer.best_model_reward = stat['agent0/env_reward']
+
+        if stat['env_reward'].sum() > trainer.best_model_reward:
+            trainer.best_model_reward = stat['env_reward'].sum()
             save(save_path + '/best_model.pt')
 
         if args.save_every and ep and args.save != '' and ep % args.save_every == 0:
