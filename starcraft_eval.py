@@ -7,7 +7,7 @@ env = "starcraft"
 seeds = [3]
 # seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
-methods = ['baseline_autoencoder_action_pos']
+methods = ['baseline_autoencoder_action_8m']
 pretrain_exp_name = ''
 # for soft_budget in [.5]:
 if True:
@@ -30,8 +30,8 @@ if True:
             comm_action_one = True
         nprocesses = 0
         lr = 0.001
-        nagents = 3
-        max_steps = 60
+        nagents = 8
+        max_steps = 120
 
         run_str = f"python evaluate_starcraft.py --env_name {env} --nprocesses {nprocesses} "+\
                   f"--num_epochs {num_epochs} --epoch_size 10 "+\

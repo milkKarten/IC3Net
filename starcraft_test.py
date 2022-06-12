@@ -2,17 +2,18 @@ import os, sys, subprocess
 
 os.environ["OMP_NUM_THREADS"] = "1"
 env = "starcraft"
-# seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
+seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
 # seeds = [1, 2, 3, 4, 5]
-seeds = [777]
-# seeds = [20]
+# seeds = [6, 7, 8, 9, 0]
+#seeds = [777]
+#seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
-methods = ['baseline_test_loc']
+methods = ['baseline_autoencoder_action_25m_h128']
 pretrain_exp_name = ''
 # for soft_budget in [.5]:
 if True:
     for method in methods:
-        num_epochs = 10
+        num_epochs = 3000
         num_proto = 100
         exp_name = "sc_" + method
         soft_budget = 0.7
@@ -20,7 +21,7 @@ if True:
         discrete_comm = False
         if "proto" in method:
             discrete_comm = True
-        hid_size = 64
+        hid_size = 128
         save_every = 100
         comm_action_one = False
         comm_action_zero = False
@@ -38,7 +39,7 @@ if True:
             nagents = 8
             max_steps = 120
 
-        run_str = f"python main.py --env_name {env} --nprocesses {nprocesses} --map_name {map_name} "+\
+        run_str = f"python main.py --env_name {env} --nprocesses {nprocesses} --map_name {map_name} --batch_size 64 "+\
                   f"--num_epochs {num_epochs} --epoch_size 10 "+\
                   f"--gating_head_cost_factor {gating_head_cost_factor} "+\
                   f"--hid_size {hid_size} --comm_dim {hid_size} --soft_budget {soft_budget} "+\
@@ -70,6 +71,6 @@ if True:
             print(log_path)
             if os.path.exists(log_path):
                 run_str += f"--restore  "
-            # with open("runLogs/" + exp_name + "Log.txt","wb") as out:
-            #     subprocess.Popen(run_str + f"--seed {seed}", shell=True, stdout=out)#, stderr=out)
-            os.system(run_str + f"--seed {seed}")
+            with open("runLogs/" + exp_name + "Log.txt","wb") as out:
+                subprocess.Popen(run_str + f"--seed {seed}", shell=True, stdout=out)#, stderr=out)
+            #os.system(run_str + f"--seed {seed}")
