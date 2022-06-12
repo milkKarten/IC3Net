@@ -3,17 +3,16 @@ import os, sys, subprocess
 os.environ["OMP_NUM_THREADS"] = "1"
 env = "predator_prey"
 # seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
-seeds = [1, 2, 3, 4, 5]
+seeds = [1, 2, 3]
 # seeds = [777]
 # seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
-methods = ['hard_baseline', 'hard_baseline_proto'] #baseline for PREDATOR PREY exps
-pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder'
-# for soft_budget in [.5]:
-if True:
+#methods = ['hard_baseline', 'hard_baseline_proto'] #baseline for PREDATOR PREY exps
+#methods = ['hard_baseline_proto', 'hard_baseline_proto_autoencoder']
+methods = ['hard_proto_autoencoder_soft_minComm']
+pretrain_exp_name = 'pp_hard_baseline_proto_autoencoder'
+for soft_budget in [.1]:
     for method in methods:
-        if 'action' in method:
-            pretrain_exp_name = 'pp_easy_fixed_proto_autoencoder_action'
         if "easy" in method:
             protos_list = [56]
             num_epochs = 500
@@ -23,12 +22,13 @@ if True:
             num_epochs = 1000
         elif 'hard' in method:
             protos_list = [100]
-            num_epochs = 2000
+            #num_epochs = 1500
+            num_epochs = 50
         for num_proto in protos_list:
             exp_name = "pp_" + method
             #VISION IS 1 FOR PREDATORY PREY
             vision = 1
-            soft_budget = 0.7
+            soft_budget += 0.755972
             # for predator-prey there are 3 modes: cooperative, competitive and mixed.
             mode = "cooperative"
             # whether prey can comunication or not.
@@ -54,8 +54,8 @@ if True:
             variable_gate = False
             if "var" in method:
                 variable_gate = True
-            nprocesses = 16
-            lr = 0.003
+            nprocesses = 8
+            lr = 0.001
             if "medium" in method:
                 nagents = 5
                 max_steps = 40

@@ -32,7 +32,8 @@ def init(env_name, args, final_init=True):
         env.multi_agent_init(args)
         env = GymWrapper(env)
     elif env_name == 'starcraft':
-        env = StarCraft2Env(map_name="3m", seed=args.seed, reward_only_positive=False)
+        env = StarCraft2Env(map_name="8m", seed=args.seed, reward_only_positive=True)
+        print(env.get_env_info())
         env = StarcraftWrapper(env)
 
     else:

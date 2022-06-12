@@ -415,8 +415,8 @@ def run(num_epochs):
             print('Enemy-Comm: {}'.format(stat['enemy_comm']))
 
         
-        if stat['agent0/env_reward'] > trainer.best_model_reward:
-            trainer.best_model_reward = stat['agent0/env_reward']
+        if stat['env_reward'].sum() > trainer.best_model_reward:
+            trainer.best_model_reward = stat['env_reward'].sum()
             save(save_path + '/best_model.pt')
 
         if args.save_every and ep and args.save != '' and ep % args.save_every == 0:
