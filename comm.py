@@ -193,7 +193,7 @@ class CommNetMLP(nn.Module):
         self.tokeys = nn.Linear(args.hid_size, args.hid_size*self.num_heads)
         self.toqueries = nn.Linear(args.hid_size, args.hid_size*self.num_heads)
         self.tovalues = nn.Linear(args.hid_size, args.hid_size*self.num_heads)
-        self.unifyheads = nn.Linear(2 * args.hid_size, args.hid_size)
+        self.unifyheads = nn.Linear(args.hid_size + args.hid_size * self.num_heads, args.hid_size)
 
     def get_agent_mask(self, batch_size, info):
         n = self.nagents
