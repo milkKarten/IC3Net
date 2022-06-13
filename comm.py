@@ -164,7 +164,7 @@ class CommNetMLP(nn.Module):
         # autoencoder decoder
         if self.args.autoencoder_action:
             self.decoderNet = nn.Linear(args.hid_size, num_inputs+self.args.nagents)
-        else:
+        elif self.args.autoencoder:
             self.decoderNet = nn.Linear(args.hid_size, num_inputs)
 
         # remove null messages
@@ -186,6 +186,14 @@ class CommNetMLP(nn.Module):
         self.num_comms = 0
 
         self.null_action = np.zeros(self.args.nagents)
+
+        # Multi-head communication attention
+        self.num_heads = args.num_heads
+        # self.comm_mh_attn = nn.MultiheadAttention(args.hid_size, num_heads=self.num_heads)
+        self.tokeys = nn.Linear(args.hid_size, args.hid_size*self.num_heads)
+        self.toqueries = nn.Linear(args.hid_size, args.hid_size*self.num_heads)
+        self.tovalues = nn.Linear(args.hid_size, args.hid_size*self.num_heads)
+        self.unifyheads = nn.Linear(2 * args.hid_size, args.hid_size)
 
     def get_agent_mask(self, batch_size, info):
         n = self.nagents
@@ -394,38 +402,73 @@ class CommNetMLP(nn.Module):
             # Get the next communication vector based on next hidden state
             # comm = comm.unsqueeze(-2).expand(-1, n, n, self.hid_size)
 
-            # changed for accomadating prototype based approach as well.
+            # changed for accommodating prototype based approach as well.
             comm = comm.unsqueeze(-2).expand(-1, n, n, self.args.comm_dim)
 
             # Create mask for masking self communication
             mask = self.comm_mask.view(1, n, n)
 
-            mask = mask.expand(comm.shape[0], n, n)
+            # mask = mask.expand(comm.shape[0], n, n)
             mask = mask.unsqueeze(-1)
 
             mask = mask.expand_as(comm)
             comm = comm * mask
-
-            # print("comm mode ", self.args.comm_mode)
-            if hasattr(self.args, 'comm_mode') and self.args.comm_mode == 'avg' \
-                and num_agents_alive > 1:
-                comm = comm / (num_agents_alive - 1)
 
             # Mask comm_in
             # Mask communcation from dead agents
             comm = comm * agent_mask
             # Mask communication to dead agents
             comm = comm * agent_mask_transpose
-            # Combine all of C_j for an ith agent which essentially are h_j
-            comm_sum = comm.sum(dim=1)
 
-            c = self.C_modules[i](comm_sum)
+            if self.args.mha_comm:
+                # Multi-head attention for incoming comms
+                comm = comm.reshape(n, n, self.args.comm_dim)
+                sh = (n * self.num_heads, n, self.args.comm_dim)
+                Q = self.toqueries(comm).view(sh)
+                K = self.tokeys(comm).view(sh)
+                V = self.tovalues(comm).view(sh)
+                self.norm_factor = 1 / np.sqrt(self.args.comm_dim)
+                Q = Q * self.norm_factor
+                K = K * self.norm_factor
+                dot = torch.bmm(Q, K.transpose(1, 2))
+                assert dot.size() == (n * self.num_heads, n, n)
+                # mask again before softmax
+                dot_mask = (mask*agent_mask*agent_mask_transpose).reshape(n,n,-1)[:,:,:n]
+                # print(int(dot.shape[0]/dot_mask.shape[0]))
+                dot_mask = dot_mask.repeat_interleave(repeats=int(dot.shape[0]/dot_mask.shape[0]), dim=0)
+                # print(dot_mask.shape, dot.shape)
+
+                dot = dot * dot_mask
+                dot = dot.masked_fill(dot_mask == 0, -1e9)
+
+                attn = F.softmax(dot, dim=-1)
+                out = torch.bmm(attn, V).view(n, self.num_heads, n, self.args.comm_dim)
+                out = out.transpose(1, 2).contiguous().view(n, n, self.num_heads * self.args.comm_dim)
+                comm = out.sum(dim=0)
+                comm = self.unifyheads(torch.cat((comm, hidden_state), -1)).reshape(batch_size, n, self.args.comm_dim)
+                comm = self.tanh(comm)
+                # print(comm.shape)
+                assert comm.size() == (batch_size, n, self.args.comm_dim)
+                c = comm
+
+            else:
+                # print("comm mode ", self.args.comm_mode)
+                if hasattr(self.args, 'comm_mode') and self.args.comm_mode == 'avg' \
+                    and num_agents_alive > 1:
+                    comm = comm / (num_agents_alive - 1)
+                # Combine all of C_j for an ith agent which essentially are h_j
+                comm_sum = comm.sum(dim=1)
+
+                c = self.C_modules[i](comm_sum)
             if self.args.autoencoder:
                 self.comms_all = c.clone()  # encoded received communciations for autoencoder
 
             if self.args.recurrent:
-                # skip connection - combine comm. matrix and encoded input for all agents
-                inp = hidden_state + c
+                if self.args.mha_comm:
+                    inp = c
+                else:
+                    # skip connection - combine comm. matrix and encoded input for all agents
+                    inp = hidden_state + c
 
                 # inp = inp.view(batch_size * n, self.hid_size)
 

@@ -2,21 +2,23 @@ import os, sys, subprocess
 
 os.environ["OMP_NUM_THREADS"] = "1"
 env = "traffic_junction"
-# seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
-seeds = [1, 2, 3]
+seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
+# seeds = [1, 2, 3]
 # seeds = [777]
 # seeds = [20]
+# seeds = [0]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 # methods = ["easy_proto_soft_minComm_autoencoder", "easy_proto_soft_minComm_autoencoder_action"]
 # methods = ["easy_proto_soft_minComm_autoencoder"]
 # methods = ["easy_proto_autoencoder_minComm"]
-methods = ['hard_fixed', 'hard_fixed_autoencoder']
+# methods = ['hard_fixed', 'hard_fixed_autoencoder']
+methods = ['baseline_hard_autoencoder_action_mha']
 # methods = ['hard_fixed_proto', 'hard_fixed_proto_autoencoder']
 # methods = ["easy_proto_soft_minComm_autoencoder_action"]
 pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder'
 # pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder_action'
 # for soft_budget in [.5]:
-if True:
+for num_heads in [1,2,4]:
     for method in methods:
         if 'action' in method:
             pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder_action'
@@ -31,12 +33,11 @@ if True:
             num_epochs = 1000
         elif 'hard' in method:
             # protos_list = [144, 72, 288]
-            protos_list = [144]
+            protos_list = [128*2] # single redundancy
             # comms_list = [64]
             num_epochs = 2000
         for num_proto in protos_list:
-            exp_name = "tj_" + method
-            # exp_name = "tj_EX_" + method + "_p" + str(num_proto) + "_c" + str(comm_dim)
+            exp_name = "tj_" + method + '_heads' + str(num_heads)
             vision = 0
             soft_budget = 0.7
             # discrete comm is true if you want to use learnable prototype based communication.
@@ -62,7 +63,7 @@ if True:
             variable_gate = False
             if "var" in method:
                 variable_gate = True
-            nprocesses = 16
+            nprocesses = 0
             lr = 0.003
             if "medium" in method:
                 nagents = 10
@@ -89,7 +90,7 @@ if True:
 
 
             run_str = f"python main.py --env_name {env} --nprocesses {nprocesses} "+\
-                      f"--num_epochs {num_epochs} --epoch_size 10 "+\
+                      f"--num_epochs {num_epochs} --epoch_size 10 --num_heads {num_heads} "+\
                       f"--gating_head_cost_factor {gating_head_cost_factor} "+\
                       f"--hid_size {hid_size} --comm_dim {hid_size} --soft_budget {soft_budget} "+\
                       f" --detach_gap 10 --lrate {lr} --ic3net --vision {vision} "+\
@@ -120,6 +121,8 @@ if True:
                 run_str += "--autoencoder "
             if "action" in method:
                 run_str += "--autoencoder_action "
+            if 'mha' in method:
+                run_str += '--mha_comm '
 
             # Important: If you want to restore training just use the --restore tag
             # run for all seeds
@@ -131,9 +134,9 @@ if True:
                 # run_str += "> runLogs/" + exp_name + "Log.txt 2>&1 &"
                 # cmd_args = run_str[:-1].split(" ")
                 # print(cmd_args)
-                with open("runLogs/" + exp_name + "Log.txt","wb") as out:
-                    subprocess.Popen(run_str + f"--seed {seed}", shell=True, stdout=out)#, stderr=out)
-                # os.system(run_str + f"--seed {seed}")
+                # with open("runLogs/" + exp_name + "Log.txt","wb") as out:
+                #     subprocess.Popen(run_str + f"--seed {seed}", shell=True, stdout=out)#, stderr=out)
+                os.system(run_str + f"--seed {seed}")
             # sys.exit(0)
             # plot the avg and error graphs using multiple seeds.
             # os.system(f"python plot.py --env_name {env} --exp_name {exp_name} --nagents {nagents}")

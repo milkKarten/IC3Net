@@ -200,6 +200,12 @@ parser.add_argument('--null_dict_dir', type=str, default='',
 parser.add_argument('--map_name', type=str, default='3m',
                     help='StarCraft map name')
 
+# multi-headed attention for communication receiving
+parser.add_argument('--mha_comm', action='store_true', default=False,
+                    help='multi-headed attention for communication receiving')
+parser.add_argument('--num_heads', type=int, default=1,
+                    help="Number of heads for attention")
+
 # first add environment specific args to the parser
 init_args_for_env(parser)
 
