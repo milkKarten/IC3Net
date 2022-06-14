@@ -17,7 +17,7 @@ for soft_budget in [0.7]:
         if "easy" in method:
             # protos_list = [14, 28, 56]
             protos_list = [56]
-            num_epochs = 100
+            num_epochs = 50
         elif 'medium' in method:
             # protos_list = [56, 28, 112]
             protos_list = [112] # use 1 layer of redundancy

@@ -646,3 +646,44 @@ class TrafficJunctionEnv(gym.Env):
             # self.add_rate = step_size * (self.exact_rate // step_size)
         else:
             print("not updating curriculum for tj for epoch", epoch)
+
+        def get_loc(self):
+        return self.car_loc
+
+
+    def init_pos2enc(self):
+        w, h = self.dims
+        self.bool_base_grid = self.empty_bool_base_grid.copy()
+        self.pos2enc = {}
+        self.enc2pos = {}
+        for i in range(h):
+            for j in range(w):
+                p = (i,j)
+                self.bool_base_grid[p[0] + self.vision, p[1] + self.vision, self.CAR_CLASS] += 1
+                slice_y = slice(p[0], p[0] + (2 * self.vision) + 1)
+                slice_x = slice(p[1], p[1] + (2 * self.vision) + 1)
+                v_sq = self.bool_base_grid[slice_y, slice_x][0][0].tolist()[:-1]
+                self.bool_base_grid[p[0] + self.vision, p[1] + self.vision, self.CAR_CLASS] -= 1
+
+                v_sq = self.list2tup(v_sq)
+
+                self.pos2enc[(i,j)] = v_sq
+                self.enc2pos[v_sq] = (i,j)
+
+    def obs2pos(self,obs):
+        if self.enc2pos is None:
+            self.init_pos2enc()
+
+        return self.enc2pos.get(tuple(obs))
+
+    def get_is_completed(self):
+        return self.has_failed, self.collision_location
+
+    def get_alive(self,i):
+        return self.alive_mask[i]
+
+    def get_path(self,i):
+        return self.chosen_path[i]
+
+    def get_vocab_size(self):
+        return self.vocab_size

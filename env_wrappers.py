@@ -119,6 +119,24 @@ class GymWrapper(object):
         else:
             return dict()
 
+    def get_loc_wrapper(self):
+        return self.env.get_loc()
+
+    def get_reached_wrapper(self):
+        return self.env.get_is_completed()
+
+    def get_alive_wrapper(self,i):
+        return self.env.get_alive(i)
+
+    def get_path_wrapper(self, i):
+        return self.env.get_path(i)
+
+    def obs2pos_wrapper(self,obs):
+        return self.env.obs2pos(obs)
+
+    def get_vocab_size_wrapper(self):
+        return self.env.get_vocab_size()
+
 
 class StarcraftWrapper(object):
     """

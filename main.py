@@ -504,7 +504,7 @@ if args.restore and not args.load_pretrain:
         model_path = os.path.join(load_path, "model.pt")
 
     else:
-        all_models = sort([int(f.split('.pt')[0]) for f in os.listdir(load_path)])
+        all_models = sorted([int(f.split('.pt')[0]) for f in os.listdir(load_path)])
         model_path = os.path.join(load_path, str(all_models[-1])+".pt")
 
     d = torch.load(model_path)
@@ -530,7 +530,7 @@ if args.load_pretrain:
         model_path = os.path.join(load_path, "model.pt")
 
     else:
-        all_models = sort([int(f.split('.pt')[0]) for f in os.listdir(load_path)])
+        all_models = sorted([int(f.split('.pt')[0]) for f in os.listdir(load_path)])
         model_path = os.path.join(load_path, str(all_models[-1])+".pt")
 
     d = torch.load(model_path)
