@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 import time
-from models import MLP
+from models import MLP, SelfAttention
 from action_utils import select_action, translate_action
 from networks import ProtoNetwork, ProtoLayer
 from network_utils import gumbel_softmax
@@ -189,11 +189,14 @@ class CommNetMLP(nn.Module):
 
         # Multi-head communication attention
         self.num_heads = args.num_heads
-        # self.comm_mh_attn = nn.MultiheadAttention(args.hid_size, num_heads=self.num_heads)
-        self.tokeys = nn.Linear(args.hid_size, args.hid_size*self.num_heads)
-        self.toqueries = nn.Linear(args.hid_size, args.hid_size*self.num_heads)
-        self.tovalues = nn.Linear(args.hid_size, args.hid_size*self.num_heads)
-        self.unifyheads = nn.Linear(args.hid_size + args.hid_size * self.num_heads, args.hid_size)
+        # self.tokeys = nn.Linear(args.hid_size, args.hid_size*self.num_heads)
+        # self.toqueries = nn.Linear(args.hid_size, args.hid_size*self.num_heads)
+        # self.tovalues = nn.Linear(args.hid_size, args.hid_size*self.num_heads)
+        # self.unifyheads = nn.Linear(args.hid_size + args.hid_size * self.num_heads, args.hid_size)
+        if args.mha_comm:
+            self.comm_attention = SelfAttention(self.num_heads, args.hid_size)
+
+        self.apply(self.init_weights)
 
     def get_agent_mask(self, batch_size, info):
         n = self.nagents
@@ -298,24 +301,10 @@ class CommNetMLP(nn.Module):
                 # comm_prob = gumbel_softmax(comm_prob, temperature=1, hard=True)
                 # print(comm_prob)
                 comm_prob = F.log_softmax(self.gating_head(h), dim=-1)[0].exp()
-
                 comm_prob = gumbel_softmax(comm_prob, temperature=1, hard=True)
-                # print(comm_prob, torch.argmax(comm_prob, axis=-1))
                 comm_prob = comm_prob[:, 1].reshape(self.nagents)
-                # print(comm_prob)
-                # comm_prob = torch.multinomial(comm_prob, 1).reshape(self.nagents)
-                # print(comm_prob)
                 comm_action = comm_prob
-                # print(comm_action, comm_prob)
-                # comm_prob = comm_prob[torch.arange(self.nagents), comm_action]
-            # print("comm action", comm_action)
-            #     comm_prob = torch.argmax(comm_action, axis=-1)
-            #     # comm_prob = torch.max(comm_action, axis=-1).values
-            #     # print(comm_action)
-            #     comm_action = torch.argmax(comm_action, axis=-1).detach()
-                # print(comm_action)
-            # info['comm_action'] = comm_action.clone().detach().numpy()
-            # print(comm_action)
+
             for c in range(self.args.nagents):
                 if agent_mask[0,0,c] == 0: continue
 
@@ -422,34 +411,10 @@ class CommNetMLP(nn.Module):
 
             if self.args.mha_comm:
                 # Multi-head attention for incoming comms
-                comm = comm.reshape(n, n, self.args.comm_dim)
-                sh = (n * self.num_heads, n, self.args.comm_dim)
-                Q = self.toqueries(comm).view(sh)
-                K = self.tokeys(comm).view(sh)
-                V = self.tovalues(comm).view(sh)
-                self.norm_factor = 1 / np.sqrt(self.args.comm_dim)
-                Q = Q * self.norm_factor
-                K = K * self.norm_factor
-                dot = torch.bmm(Q, K.transpose(1, 2))
-                assert dot.size() == (n * self.num_heads, n, n)
-                # mask again before softmax
-                dot_mask = (mask*agent_mask*agent_mask_transpose).reshape(n,n,-1)[:,:,:n]
-                # print(int(dot.shape[0]/dot_mask.shape[0]))
-                dot_mask = dot_mask.repeat_interleave(repeats=int(dot.shape[0]/dot_mask.shape[0]), dim=0)
-                # print(dot_mask.shape, dot.shape)
-
-                dot = dot * dot_mask
-                dot = dot.masked_fill(dot_mask == 0, -1e9)
-
-                attn = F.softmax(dot, dim=-1)
-                out = torch.bmm(attn, V).view(n, self.num_heads, n, self.args.comm_dim)
-                out = out.transpose(1, 2).contiguous().view(n, n, self.num_heads * self.args.comm_dim)
-                comm = out.sum(dim=0)
-                comm = self.unifyheads(torch.cat((comm, hidden_state), -1)).reshape(batch_size, n, self.args.comm_dim)
-                comm = self.tanh(comm)
-                # print(comm.shape)
-                assert comm.size() == (batch_size, n, self.args.comm_dim)
-                c = comm
+                c = self.comm_attention(comm.view(n,n,self.args.comm_dim), is_comm=True)
+                c = c + hidden_state.view(n,self.args.comm_dim)
+                c = c.reshape(batch_size, n, self.args.comm_dim)
+                # print(c.shape)
 
             else:
                 # print("comm mode ", self.args.comm_mode)
@@ -523,8 +488,9 @@ class CommNetMLP(nn.Module):
             return action, value_head
 
     def init_weights(self, m):
-        if type(m) == nn.Linear:
-            m.weight.data.normal_(0, self.init_std)
+        if isinstance(m, nn.Linear):
+            torch.nn.init.xavier_uniform_(m.weight)
+            m.bias.data.fill_(0.01)
 
     def init_hidden(self, batch_size):
         # dim 0 = num of layers * num of direction

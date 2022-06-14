@@ -3,7 +3,54 @@ import torch.autograd as autograd
 from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
+class SelfAttention(nn.Module):
+    def __init__(self, num_heads, emb):
+        super(SelfAttention, self).__init__()
+        self.num_heads = num_heads
+        self.norm_factor = 1 / np.sqrt(emb)
+
+        self.toK = nn.Linear(emb, emb*self.num_heads)
+        self.toQ = nn.Linear(emb, emb*self.num_heads)
+        self.toV = nn.Linear(emb, emb*self.num_heads)
+
+        self.unifyheads = nn.Linear(emb * self.num_heads, emb)
+
+
+    def forward(self, x, mask=None, is_comm=False):
+        # print(x.size(), x.shape, len(x.size()))
+        if len(x.size()) == 3:
+            b, n, e = x.shape   # batch size, number of agents, embedding size
+        else:
+            b, e = x.shape
+            n = 1
+        h = self.num_heads
+        head_batch_shape = (b * h, n, e)
+        Q = self.toQ(x).view(head_batch_shape)
+        K = self.toK(x).view(head_batch_shape)
+        V = self.toV(x).view(head_batch_shape)
+        Q = Q * self.norm_factor
+        K = K * self.norm_factor
+        dot = torch.bmm(Q, K.transpose(1, 2))
+        assert dot.size() == (b * h, n, n)
+        if mask is not None:
+            # mask again before softmax
+            # repeat for number of heads
+            mask = mask.repeat_interleave(repeats=h, dim=0)
+            dot = dot * mask
+            dot = dot.masked_fill(mask == 0, -1e9)
+
+        attn = F.softmax(dot, dim=-1)
+        out = torch.bmm(attn, V).view(b, h, n, e)
+        out = out.transpose(1, 2).contiguous().view(b, n, h * e)
+        if is_comm:
+            out = out.sum(0)
+        out = self.unifyheads(out).reshape(n, -1, e)
+        out = F.relu(out)
+        if n == 1 or is_comm:
+            out = out.reshape(b, e)
+        return out
 
 class MLP(nn.Module):
     def __init__(self, args, num_inputs):
@@ -94,4 +141,3 @@ class RNN(MLP):
         # dim 0 = num of layers * num of direction
         return tuple(( torch.zeros(batch_size * self.nagents, self.hid_size, requires_grad=True),
                        torch.zeros(batch_size * self.nagents, self.hid_size, requires_grad=True)))
-
