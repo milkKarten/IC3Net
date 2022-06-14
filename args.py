@@ -138,4 +138,10 @@ def get_args():
                          help='remove null communications from being communicated')
      parser.add_argument('--null_dict_dir', type=str, default='',
                          help='null dictionary directory')
+
+     # multi-headed attention for communication receiving
+     parser.add_argument('--mha_comm', action='store_true', default=False,
+                         help='multi-headed attention for communication receiving')
+     parser.add_argument('--num_heads', type=int, default=1,
+                         help="Number of heads for attention")
      return parser

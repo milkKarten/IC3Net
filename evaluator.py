@@ -76,6 +76,7 @@ class Evaluator:
                     for i in range(0, len(self.env.env.car_loc)):
                         p = self.env.env.car_loc[i]
                         # print(p)
+                        continue
                         proto = proto_comms[0][i]
                         action_i = self.env.env.car_last_act[i]
                         if self.env.env.car_route_loc[i] != -1:
