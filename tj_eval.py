@@ -3,9 +3,11 @@ import os, sys, subprocess
 os.environ["OMP_NUM_THREADS"] = "1"
 
 env = "traffic_junction"
-seeds = [0]
+seeds = [777]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
-method = "easy_baseline_test_autoencoder_action"
+# method = "easy_baseline_test_autoencoder_action"
+
+method = "tj_easy_fixed_autoencoder0.7"
 # pretrain_exp_name = 'tj_EX_fixed_proto_comm_vs_protos_medium_p112_c64_d'
 if "easy" in method:
     protos_list = [56]
@@ -21,7 +23,7 @@ elif 'hard' in method:
     num_epochs = 4000
 for num_proto in protos_list:
     for comm_dim in comms_list:
-        exp_name = 'tj_' + method
+        exp_name = method
         vision = 0
         # discrete comm is true if you want to use learnable prototype based communication.
         discrete_comm = False
@@ -84,8 +86,8 @@ for num_proto in protos_list:
             run_str += f"--discrete_comm --use_proto --comm_dim {comm_dim} --num_proto {num_proto} "
         if comm_action_one:
             run_str += f"--comm_action_one  "
-        if variable_gate:
-            run_str += f"--variable_gate "
+        # if variable_gate:
+        #     run_str += f"--variable_gate "
         if comm_action_zero:
             run_str += f"--comm_action_zero "
         if 'soft' in method:

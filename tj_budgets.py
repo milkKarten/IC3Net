@@ -2,21 +2,22 @@ import os, sys, subprocess
 
 os.environ["OMP_NUM_THREADS"] = "1"
 env = "traffic_junction"
-seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
+seeds = [0]
 # seeds = [1, 2, 3]
 # seeds = [777]
 # seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 # methods = ['hard_soft_minComm_autoencoder', 'easy_soft_minComm_autoencoder'. 'easy_proto_soft_minComm_autoencoder']
-methods = ['easy_soft_minComm_autoencoder']
+methods = ['tj_easy_fixed_autoencoder']
 # pretrain_files = ['tj_hard_fixed_autoencoder', 'tj_easy_fixed_autoencoder', 'tj_easy_fixed_proto_autoencoder']
 pretrain_files = ['tj_easy_fixed_autoencoder']
-for soft_budget in [0.9, 0.5, 0.3, 0.1]:
+# for soft_budget in [0.9, 0.5, 0.3, 0.1]:
+for soft_budget in [0.7]:
     for method,pretrain_exp_name  in zip(methods, pretrain_files):
         if "easy" in method:
             # protos_list = [14, 28, 56]
             protos_list = [56]
-            num_epochs = 50
+            num_epochs = 100
         elif 'medium' in method:
             # protos_list = [56, 28, 112]
             protos_list = [112] # use 1 layer of redundancy

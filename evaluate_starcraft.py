@@ -62,7 +62,7 @@ def load(path):
         model_path = os.path.join(load_path, f"{all_models[-1]}.pt")
 
     d = torch.load(model_path)
-    policy_net.load_state_dict(d['policy_net'])
+    policy_net.load_state_dict(d['policy_net'],strict=False)
 
 parser = get_args()
 init_args_for_env(parser)
