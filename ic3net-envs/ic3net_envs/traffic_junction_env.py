@@ -47,6 +47,9 @@ class TrafficJunctionEnv(gym.Env):
 
         self.episode_over = False
         self.has_failed = 0
+        self.collision_location = []
+        self.pos2enc = None
+        self.enc2pos = None
 
     def init_curses(self):
         self.stdscr = curses.initscr()
@@ -604,6 +607,7 @@ class TrafficJunctionEnv(gym.Env):
             if (len(np.where(np.all(self.car_loc[:i] == l,axis=1))[0]) or \
                len(np.where(np.all(self.car_loc[i+1:] == l,axis=1))[0])) and l.any():
                reward[i] += self.CRASH_PENALTY
+               self.collision_location = l.tolist()
                self.has_failed = 1
 
         reward = self.alive_mask * reward
@@ -647,8 +651,11 @@ class TrafficJunctionEnv(gym.Env):
         else:
             print("not updating curriculum for tj for epoch", epoch)
 
-        def get_loc(self):
+    def get_loc(self):
         return self.car_loc
+
+    def list2tup(self,list):
+        return (*list, )
 
 
     def init_pos2enc(self):
@@ -671,10 +678,16 @@ class TrafficJunctionEnv(gym.Env):
                 self.enc2pos[v_sq] = (i,j)
 
     def obs2pos(self,obs):
+
         if self.enc2pos is None:
             self.init_pos2enc()
 
         return self.enc2pos.get(tuple(obs))
+
+    def pos2obs(self,obs):
+        if self.enc2pos is None:
+            self.init_pos2enc()
+        return self.pos2enc.get(tuple(obs))
 
     def get_is_completed(self):
         return self.has_failed, self.collision_location

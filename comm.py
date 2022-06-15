@@ -32,6 +32,7 @@ class CommNetMLP(nn.Module):
         self.comm_passes = args.comm_passes
         self.recurrent = args.recurrent
         self.continuous = args.continuous
+        self.num_inputs = num_inputs
         # If true, we add noise to the communication being output by each agent.
         self.add_comm_noise = args.add_comm_noise
 
@@ -94,6 +95,7 @@ class CommNetMLP(nn.Module):
 
         # changed this for prototype based method. But should still work in the old case.
         self.encoder = nn.Linear(num_inputs, args.comm_dim)
+        self.dropout = nn.Dropout()
 
         # if self.args.env_name == 'starcraft':
         #     self.state_encoder = nn.Linear(num_inputs, num_inputs)
@@ -163,7 +165,9 @@ class CommNetMLP(nn.Module):
 
         # autoencoder decoder
         if self.args.autoencoder_action:
-            self.decoderNet = nn.Linear(args.hid_size, num_inputs+self.args.nagents)
+            # self.decoderNet = nn.Linear(args.hid_size, num_inputs+self.args.nagents)
+            self.decoderNet = nn.Linear(args.hid_size*self.args.nagents, num_inputs*self.args.nagents + self.args.nagents)
+
         elif self.args.autoencoder:
             self.decoderNet = nn.Linear(args.hid_size, num_inputs)
 
@@ -218,6 +222,7 @@ class CommNetMLP(nn.Module):
 
             # In case of recurrent first take out the actual observation and then encode it.
             x = self.encoder(x)
+            # x = self.dropout(x)
 
             if self.args.rnn_type == 'LSTM':
                 # if you're using the extras would have both the hidden and the cell state.
@@ -234,8 +239,30 @@ class CommNetMLP(nn.Module):
 
     def decode(self):
         y = self.h_state + self.comms_all
+
+        y = y.unsqueeze(2)
+        y = y.repeat(1,1,5,1)
+        target_shape = y.shape
+        y = torch.flatten(y,start_dim=2)
+
+        # print (y.shape)
+        # print (target_shape)
+        # print (self.num_inputs*self.args.nagents + self.args.nagents)
         y = self.decoderNet(y)
-        return y
+
+        if self.args.autoencoder_action:
+            y = y.reshape(1,self.nagents,self.nagents,self.num_inputs+1)
+        else:
+            #Not implemented this yet but u get the idea
+            y = y.reshape(1,self.nagents,self.nagents,self.num_inputs)
+            assert False
+
+        return y.squeeze()
+
+    # def decode(self):
+    #     y = self.h_state + self.comms_all
+    #     y = self.decoderNet(y)
+    #     return y
 
     def get_null_action(self):
         return self.null_action

@@ -6,29 +6,83 @@
     <title>Insert title here</title>
     <style>
       .top{
-        margin-top: 15%;
+        margin-top: 5%;
         background-color: white;
+        margin-left: 30%;
+        margin-right: 30%;
+        text-align:left;
       }
     </style>
  </head>
 <body>
-<div class="top"> 
-        <center> 
-          <h1>Team Space Fortress Experiments</h1>
-          
+<div class="top">
+<!--        <center> -->
+<h1>Parent-Child Communication Experiment Instructions</h1>
+<div>
+  <img id="task"
+       width = '800'
+       src="{{ static_url('task.png') }}">
+</div>
+<ul>
+    <li><b>Game Rule</b>
+        <ul>
+            <li>You will play the role of either a parent or a child and complete the task with an AI partner in the complementary role.</li>
+            <li>The parent need to find the lost child, and she can only see the child in a close range.</li>
+            <li>The goal of the child is to effectively communicate its location so that the parent can travel to the lost child.</li>
+                        <li>Your compensation is based on your <b>task performance</b> (e.g. number of completed trials and steps taken in each trial).</li>
+                        <li>You <b>must</b> pass an attention check during the experiment.</li>
+        </ul>
+    </li>
+    <li><b>Procedure</b>
+        <ul>
+            <li>You will need to complete 20 trials as a parent and another 20 trials as a child.</li>
+            <li>A trial begins with the parent and child spawned at random locations, and ends when the parent reaches to the same location with the child or exceeds maximum steps allowed.</li>
+        </ul>
+    </li>
+    <li><b>Communication Task</b>
+        <ul>
+            <li>In the communication panel, there are several tokens for the child to communicate its location to the parent.</li>
+            <li>Each communication token refers to a specific location in the task environment.</li>
+            <li>The child should select a token to inform the parent her location, and the parent should search for the child according to received token.</li>
+            <li>Your task is to learn to use those tokens to collaborate with your AI partner in both parent and child roles.</li>
+            <li>Your AI partner is trained to have a good understanding of those tokens, please rely on its behavior to learn the communication.</li>
+        </ul>
+    </li>
+    <li><b>Control</b>
+        <ul>
+            <li>Parent control: D - go right, A - go left, W - go up, S - go down.</li>
+            <li>Child control: select communication contents using buttons on the right side.</li>
+        </ul>
+    </li>
+        <li><b>Contact</b>
+        <ul>
+            <li>This is a research conducted by the University of Pittsburgh, contact researchers at hul52@pitt.edu if you have any questions. </li>
+        </ul>
+    </li>
+</ul>
+<!--<h2>Game Rule</h2>-->
+<!--<p>You will play the role of either a parent or a child and complete the task with an AI partner in the complementary role. </p>-->
+<!--<p>The parent with a limited vision need to find a stationary child. </p>-->
+<!--<p>The goal of the child is to effectively communicate its location so that the parent can travel to the lost child.</p>-->
+<!--<h2>Procedure</h2>-->
+<!--<p>You will need to complete 20 trials as a parent and 20 trials as a child. A trial begins with the parent and child spawned at random locations, and ends when the parent reaches to the child. </p>-->
+<!--<h2>Communication Task</h2>-->
+<!--<p>The child is allowed to send only one communication for each trial. Each communication token refers to a specific location in the task environment. Your task is to learn the semantic meanings of those tokens based the interaction with your AI partner.</p>-->
+<!--<h2>Control</h2>-->
+<!--<p>Parent control: D or right arrow - go right, A or left arrow - go left, W or up arrow - go up, S or down arrow - go down. Child control: select communication contents using buttons on the right side</p>-->
+
  
           {% if error %}
             <span style="color: red">Error: {{ error }}</span><p />
           {% end %}
 
-
           <form action="/login" method="post">
             {% module xsrf_form_html() %}        
-            <p>Please first enter your ID: <input id="name" name="name" type="text" /></p>
+            <p>Please enter your MTurk/Prolific ID: <input id="name" name="name" type="text" /></p>
             <input type="submit" value="Log in with your ID">
           </form>
  <!--         <p>Then press: <button  id=start>Log in with your ID</button></p> -->       
-        </center>        
+<!--        </center>        -->
 </div>
 
 <script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>

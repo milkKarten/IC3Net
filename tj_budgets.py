@@ -8,7 +8,7 @@ seeds = [0]
 # seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 # methods = ['hard_soft_minComm_autoencoder', 'easy_soft_minComm_autoencoder'. 'easy_proto_soft_minComm_autoencoder']
-methods = ['tj_easy_fixed_autoencoder']
+methods = ['tj_easy_fixed_autoencoder_action']
 # pretrain_files = ['tj_hard_fixed_autoencoder', 'tj_easy_fixed_autoencoder', 'tj_easy_fixed_proto_autoencoder']
 pretrain_files = ['tj_easy_fixed_autoencoder']
 # for soft_budget in [0.9, 0.5, 0.3, 0.1]:
@@ -17,7 +17,7 @@ for soft_budget in [0.7]:
         if "easy" in method:
             # protos_list = [14, 28, 56]
             protos_list = [56]
-            num_epochs = 50
+            num_epochs = 200
         elif 'medium' in method:
             # protos_list = [56, 28, 112]
             protos_list = [112] # use 1 layer of redundancy
@@ -28,7 +28,7 @@ for soft_budget in [0.7]:
             # comms_list = [64]
             num_epochs = 200
         for num_proto in protos_list:
-            exp_name = "tj_" + method + str(soft_budget)
+            exp_name = "TEST_tj_" + method + str(soft_budget)
             # exp_name = "tj_EX_" + method + "_p" + str(num_proto) + "_c" + str(comm_dim)
             vision = 0
             soft_budget = 0.7
@@ -55,7 +55,7 @@ for soft_budget in [0.7]:
             variable_gate = False
             if "var" in method:
                 variable_gate = True
-            nprocesses = 16
+            nprocesses = 0
             lr = 0.003
             if "medium" in method:
                 nagents = 10

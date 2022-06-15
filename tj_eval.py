@@ -3,11 +3,11 @@ import os, sys, subprocess
 os.environ["OMP_NUM_THREADS"] = "1"
 
 env = "traffic_junction"
-seeds = [777]
+seeds = [0]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 # method = "easy_baseline_test_autoencoder_action"
 
-method = "tj_easy_fixed_autoencoder0.7"
+method = "TEST_tj_tj_easy_fixed_autoencoder_action0.7"
 # pretrain_exp_name = 'tj_EX_fixed_proto_comm_vs_protos_medium_p112_c64_d'
 if "easy" in method:
     protos_list = [56]
@@ -81,6 +81,15 @@ for num_proto in protos_list:
                   f"--recurrent --load paper_models "+\
                   f"--max_steps {max_steps} --dim {dim} --nagents {nagents} --add_rate_min {add_rate_min} --add_rate_max {add_rate_max} --curr_epochs 1000 --difficulty {difficulty} "+\
                   f"--exp_name {exp_name} --save_every {save_every} "
+        # run_str = f"python stephane_evaluate.py --env_name {env} --nprocesses {nprocesses} "+\
+        #           f"--num_epochs {num_epochs} --epoch_size 10 "+\
+        #           f"--gating_head_cost_factor {gating_head_cost_factor} "+\
+        #           f"--hid_size {hid_size} --comm_dim {hid_size} "+\
+        #           f" --detach_gap 10 --lrate {lr} --ic3net --vision {vision} "+\
+        #           f"--recurrent --load paper_models "+\
+        #           f"--max_steps {max_steps} --dim {dim} --nagents {nagents} --add_rate_min {add_rate_min} --add_rate_max {add_rate_max} --curr_epochs 1000 --difficulty {difficulty} "+\
+        #           f"--exp_name {exp_name} --save_every {save_every} "
+        #
 
         if discrete_comm:
             run_str += f"--discrete_comm --use_proto --comm_dim {comm_dim} --num_proto {num_proto} "

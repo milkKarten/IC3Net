@@ -241,9 +241,16 @@ class Trainer(object):
             # decode intent + observation autoencoder
             if self.args.autoencoder and self.args.autoencoder_action:
                 decoded = self.policy_net.decode()
-                x_all = torch.zeros_like(decoded)
-                x_all[0,:,:-self.args.nagents] = x[0].sum(dim=1).expand(self.args.nagents, -1)
-                x_all[0,:,-self.args.nagents:] = torch.tensor(actual[0])
+                # x_all = torch.zeros_like(decoded)
+                # x_all[0,:,:-self.args.nagents] = x[0].sum(dim=1).expand(self.args.nagents, -1)
+                # x_all[0,:,-self.args.nagents:] = torch.tensor(actual[0])
+
+                #dont concatenate observations and actions, instead keep them seperate for each agent
+                x_all = x[0].expand(self.args.nagents,self.args.nagents, -1)
+                gt_actions = torch.tensor(actual[0]).unsqueeze(1).expand(self.args.nagents,self.args.nagents,-1)
+
+                x_all = torch.cat((x_all,gt_actions),dim=2)
+
                 if self.loss_autoencoder == None:
                     self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
                 else:
@@ -438,7 +445,10 @@ class Trainer(object):
             loss += self.loss_min_comm
         if self.args.autoencoder:
             stat['autoencoder_loss'] = self.loss_autoencoder.item()
+            # l2_norm = sum(p.pow(2.0).sum() for p in self.policy_net.parameters())
+            # loss = 0.5 * loss + 0.5 * self.loss_autoencoder + 0.001*l2_norm
             loss = 0.5 * loss + 0.5 * self.loss_autoencoder
+
         loss.backward()
         if self.args.autoencoder:
             self.loss_autoencoder = None

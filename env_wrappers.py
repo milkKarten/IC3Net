@@ -134,6 +134,10 @@ class GymWrapper(object):
     def obs2pos_wrapper(self,obs):
         return self.env.obs2pos(obs)
 
+    def pos2obs_wrapper(self,obs):
+        return self.env.pos2obs(obs)
+
+
     def get_vocab_size_wrapper(self):
         return self.env.get_vocab_size()
 

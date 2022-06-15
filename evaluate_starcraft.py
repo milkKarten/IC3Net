@@ -55,12 +55,12 @@ def load(path):
 
     if 'model.pt' in os.listdir(load_path):
         print(load_path)
-        model_path = os.path.join(load_path, "model.pt")
+        model_path = os.path.join(load_path, "best_model.pt")
 
     else:
         all_models = sort([int(f.split('.pt')[0]) for f in os.listdir(load_path)])
         model_path = os.path.join(load_path, f"{all_models[-1]}.pt")
-
+    print (model_path)
     d = torch.load(model_path)
     policy_net.load_state_dict(d['policy_net'],strict=False)
 
@@ -137,6 +137,7 @@ if not args.display:
 for p in policy_net.parameters():
     p.data.share_memory_()
 
+
 policy_net.num_null = 0
 policy_net.num_good_comms = 0
 policy_net.num_cut_comms = 0
@@ -152,6 +153,7 @@ for i in range(500):
     all_stats.append(stat)
 total_episode_time = time.time() - st_time
 average_stat = {}
+
 for key in all_stats[0].keys():
     average_stat[key] = np.mean([stat.get(key) for stat in all_stats])
 print("average stats is: ", average_stat)

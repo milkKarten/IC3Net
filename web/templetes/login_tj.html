@@ -1,0 +1,85 @@
+<html>
+<title>Login Interface</title>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+    <title>Insert title here</title>
+    <style>
+      .top{
+        margin-top: 5%;
+        background-color: white;
+        margin-left: 30%;
+        margin-right: 30%;
+        text-align:left;
+      }
+    </style>
+ </head>
+<body>
+<div class="top">
+<!--        <center> -->
+<h1>Traffic Junction Communication Experiment Instructions</h1>
+<div>
+  <img id="task"
+       width = '800'
+       src="{{ static_url('tj.png') }}">
+</div>
+<ul>
+    <li><b>Game Rule</b>
+        <ul>
+            <li>You task is to drive through a traffic junction along the designated route without collision.</li>
+            <li>You can not see other cars but can hear their horn sound.</li>
+            <li>Horn sounds are marked in special icons on the map. Icon size indicates how certain you can hear about the horn (i.e. the probability of another car existing in that spot). </li>
+            <li>You can only decide whether to proceed to the next spot on a given path or stay in the current spot.</li>
+            <li>You have a maximum of 40 steps to arrive at the destination.</li>
+        </ul>
+    </li>
+    <li><b>Control</b>
+        <ul>
+            <li>Go: proceed to the next spot; Brake: stay in the current spot.</li>
+        </ul>
+    </li>
+        <li><b>Contact</b>
+        <ul>
+            <li>This is a research conducted by the University of Pittsburgh, contact researchers at hul52@pitt.edu if you have any questions. </li>
+        </ul>
+    </li>
+</ul>
+<!--<h2>Game Rule</h2>-->
+<!--<p>You will play the role of either a parent or a child and complete the task with an AI partner in the complementary role. </p>-->
+<!--<p>The parent with a limited vision need to find a stationary child. </p>-->
+<!--<p>The goal of the child is to effectively communicate its location so that the parent can travel to the lost child.</p>-->
+<!--<h2>Procedure</h2>-->
+<!--<p>You will need to complete 20 trials as a parent and 20 trials as a child. A trial begins with the parent and child spawned at random locations, and ends when the parent reaches to the child. </p>-->
+<!--<h2>Communication Task</h2>-->
+<!--<p>The child is allowed to send only one communication for each trial. Each communication token refers to a specific location in the task environment. Your task is to learn the semantic meanings of those tokens based the interaction with your AI partner.</p>-->
+<!--<h2>Control</h2>-->
+<!--<p>Parent control: D or right arrow - go right, A or left arrow - go left, W or up arrow - go up, S or down arrow - go down. Child control: select communication contents using buttons on the right side</p>-->
+
+
+          {% if error %}
+            <span style="color: red">Error: {{ error }}</span><p />
+          {% end %}
+
+          <form action="/login" method="post">
+            {% module xsrf_form_html() %}
+            <p>Please enter your Prolific/MTurk ID: <input id="name" name="name" type="text" /></p>
+            <input type="submit" value="Log in with your ID">
+          </form>
+ <!--         <p>Then press: <button  id=start>Log in with your ID</button></p> -->
+<!--        </center>        -->
+</div>
+
+<script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
+<script>
+//function login(){
+//	var name = document.getElementById("name").value;
+//    window.location.href='index.html?name='+name;
+//}
+</script>
+<script type="text/javascript">
+$("#start").click(function(){
+          login();
+});
+</script>
+</body>
+</html>

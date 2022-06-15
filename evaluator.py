@@ -35,6 +35,8 @@ class Evaluator:
         if should_display:
             self.env.display()
         stat = dict()
+        stat["autoencoder_loss"] = 0
+        stat["n_loss_checks"] = 0
         info_comm = dict()
         info= dict()
         switch_t = -1
@@ -71,6 +73,7 @@ class Evaluator:
                             comms_to_loc_full[tuple_comms] = []
                         comms_to_loc_full[tuple_comms].append(tuple(p))
                 elif self.args.env_name == 'traffic_junction':
+
                     # print("car loc", self.env.env.car_loc)
                     # print("paths", self.env.env.car_loc)
                     for i in range(0, len(self.env.env.car_loc)):
@@ -151,8 +154,21 @@ class Evaluator:
                 action_out = torch.nn.functional.log_softmax(action_out, dim=-1)
             action = select_action(self.args, action_out, eval_mode=True)
             action, actual = translate_action(self.args, self.env, action)
+
+
             next_state, reward, done, info = self.env.step(actual)
+
+
             if self.args.env_name == 'traffic_junction':
+                if self.args.autoencoder and self.args.autoencoder_action:
+                    decoded = self.policy_net.decode()
+                    x_all = x[0].expand(self.args.nagents,self.args.nagents, -1)
+                    gt_actions = torch.tensor(actual[0]).unsqueeze(1).expand(self.args.nagents,self.args.nagents,-1)
+                    x_all = torch.cat((x_all,gt_actions),dim=2)
+                    loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
+                    stat["autoencoder_loss"] += loss_autoencoder.detach().numpy()
+                    # stat["n_loss_checks"] += 1
+
                 done = done or self.env.env.has_failed
             # store comm_action in info for next step
             if self.args.hard_attn and self.args.commnet:
