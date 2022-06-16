@@ -125,7 +125,8 @@ class Trainer(object):
                 # episode_comm += comm_action
                 if self.args.autoencoder and not self.args.autoencoder_action:
                     decoded = self.policy_net.decode()
-                    x_all = x[0].sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
+                    #x_all = x[0].sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
+                    x_all = x[0].expand(self.args.nagents,self.args.nagents, -1)
                     if self.loss_autoencoder == None:
                         self.loss_autoencoder =torch.nn.functional.mse_loss(decoded, x_all)
                     else:
@@ -255,6 +256,7 @@ class Trainer(object):
                     self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
                 else:
                     self.loss_autoencoder += torch.nn.functional.mse_loss(decoded, x_all)
+
             comm_budget = info_comm['comm_budget']
             next_state, reward, done, info = self.env.step(actual)
 
@@ -450,6 +452,7 @@ class Trainer(object):
             loss = 0.5 * loss + 0.5 * self.loss_autoencoder
 
         loss.backward()
+        print (self.loss_autoencoder)
         if self.args.autoencoder:
             self.loss_autoencoder = None
         if self.args.min_comm_loss:

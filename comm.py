@@ -169,7 +169,8 @@ class CommNetMLP(nn.Module):
             self.decoderNet = nn.Linear(args.hid_size*self.args.nagents, num_inputs*self.args.nagents + self.args.nagents)
 
         elif self.args.autoencoder:
-            self.decoderNet = nn.Linear(args.hid_size, num_inputs)
+            #self.decoderNet = nn.Linear(args.hid_size, num_inputs)
+            self.decoderNet = nn.Linear(args.hid_size*self.args.nagents, num_inputs*self.args.nagents)
 
         # remove null messages
         # with open('IC3Net/nulls/'+self.args.pretrain_exp_name+'/seed' + str(self.args.seed) + '/nulls.txt', 'r') as f:
@@ -253,9 +254,7 @@ class CommNetMLP(nn.Module):
         if self.args.autoencoder_action:
             y = y.reshape(1,self.nagents,self.nagents,self.num_inputs+1)
         else:
-            #Not implemented this yet but u get the idea
             y = y.reshape(1,self.nagents,self.nagents,self.num_inputs)
-            assert False
 
         return y.squeeze()
 

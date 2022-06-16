@@ -250,8 +250,10 @@ class TrafficJunctionEnv(gym.Env):
         # No one is completed before taking action
         self.is_completed = np.zeros(self.ncar)
 
+        # print ("taking actions: " + str(action))
         for i, a in enumerate(action):
             self._take_action(i, a)
+        # print ("took actions: " + str(self.car_last_act))
 
         self._add_cars()
 
@@ -323,6 +325,7 @@ class TrafficJunctionEnv(gym.Env):
         roads = get_road_blocks(w,h, self.difficulty)
         for road in roads:
             self.grid[road] = self.ROAD_CLASS
+
         if self.vocab_type == 'bool':
             self.route_grid = self.grid.copy()
             start = 0
@@ -349,11 +352,12 @@ class TrafficJunctionEnv(gym.Env):
         if self.vocab_type == 'scalar':
             self.bool_base_grid = self.bool_base_grid[:,:,1:]
 
-
+        # print ("registered last actions:" + str(self.car_last_act / (self.naction - 1)))
         obs = []
         for i, p in enumerate(self.car_loc):
             # most recent action
             act = self.car_last_act[i] / (self.naction - 1)
+
 
             # route id
             r_i = self.route_id[i] / (self.npath - 1)
@@ -659,20 +663,75 @@ class TrafficJunctionEnv(gym.Env):
 
 
     def init_pos2enc(self):
+        # w, h = self.dims
+        # temp_loc = self.car_loc.copy()
+        # temp_act = self.car_last_act.copy()
+        # tempr_ri =  self.route_id.copy()
+        # alive_mask = self.alive_mask.copy()
+        #
+        # print (self.car_loc)
+        # possible_pos = []
+        # for i in range(h):
+        #     for j in range(w):
+        #         possible_pos.append([i,j])
+        #
+        # self.car_loc = np.array(possible_pos)
+        # self.car_last_act = np.zeros(len(possible_pos))
+        # self.route_id = np.zeros(len(possible_pos))
+        # self.alive_mask = np.ones(len(possible_pos))
+        #
+        # o = np.array(self._get_obs())[:,2]
+        # print (o)
+        # self.pos2enc = {}
+        # self.enc2pos = {}
+        #
+        # for pos, enc_pos in zip(possible_pos, o):
+        #     enc_pos = enc_pos[0][0]
+        #     self.pos2enc[tuple(pos)] = tuple(enc_pos[:-1])
+        #     self.enc2pos[tuple(enc_pos[:-1])] = tuple(pos)
+        #
+        # self.car_loc = temp_loc
+        # self.car_last_act = temp_act
+        # self.route_id = tempr_ri
+        # self.alive_mask = alive_mask
+
+        grid = np.full(self.dims[0] * self.dims[1], self.OUTSIDE_CLASS, dtype=int).reshape(self.dims)
+        w, h = self.dims
+
+        # Mark the roads
+        roads = get_road_blocks(w,h, self.difficulty)
+        for road in roads:
+            grid[road] = self.ROAD_CLASS
+
+
         w, h = self.dims
         self.bool_base_grid = self.empty_bool_base_grid.copy()
         self.pos2enc = {}
         self.enc2pos = {}
         for i in range(h):
             for j in range(w):
+                if grid[i,j] != 1:
+                    continue
                 p = (i,j)
+                # if p == (6,6):
+                #     continue
+
+
                 self.bool_base_grid[p[0] + self.vision, p[1] + self.vision, self.CAR_CLASS] += 1
                 slice_y = slice(p[0], p[0] + (2 * self.vision) + 1)
                 slice_x = slice(p[1], p[1] + (2 * self.vision) + 1)
                 v_sq = self.bool_base_grid[slice_y, slice_x][0][0].tolist()[:-1]
+
                 self.bool_base_grid[p[0] + self.vision, p[1] + self.vision, self.CAR_CLASS] -= 1
 
                 v_sq = self.list2tup(v_sq)
+
+                #wierd bug where these get flipped, not sure why
+                # if (i == 5 and j == 3):
+                #     v_sq = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0)
+
+                #     v_sq = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1)
+
 
                 self.pos2enc[(i,j)] = v_sq
                 self.enc2pos[v_sq] = (i,j)
@@ -682,7 +741,7 @@ class TrafficJunctionEnv(gym.Env):
         if self.enc2pos is None:
             self.init_pos2enc()
 
-        return self.enc2pos.get(tuple(obs))
+        return self.enc2pos.get(obs)
 
     def pos2obs(self,obs):
         if self.enc2pos is None:

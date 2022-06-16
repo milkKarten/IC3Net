@@ -2,7 +2,7 @@ import os, sys, subprocess
 
 os.environ["OMP_NUM_THREADS"] = "1"
 env = "traffic_junction"
-seeds = [0]
+seeds = [0,1,2,3,4,5,6,7,8,9,10]
 # seeds = [1, 2, 3]
 # seeds = [777]
 # seeds = [20]
@@ -28,7 +28,7 @@ for soft_budget in [0.7]:
             # comms_list = [64]
             num_epochs = 200
         for num_proto in protos_list:
-            exp_name = "TEST_tj_" + method + str(soft_budget)
+            exp_name = "AGG_STATE_tj_" + method + str(soft_budget)
             # exp_name = "tj_EX_" + method + "_p" + str(num_proto) + "_c" + str(comm_dim)
             vision = 0
             soft_budget = 0.7

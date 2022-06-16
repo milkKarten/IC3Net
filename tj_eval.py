@@ -7,7 +7,7 @@ seeds = [0]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 # method = "easy_baseline_test_autoencoder_action"
 
-method = "TEST_tj_tj_easy_fixed_autoencoder_action0.7"
+method = "DECOMP_STATE_tj_tj_easy_fixed_autoencoder_action0.7"
 # pretrain_exp_name = 'tj_EX_fixed_proto_comm_vs_protos_medium_p112_c64_d'
 if "easy" in method:
     protos_list = [56]
