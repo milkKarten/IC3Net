@@ -84,7 +84,7 @@ class Trainer(object):
         self.loss_min_comm = None
         self.best_model_reward = -np.inf
 
-    def get_episode(self, epoch):
+    def get_episode(self, epoch, random=False):
         episode = []
         reset_args = getargspec(self.env.reset).args
         # print(reset_args, " trainer", self.env.reset)
@@ -105,31 +105,29 @@ class Trainer(object):
             stat['budget'] = self.policy_net.budget
 
         # episode_comm = torch.zeros(self.args.nagents)
+        if self.args.timac and not random:
+            self.policy_net.reset()
+        if random:
+            inputs = []
         episode_comm = []
         for t in range(self.args.max_steps):
             # print(t)
             misc = dict()
-            if t == 0 and self.args.hard_attn and self.args.commnet:
+            if t == 0 and self.args.hard_attn and self.args.commnet and not random:
                 info_comm['comm_action'] = np.zeros(self.args.nagents, dtype=int)
-                info_comm['comm_budget'] = np.zeros(self.args.nagents, dtype=int)
+                # info_comm['comm_budget'] = np.zeros(self.args.nagents, dtype=int)
                 info_comm['step_t'] = t  # episode step for resetting communication budget
                 stat['comm_action'] = np.zeros(self.args.nagents, dtype=int)[:self.args.nfriendly]
 
             # recurrence over time
-            if self.args.recurrent:
+            if self.args.recurrent and not random:
                 if self.args.rnn_type == 'LSTM' and t == 0:
                     prev_hid = self.policy_net.init_hidden(batch_size=state.shape[0])
 
                 x = [state, prev_hid]
                 action_out, value, prev_hid, comm_prob = self.policy_net(x, info_comm)
                 # episode_comm += comm_action
-                if self.args.autoencoder and not self.args.autoencoder_action:
-                    decoded = self.policy_net.decode()
-                    x_all = x[0].sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
-                    if self.loss_autoencoder == None:
-                        self.loss_autoencoder =torch.nn.functional.mse_loss(decoded, x_all)
-                    else:
-                        self.loss_autoencoder +=torch.nn.functional.mse_loss(decoded, x_all)
+
                 # this seems to be limiting how much BPTT happens.
                 if (t + 1) % self.args.detach_gap == 0:
                     if self.args.rnn_type == 'LSTM':
@@ -138,7 +136,21 @@ class Trainer(object):
                         prev_hid = prev_hid.detach()
             else:
                 x = state
-                action_out, value = self.policy_net(x, info_comm)
+                if random:
+                    inputs.append(x)
+                action_out, value, comm_prob = self.policy_net(x, info_comm)
+            if self.args.autoencoder and not self.args.autoencoder_action and not random:
+                decoded = self.policy_net.decode()
+                if self.args.recurrent:
+                    # x_all = x[0].reshape(-1).expand_as(decoded)
+                    x_all = x[0].sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
+                else:
+                    # x_all = x.reshape(-1).expand_as(decoded)
+                    x_all = x.sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
+                if self.loss_autoencoder == None:
+                    self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
+                else:
+                    self.loss_autoencoder +=torch.nn.functional.mse_loss(decoded, x_all)
             # mask action if not available
             #print(action_out, '\n', self.env.env.get_avail_actions())
             if hasattr(self.env.env, 'get_avail_actions'):
@@ -239,16 +251,23 @@ class Trainer(object):
             # this converts stuff to numpy
             action, actual = translate_action(self.args, self.env, action)
             # decode intent + observation autoencoder
-            if self.args.autoencoder and self.args.autoencoder_action:
+            if self.args.autoencoder and self.args.autoencoder_action and not random:
                 decoded = self.policy_net.decode()
                 x_all = torch.zeros_like(decoded)
-                x_all[0,:,:-self.args.nagents] = x[0].sum(dim=1).expand(self.args.nagents, -1)
-                x_all[0,:,-self.args.nagents:] = torch.tensor(actual[0])
+                if self.args.recurrent:
+                    x_all[:,:-self.args.nagents] = x[0].sum(dim=1).expand(self.args.nagents, -1)
+                    x_all[:,-self.args.nagents:] = torch.tensor(actual[0])
+                else:
+                    # decoded = decoded.reshape(decoded.shape[0],decoded.shape[1])
+                    x_all[:,:-self.args.nagents] = x.reshape(decoded.shape[0], decoded.shape[1]-self.args.nagents)
+                    # x_all[0,:,:-self.args.nagents] = x.sum(dim=1).expand(self.args.nagents, -1)
+                    x_all[:,-self.args.nagents:] = torch.tensor(actual[0])
                 if self.loss_autoencoder == None:
                     self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
                 else:
                     self.loss_autoencoder += torch.nn.functional.mse_loss(decoded, x_all)
-            comm_budget = info_comm['comm_budget']
+
+            # comm_budget = info_comm['comm_budget']
             next_state, reward, done, info = self.env.step(actual)
 
             stat['env_reward'] = stat.get('env_reward', 0) + reward[:self.args.nfriendly]
@@ -257,13 +276,13 @@ class Trainer(object):
                     reward += gating_head_rew
 
             # store comm_action in info for next step
-            if self.args.hard_attn and self.args.commnet:
+            if self.args.hard_attn and self.args.commnet and not random:
                 # info_comm['comm_action'] = action[-1] if not self.args.comm_action_one else np.ones(self.args.nagents, dtype=int)
                 info_comm['step_t'] = t
                 if self.args.comm_action_zero:
                     info_comm['comm_action'] = np.zeros(self.args.nagents, dtype=int)
                 stat['comm_action'] = stat.get('comm_action', 0) + info_comm['comm_action'][:self.args.nfriendly]
-                stat['comm_budget'] = stat.get('comm_budget', 0) + comm_budget[:self.args.nfriendly]
+                # stat['comm_budget'] = stat.get('comm_budget', 0) + comm_budget[:self.args.nfriendly]
                 if hasattr(self.args, 'enemy_comm') and self.args.enemy_comm:
                     stat['enemy_comm']  = stat.get('enemy_comm', 0)  + info_comm['comm_action'][self.args.nfriendly:]
 
@@ -334,7 +353,8 @@ class Trainer(object):
 
         if hasattr(self.env, 'get_stat'):
             merge_stat(self.env.get_stat(), stat)
-
+        if random:
+            return inputs
         return (episode, stat)
 
     def compute_grad(self, batch, other_stat=None):
@@ -502,7 +522,8 @@ class Trainer(object):
 
     def set_lr(self):
         for param_group in self.optimizer.param_groups:
-            param_group['lr'] = self.args.lrate
+            # param_group['lr'] = self.args.lrate
+            param_group['lr'] = self.args.lrate * 0.01
 
     def state_dict(self):
         return self.optimizer.state_dict()

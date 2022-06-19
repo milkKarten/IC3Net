@@ -12,20 +12,25 @@ seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
 # methods = ["easy_proto_soft_minComm_autoencoder"]
 # methods = ["easy_proto_autoencoder_minComm"]
 # methods = ['hard_fixed', 'hard_fixed_autoencoder']
-methods = ['baseline_hard_autoencoder_action_mha']
+# methods = ['baseline_easy_ic3net_autoencoder_action_mha']
+# methods = ['baseline_easy_timac_autoencoder_action_attend_mha1_pre']
+methods = ['baseline_hard_timac_mha_autoencoder_action',
+            'baseline_hard_timac_mha_autoencoder_action_preencode',
+            'baseline_hard_timac_autoencoder_action',
+            'baseline_hard_ic3net_mha_autoencoder_action']
 # methods = ['hard_fixed_proto', 'hard_fixed_proto_autoencoder']
 # methods = ["easy_proto_soft_minComm_autoencoder_action"]
 pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder'
 # pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder_action'
 # for soft_budget in [.5]:
-for num_heads in [1,2,4]:
+for num_heads in [1]:
     for method in methods:
         if 'action' in method:
             pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder_action'
         if "easy" in method:
             # protos_list = [14, 28, 56]
             protos_list = [56]
-            num_epochs = 500
+            num_epochs = 100
         elif 'medium' in method:
             # protos_list = [56, 28, 112]
             protos_list = [112] # use 1 layer of redundancy
@@ -44,7 +49,7 @@ for num_heads in [1,2,4]:
             discrete_comm = False
             if "proto" in method:
                 discrete_comm = True
-            hid_size = 64
+            hid_size = 32
             save_every = 100
             # g=1. If this is set to true agents will communicate at every step.
             comm_action_one = False
@@ -89,12 +94,12 @@ for num_heads in [1,2,4]:
                 difficulty = 'easy'
 
 
-            run_str = f"python main.py --env_name {env} --nprocesses {nprocesses} "+\
+            run_str = f"python main.py --env_name {env} --nprocesses {nprocesses} --batch_size 500 "+\
                       f"--num_epochs {num_epochs} --epoch_size 10 --num_heads {num_heads} "+\
                       f"--gating_head_cost_factor {gating_head_cost_factor} "+\
                       f"--hid_size {hid_size} --comm_dim {hid_size} --soft_budget {soft_budget} "+\
-                      f" --detach_gap 10 --lrate {lr} --ic3net --vision {vision} "+\
-                      f"--recurrent --save paper_models --load paper_models "+\
+                      f" --detach_gap 10 --lrate {lr} --vision {vision} "+\
+                      f"--save paper_models --load paper_models "+\
                       f"--max_steps {max_steps} --dim {dim} --nagents {nagents} --add_rate_min {add_rate_min} --add_rate_max {add_rate_max} --curr_epochs 1000 --difficulty {difficulty} "+\
                       f"--exp_name {exp_name} --save_every {save_every} "
 
@@ -123,6 +128,12 @@ for num_heads in [1,2,4]:
                 run_str += "--autoencoder_action "
             if 'mha' in method:
                 run_str += '--mha_comm '
+            if 'timac' in method:
+                run_str += '--timac '
+            else:
+                run_str += '--ic3net --recurrent '
+            if 'preencode' in method:
+                run_str += '--preencode '
 
             # Important: If you want to restore training just use the --restore tag
             # run for all seeds

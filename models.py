@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import numpy as np
 
 class SelfAttention(nn.Module):
-    def __init__(self, num_heads, emb):
+    def __init__(self, num_heads, emb, dropout=0.1):
         super(SelfAttention, self).__init__()
         self.num_heads = num_heads
         self.norm_factor = 1 / np.sqrt(emb)
@@ -17,40 +17,36 @@ class SelfAttention(nn.Module):
 
         self.unifyheads = nn.Linear(emb * self.num_heads, emb)
 
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x, mask=None, is_comm=False):
-        # print(x.size(), x.shape, len(x.size()))
-        if len(x.size()) == 3:
-            b, n, e = x.shape   # batch size, number of agents, embedding size
-        else:
-            b, e = x.shape
-            n = 1
+        b, t, e = x.shape   # batch size (number of agents), number or comms / steps, embedding size
         h = self.num_heads
-        head_batch_shape = (b * h, n, e)
-        Q = self.toQ(x).view(head_batch_shape)
-        K = self.toK(x).view(head_batch_shape)
-        V = self.toV(x).view(head_batch_shape)
+        Q = self.toQ(x).view(b, t, h, e).transpose(1,2).reshape(b*h,t,e)
+        K = self.toK(x).view(b, t, h, e).transpose(1,2).reshape(b*h,t,e)
+        V = self.toV(x).view(b, t, h, e).transpose(1,2).reshape(b*h,t,e)
         Q = Q * self.norm_factor
         K = K * self.norm_factor
         dot = torch.bmm(Q, K.transpose(1, 2))
-        assert dot.size() == (b * h, n, n)
+        assert dot.size() == (b * h, t, t)
         if mask is not None:
             # mask again before softmax
             # repeat for number of heads
-            mask = mask.repeat_interleave(repeats=h, dim=0)
+            # mask = mask.repeat_interleave(repeats=b*h, dim=0)
+            if not is_comm:
+                mask = mask.unsqueeze(-1).expand_as(dot)
             dot = dot * mask
-            dot = dot.masked_fill(mask == 0, -1e9)
+            dot = dot.masked_fill(dot == 0, -1e9)
 
         attn = F.softmax(dot, dim=-1)
-        out = torch.bmm(attn, V).view(b, h, n, e)
-        out = out.transpose(1, 2).contiguous().view(b, n, h * e)
-        if is_comm:
-            out = out.sum(0)
-        out = self.unifyheads(out).reshape(n, -1, e)
-        out = F.relu(out)
-        if n == 1 or is_comm:
-            out = out.reshape(b, e)
+        out = torch.bmm(attn, V).view(b, h, t, e)
+        out = out.transpose(1, 2).contiguous().view(b, t, h * e)
+        out = out.sum(1)   # sum over attention scores
+        out = self.unifyheads(out)
+        out = torch.tanh(out)
+        out = self.dropout(out)
         return out
+
 
 class MLP(nn.Module):
     def __init__(self, args, num_inputs):
@@ -100,7 +96,7 @@ class Random(nn.Module):
             var = Variable(torch.randn(sizes + (o, )), requires_grad=True)
             out.append(F.log_softmax(var, dim=-1))
 
-        return out, v
+        return out[0], v, None
 
 
 class RNN(MLP):
@@ -125,7 +121,7 @@ class RNN(MLP):
             ret = (next_hid.clone(), cell_state.clone())
             next_hid = next_hid.view(batch_size, self.nagents, self.hid_size)
         else:
-            next_hid = F.tanh(self.affine2(prev_hid) + encoded_x)
+            next_hid = torch.tanh(self.affine2(prev_hid) + encoded_x)
             ret = next_hid
 
         v = self.value_head(next_hid)

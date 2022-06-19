@@ -98,8 +98,8 @@ class CommNetMLP(nn.Module):
         # if self.args.env_name == 'starcraft':
         #     self.state_encoder = nn.Linear(num_inputs, num_inputs)
         #     self.encoder = nn.Linear(num_inputs * 2, args.hid_size)
-        if args.recurrent:
-            self.hidd_encoder = nn.Linear(args.hid_size, args.hid_size)
+        # if args.recurrent:
+        #     self.hidd_encoder = nn.Linear(args.hid_size, args.hid_size)
 
         # TODO: currently the prototype is only being handled for the recurrent case. Do it more generally
         if args.recurrent:
@@ -236,7 +236,7 @@ class CommNetMLP(nn.Module):
         return x, hidden_state, cell_state
 
     def decode(self):
-        y = self.h_state + self.comms_all
+        y = self.comms_all
         y = self.decoderNet(y)
         return y
 
@@ -411,8 +411,11 @@ class CommNetMLP(nn.Module):
 
             if self.args.mha_comm:
                 # Multi-head attention for incoming comms
-                c = self.comm_attention(comm.view(n,n,self.args.comm_dim), is_comm=True)
-                c = c + hidden_state.view(n,self.args.comm_dim)
+                comm_mask = (mask * agent_mask * agent_mask_transpose)[:,:,:,0].reshape(batch_size,n,n)
+                # print(comm_mask.shape)
+                c = self.comm_attention(comm.view(n,n,self.args.comm_dim).transpose(1,0), mask=comm_mask, is_comm=True)
+                # if self.args.recurrent:
+                #     c = c + hidden_state.view(n,self.args.comm_dim)
                 c = c.reshape(batch_size, n, self.args.comm_dim)
                 # print(c.shape)
 
@@ -426,14 +429,11 @@ class CommNetMLP(nn.Module):
 
                 c = self.C_modules[i](comm_sum)
             if self.args.autoencoder:
-                self.comms_all = c.clone()  # encoded received communciations for autoencoder
+                self.comms_all = c.clone() + hidden_state  # encoded received communciations for autoencoder
 
             if self.args.recurrent:
-                if self.args.mha_comm:
-                    inp = c
-                else:
-                    # skip connection - combine comm. matrix and encoded input for all agents
-                    inp = hidden_state + c
+                # skip connection - combine comm. matrix and encoded input for all agents
+                inp = hidden_state + c
 
                 # inp = inp.view(batch_size * n, self.hid_size)
 

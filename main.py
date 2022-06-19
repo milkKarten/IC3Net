@@ -10,6 +10,7 @@ import torch
 import data
 from models import *
 from comm import CommNetMLP
+from timac import TIMAC
 from utils import *
 from action_utils import parse_action_args
 from trainer import Trainer
@@ -88,6 +89,8 @@ parser.add_argument('--commnet', action='store_true', default=False,
                     help="enable commnet model")
 parser.add_argument('--ic3net', action='store_true', default=False,
                     help="enable commnet model")
+parser.add_argument('--timac', action='store_true', default=False,
+                    help="enable transformer model")
 parser.add_argument('--nagents', type=int, default=1,
                     help="Number of agents (used in multiagent)")
 parser.add_argument('--comm_mode', type=str, default='avg',
@@ -205,6 +208,8 @@ parser.add_argument('--mha_comm', action='store_true', default=False,
                     help='multi-headed attention for communication receiving')
 parser.add_argument('--num_heads', type=int, default=1,
                     help="Number of heads for attention")
+parser.add_argument('--preencode', action='store_true', default=False,
+                    help='pretrain autoencoder')
 
 # first add environment specific args to the parser
 init_args_for_env(parser)
@@ -216,7 +221,8 @@ if args.ic3net:
     args.commnet = 1
     args.hard_attn = 1
     args.mean_ratio = 0
-
+elif args.timac:
+    args.mean_ratio = 0
     # For TJ set comm action to 1 as specified in paper to showcase
     # importance of individual rewards even in cooperative games
     # if args.env_name == "traffic_junction":
@@ -279,7 +285,8 @@ if args.commnet:
     policy_net = CommNetMLP(args, num_inputs)
 elif args.random:
     policy_net = Random(args, num_inputs)
-
+elif args.timac:
+    policy_net = TIMAC(args, num_inputs)
 # this is what we are working with for IC3 Net predator prey.
 elif args.recurrent:
     policy_net = RNN(args, num_inputs)
@@ -366,9 +373,52 @@ start_epoch  = 0
 
 def run(num_epochs):
     # for ep in range(start_epoch, start_epoch + num_epochs):
+    if args.preencode and not args.ic3net:
+        random_net = Random(args, num_inputs)
+        trainer_rand = Trainer(args, random_net, data.init(args.env_name, args))
+        # optimizer = torch.optim.RMSprop(policy_net.parameters(), lr=0.001)
+        optimizer = torch.optim.Adadelta(policy_net.parameters())
+        loss = 0
+        i = 0
+        info_comm = dict()
+        info_comm['comm_action'] = np.zeros(args.nagents, dtype=int)
+        b_size = 64
+        eps = 500
+        eps_ = 0
+        while True:
+            inputs = trainer_rand.get_episode(eps_, random=True)
+            for x in inputs:
+                policy_net(x, info_comm)
+                decoded = policy_net.decode()
+                # print(decoded.shape, x.shape)
+                x_all = torch.zeros_like(decoded)
+                # x_all = x.reshape(-1).expand_as(decoded)
+                # x_all = x.reshape(-1).expand(decoded.shape[0], )
+                encoded = x.sum(dim=1).expand(args.nagents, -1).reshape(args.nagents, -1)
+                if args.autoencoder_action:
+                    x_all[:, :-args.nagents] = encoded
+                else:
+                    x_all = encoded
+                # print(x_all)
+                # print(decoded)
+                # print()
+                loss += torch.nn.functional.mse_loss(decoded, x_all)
+                i += 1
+                if i % b_size == 0:
+                    policy_net.reset()
+                    loss /= float(i)
+                    loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    # print(eps_, loss.item())
+                    loss, i = 0, 0
+                    eps_ += 1
+            if eps_ > eps: break
     for ep in range(start_epoch, num_epochs):
         epoch_begin_time = time.time()
         stat = dict()
+        if ep % 20 == 0 and args.timac and False:
+            policy_net.reset_layers()
 
         # added to store stats to numpy array
 
@@ -537,6 +587,7 @@ if args.load_pretrain:
     policy_net.load_state_dict(d['policy_net'])
     policy_net.budget = args.budget
     trainer.load_state_dict(d['trainer'])
+
 
 run(args.num_epochs)
 
