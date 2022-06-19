@@ -10,7 +10,7 @@ import torch
 import data
 from models import *
 from comm import CommNetMLP
-from timac import TIMAC
+from timmac import TIMMAC
 from utils import *
 from action_utils import parse_action_args
 from trainer import Trainer
