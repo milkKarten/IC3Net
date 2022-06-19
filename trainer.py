@@ -255,8 +255,9 @@ class Trainer(object):
                 decoded = self.policy_net.decode()
                 x_all = torch.zeros_like(decoded)
                 if self.args.recurrent:
-                    x_all[:,:-self.args.nagents] = x[0].sum(dim=1).expand(self.args.nagents, -1)
-                    x_all[:,-self.args.nagents:] = torch.tensor(actual[0])
+                    # x_all[:,:-self.args.nagents] = x[0].sum(dim=1).expand(self.args.nagents, -1)
+                    x_all[0,:,:-self.args.nagents] = x[0].sum(dim=1).expand(1, self.args.nagents, -1)
+                    x_all[0,:,-self.args.nagents:] = torch.tensor(actual[0])
                 else:
                     # decoded = decoded.reshape(decoded.shape[0],decoded.shape[1])
                     x_all[:,:-self.args.nagents] = x.reshape(decoded.shape[0], decoded.shape[1]-self.args.nagents)
