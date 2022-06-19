@@ -105,7 +105,7 @@ class Trainer(object):
             stat['budget'] = self.policy_net.budget
 
         # episode_comm = torch.zeros(self.args.nagents)
-        if self.args.timac and not random:
+        if self.args.timmac and not random:
             self.policy_net.reset()
         if random:
             inputs = []

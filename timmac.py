@@ -20,7 +20,7 @@ class TIMMAC(nn.Module):
         and weights
 
         Arguments:
-            TIMAC {object} -- Self
+            TIMMAC {object} -- Self
             args {Namespace} -- Parse args namespace
             num_inputs {number} -- Environment observation dimension for agents
         """

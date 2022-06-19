@@ -89,7 +89,7 @@ parser.add_argument('--commnet', action='store_true', default=False,
                     help="enable commnet model")
 parser.add_argument('--ic3net', action='store_true', default=False,
                     help="enable commnet model")
-parser.add_argument('--timac', action='store_true', default=False,
+parser.add_argument('--timmac', action='store_true', default=False,
                     help="enable transformer model")
 parser.add_argument('--nagents', type=int, default=1,
                     help="Number of agents (used in multiagent)")
@@ -221,7 +221,7 @@ if args.ic3net:
     args.commnet = 1
     args.hard_attn = 1
     args.mean_ratio = 0
-elif args.timac:
+elif args.timmac:
     args.mean_ratio = 0
     # For TJ set comm action to 1 as specified in paper to showcase
     # importance of individual rewards even in cooperative games
@@ -285,8 +285,8 @@ if args.commnet:
     policy_net = CommNetMLP(args, num_inputs)
 elif args.random:
     policy_net = Random(args, num_inputs)
-elif args.timac:
-    policy_net = TIMAC(args, num_inputs)
+elif args.timmac:
+    policy_net = TIMMAC(args, num_inputs)
 # this is what we are working with for IC3 Net predator prey.
 elif args.recurrent:
     policy_net = RNN(args, num_inputs)
@@ -417,7 +417,7 @@ def run(num_epochs):
     for ep in range(start_epoch, num_epochs):
         epoch_begin_time = time.time()
         stat = dict()
-        if ep % 20 == 0 and args.timac and False:
+        if ep % 20 == 0 and args.timmac and False:
             policy_net.reset_layers()
 
         # added to store stats to numpy array

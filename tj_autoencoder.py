@@ -13,10 +13,10 @@ seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
 # methods = ["easy_proto_autoencoder_minComm"]
 # methods = ['hard_fixed', 'hard_fixed_autoencoder']
 # methods = ['baseline_easy_ic3net_autoencoder_action_mha']
-# methods = ['baseline_easy_timac_autoencoder_action_attend_mha1_pre']
-methods = ['baseline_hard_timac_mha_autoencoder_action',
-            'baseline_hard_timac_mha_autoencoder_action_preencode',
-            'baseline_hard_timac_autoencoder_action',
+# methods = ['baseline_easy_timmac_autoencoder_action_attend_mha1_pre']
+methods = ['baseline_hard_timmac_mha_autoencoder_action',
+            'baseline_hard_timmac_mha_autoencoder_action_preencode',
+            'baseline_hard_timmac_autoencoder_action',
             'baseline_hard_ic3net_mha_autoencoder_action']
 # methods = ['hard_fixed_proto', 'hard_fixed_proto_autoencoder']
 # methods = ["easy_proto_soft_minComm_autoencoder_action"]
@@ -128,8 +128,8 @@ for num_heads in [1]:
                 run_str += "--autoencoder_action "
             if 'mha' in method:
                 run_str += '--mha_comm '
-            if 'timac' in method:
-                run_str += '--timac '
+            if 'timmac' in method:
+                run_str += '--timmac '
             else:
                 run_str += '--ic3net --recurrent '
             if 'preencode' in method:
