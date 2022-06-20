@@ -63,6 +63,7 @@ class MultiProcessTrainer(object):
         self.grads = None
         self.worker_grads = None
         self.is_random = args.random
+        self.best_model_reward = -np.inf
 
     def quit(self):
         for comm in self.comms:
