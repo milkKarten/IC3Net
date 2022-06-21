@@ -20,6 +20,7 @@ def merge_stat(src, dest):
             dest[k] = v
         elif isinstance(v, numbers.Number):
             dest[k] = dest.get(k, 0) + v
+
         elif isinstance(v, np.ndarray): # for rewards in case of multi-agent
             dest[k] = dest.get(k, 0) + v
         else:
@@ -29,6 +30,7 @@ def merge_stat(src, dest):
                 dest[k].append(v)
             else:
                 dest[k] = [dest[k], v]
+
 
 def normal_entropy(std):
     var = std.pow(2)

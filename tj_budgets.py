@@ -2,13 +2,17 @@ import os, sys, subprocess
 
 os.environ["OMP_NUM_THREADS"] = "1"
 env = "traffic_junction"
-seeds = [0,1,2,3,4,5,6,7,8,9,10]
-# seeds = [1, 2, 3]
+# seeds = [0,1,2,3,4,5,6,7,8,9,10]
+seeds = [0]
+
+# seeds = [1, 2, 3,4]
 # seeds = [777]
 # seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 # methods = ['hard_soft_minComm_autoencoder', 'easy_soft_minComm_autoencoder'. 'easy_proto_soft_minComm_autoencoder']
-methods = ['tj_easy_fixed_autoencoder_action']
+methods = ['tj_comm_intent_1_easy_fixed_autoencoder_action']
+pre_trained_network_fp = "DECOMP_STATE_tj_tj_easy_fixed_autoencoder_action0.7"
+fdm_path = "DECOMP_STATE_tj_tj_train_fdm_easy_fixed_autoencoder_action0.7"
 # pretrain_files = ['tj_hard_fixed_autoencoder', 'tj_easy_fixed_autoencoder', 'tj_easy_fixed_proto_autoencoder']
 pretrain_files = ['tj_easy_fixed_autoencoder']
 # for soft_budget in [0.9, 0.5, 0.3, 0.1]:
@@ -21,14 +25,14 @@ for soft_budget in [0.7]:
         elif 'medium' in method:
             # protos_list = [56, 28, 112]
             protos_list = [112] # use 1 layer of redundancy
-            num_epochs = 100
+            num_epochs = 1000
         elif 'hard' in method:
             # protos_list = [144, 72, 288]
             protos_list = [128*2] # single redundancy
             # comms_list = [64]
-            num_epochs = 200
+            num_epochs = 1000
         for num_proto in protos_list:
-            exp_name = "AGG_STATE_tj_" + method + str(soft_budget)
+            exp_name = "DECOMP_STATE_tj_" + method + str(soft_budget)
             # exp_name = "tj_EX_" + method + "_p" + str(num_proto) + "_c" + str(comm_dim)
             vision = 0
             soft_budget = 0.7
@@ -104,6 +108,16 @@ for soft_budget in [0.7]:
                 run_str += f"--use_tj_curric "
             if 'soft' in method:
                 run_str += f"--load_pretrain --pretrain_exp_name {pretrain_exp_name} "
+            if "only_update_decoder" in method:
+                run_str += f"--only_update_decoder "
+                run_str += f"--pre_trained_network {pre_trained_network_fp} "
+            if "train_fdm" in method:
+                run_str += f"--train_fdm "
+                run_str += f"--pre_trained_network {pre_trained_network_fp} "
+            if "comm_intent_1" in method:
+                run_str += f"--comm_intent_1 "
+                run_str += f"--fdm_path {fdm_path} "
+
 
             if "minComm" in method:
                 run_str += "--min_comm_loss --eta_comm_loss 1. "

@@ -8,6 +8,7 @@ seeds = [0]
 # method = "easy_baseline_test_autoencoder_action"
 
 method = "DECOMP_STATE_tj_tj_easy_fixed_autoencoder_action0.7"
+pre_trained_network_fp = "DECOMP_STATE_tj_tj_train_fdm_easy_fixed_autoencoder_action0.7"
 # pretrain_exp_name = 'tj_EX_fixed_proto_comm_vs_protos_medium_p112_c64_d'
 if "easy" in method:
     protos_list = [56]
@@ -112,6 +113,13 @@ for num_proto in protos_list:
             run_str += "--autoencoder_action "
         if 'mha' in method:
             run_str += '--mha_comm '
+        if 'no_comm' in method:
+            run_str = run_str.replace("_no_comm","")
+            run_str += '--no_comm '
+        if "train_fdm" in method:
+            run_str += f"--train_fdm "
+            run_str += f"--pre_trained_network {pre_trained_network_fp} "
+
 
         # Important: If you want to restore training just use the --restore tag
         # run for all seeds

@@ -150,6 +150,10 @@ class TrafficJunctionEnv(gym.Env):
                                     spaces.Discrete(self.naction),
                                     spaces.Discrete(self.npath),
                                     spaces.MultiBinary( (2*vision + 1, 2*vision + 1, self.vocab_size))))
+            # self.observation_space = spaces.Tuple((
+            #                         spaces.Discrete(self.naction),
+            #                         spaces.Discrete(self.npath),
+            #                         spaces.MultiBinary( (2*vision + 1, 2*vision + 1, self.vocab_size+1))))#+1 on vocab size for extra get_alive obs
         else:
             # r_i, (x,y), vocab = [road class + car]
             self.vocab_size = 1 + 1
@@ -314,7 +318,8 @@ class TrafficJunctionEnv(gym.Env):
     def exit_render(self):
         curses.endwin()
 
-    def seed(self):
+    def seed(self,i):
+        np.random.seed(i)
         return
 
     def _set_grid(self):
@@ -370,12 +375,17 @@ class TrafficJunctionEnv(gym.Env):
             slice_x = slice(p[1], p[1] + (2 * self.vision) + 1)
             v_sq = self.bool_base_grid[slice_y, slice_x]
 
+            # alive_vec = [self.get_alive(i) for i in range(len(self.car_loc))]
+
+
             # when dead, all obs are 0. But should be masked by trainer.
             if self.alive_mask[i] == 0:
                 act = np.zeros_like(act)
                 r_i = np.zeros_like(r_i)
                 p_norm = np.zeros_like(p_norm)
                 v_sq = np.zeros_like(v_sq)
+
+            # v_sq = np.expand_dims(np.expand_dims(np.insert(v_sq[0][0],-1,1-self.get_alive(i)),axis=0),axis=0)
 
             if self.vocab_type == 'bool':
                 o = tuple((act, r_i, v_sq))
@@ -661,6 +671,15 @@ class TrafficJunctionEnv(gym.Env):
     def list2tup(self,list):
         return (*list, )
 
+    def get_grid(self):
+        grid = np.full(self.dims[0] * self.dims[1], self.OUTSIDE_CLASS, dtype=int).reshape(self.dims)
+        w, h = self.dims
+
+        # Mark the roads
+        roads = get_road_blocks(w,h, self.difficulty)
+        for road in roads:
+            grid[road] = self.ROAD_CLASS
+        return grid
 
     def init_pos2enc(self):
         # w, h = self.dims

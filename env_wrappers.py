@@ -108,6 +108,7 @@ class GymWrapper(object):
                 _obs.append(np.concatenate(ag_obs))
             obs = np.stack(_obs)
 
+        print (self.observation_dim)
         obs = obs.reshape(1, -1, self.observation_dim)
         obs = torch.from_numpy(obs).double()
         return obs
@@ -137,9 +138,11 @@ class GymWrapper(object):
     def pos2obs_wrapper(self,obs):
         return self.env.pos2obs(obs)
 
-
     def get_vocab_size_wrapper(self):
         return self.env.get_vocab_size()
+
+    def get_grid_wrapper(self):
+        return self.env.get_grid()
 
 
 class StarcraftWrapper(object):

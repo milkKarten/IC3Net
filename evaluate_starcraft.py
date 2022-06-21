@@ -85,6 +85,7 @@ if hasattr(args, 'enemy_comm') and args.enemy_comm:
     else:
         raise RuntimeError("Env. needs to pass argument 'nenemy'.")
 
+# args.add_rate_min=0.5 #TODO: REMEMBER TO COMMENT THIS OUT
 env = data.init(args.env_name, args, False)
 
 num_inputs = env.observation_dim
@@ -148,11 +149,14 @@ st_time = time.time()
 
 all_stats = []
 for i in range(500):
-    ep, stat, all_comms, comms_to_loc, comms_to_act, comms_to_full, comm_action_episode = evaluator.run_episode()
+    ep, stat, all_comms, comms_to_loc, comms_to_act, comms_to_full, comm_action_episode = evaluator.run_episode(i)
     # evaluator.env.env.save_replay()
     all_stats.append(stat)
 total_episode_time = time.time() - st_time
 average_stat = {}
+
+np.save("saved_actions/actions_no_comm=" + str(args.no_comm) + "_" + str(args.exp_name) + ".npy",evaluator.seed2act)
+np.save("saved_actions/isalive_no_comm=" + str(args.no_comm) + "_" + str(args.exp_name) + ".npy",evaluator.seed2alive)
 
 for key in all_stats[0].keys():
     average_stat[key] = np.mean([stat.get(key) for stat in all_stats])

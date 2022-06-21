@@ -23,7 +23,17 @@ class Evaluator:
         self.episonde_n = 0
         self.car2color = [(0,0,255),(255,0,0),(255, 165, 0),(230,230,250),(0,255,0)]
         self.car_imgs = [cv2.imread("car_imgs/car_" + str(i) + ".png") for i in range(5)]
+        self.seed2act = {}
+        self.seed2alive = {}
 
+    def save_action(self,a,seed):
+        alive_vec = [self.env.get_alive_wrapper(i) for i in range(self.args.nagents)]
+        if seed in self.seed2act:
+            self.seed2act[seed].append(a)
+            self.seed2alive[seed].append(alive_vec)
+        else:
+            self.seed2act[seed] = [a]
+            self.seed2alive[seed] = [alive_vec]
 
     def run_episode(self, epoch=1):
         self.episonde_n += 1
@@ -34,7 +44,10 @@ class Evaluator:
         all_comms = []
         episode = []
         reset_args = getargspec(self.env.reset).args
+        self.env.env.seed(epoch)
+        # print (epoch)
         if 'epoch' in reset_args:
+            # print ("reset args")
             state = self.env.reset(epoch)
         else:
             state = self.env.reset()
@@ -54,6 +67,7 @@ class Evaluator:
         comms_to_prey_act = {} # record action 1
         comms_to_loc_full = {} # record all
         comm_action_episode = np.zeros(self.args.max_steps)
+        sas_trips = []
         for t in range(self.args.max_steps):
             misc = dict()
             info['step_t'] = t
@@ -169,12 +183,25 @@ class Evaluator:
 
             action = select_action(self.args, action_out, eval_mode=True)
             action, actual = translate_action(self.args, self.env, action)
+            self.save_action(action,epoch)
 
-
-
+            if self.args.env_name == 'traffic_junction':
+                if self.args.train_fdm:
+                    sas_trips.append([x[0].squeeze().tolist(),actual[0].tolist()])
+                    if t != 0:
+                        sas_trips[t-1].append(x[0].squeeze().tolist())
             if self.args.env_name == 'traffic_junction':
                 if self.args.autoencoder and self.args.autoencoder_action:
                     decoded = self.policy_net.decode()
+
+
+                    x[0] = x[0].squeeze()
+                    # is_alive_vector = torch.tensor([1-self.env.get_alive_wrapper(i) for i in range(self.args.nagents)]).unsqueeze(0).T
+                    #
+                    # x[0] = torch.cat((x[0],is_alive_vector),dim=1)
+                    # #swap last two columns
+                    # x[0][:,[-1,-2]] = x[0][:,[-2,-1]]
+
                     x_all = x[0].expand(self.args.nagents,self.args.nagents, -1)
                     gt_actions = torch.tensor(actual[0]).unsqueeze(1).expand(self.args.nagents,self.args.nagents,-1)
                     x_all = torch.cat((x_all,gt_actions),dim=2)
@@ -182,93 +209,118 @@ class Evaluator:
                     # x_all[0,:,:-self.args.nagents] = x[0].sum(dim=1).expand(self.args.nagents, -1)
                     # x_all[0,:,-self.args.nagents:] = torch.tensor(actual[0])
                     #
-                    
+
                     loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all).detach().numpy()
                     stat["autoencoder_loss"] += loss_autoencoder
-                    # stat["n_loss_checks"] += 1
+                    stat["n_loss_checks"] += 1
 
-                #     decoded = decoded.detach()
-                #     decoded = decoded.squeeze()
-                #     player_decoded = decoded[0]
-                #     player_decoded_locs = player_decoded[0:,2:-2]
-                #
-                #     player_decoded_ris = player_decoded[0:,1].detach().numpy()
-                #     player_decoded_prev_actions = player_decoded[0:,0].detach().numpy()
-                #     player_decoded_actions = player_decoded[1:,-1].detach().numpy()
-                #
-                #     player_decoded_actions = np.where(player_decoded_actions > 1, 1, 0)
-                #     player_decoded_locs = torch.nn.functional.softmax(player_decoded_locs/0.0001,dim=1).tolist()
-                #
-                #
-                #     frame = np.ones((620,1250,3),np.uint8)*255
-                #     font = cv2.FONT_HERSHEY_SIMPLEX
-                #     cv2.putText(frame, 'GT State', (180,30), font, 1, (0, 0, 0), 2, cv2.LINE_AA)
-                #     cv2.putText(frame, 'Decoded State', (830,30), font, 1, (0, 0, 0), 2, cv2.LINE_AA)
-                #     cv2.putText(frame, 'AE Loss: ' + str(np.round(loss_autoencoder,3)), (520,250), font, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
-                #
-                #
-                #     cv2.rectangle(frame,(30,30+10),(490,440+10),(0,0,0),3)
-                #     cv2.rectangle(frame,(30+670,30+10),(490+670,440+10),(0,0,0),3)
-                #     h, w,_ =  self.car_imgs[i].shape
-                #     for i in range(0, len(self.env.env.car_loc)):
-                #         player_decoded_locs[i] = np.round(player_decoded_locs[i],0)
-                #         pred_loc = self.env.obs2pos_wrapper(tuple(player_decoded_locs[i]))
-                #         if pred_loc is None:
-                #             # print (player_decoded_locs[i])
-                #             pred_loc = [0,0]
-                #
-                #         state_ = state.squeeze().numpy()
-                #
-                #         # p = self.env.env.car_loc[i]
-                #         p = self.env.obs2pos_wrapper(tuple(state_[i][2:-1]))
-                #
-                #         if p is None:
-                #             p = [0,0]
-                #
-                #         x = p[0]*50+50
-                #         y = p[1]*50+50
-                #
-                #
-                #
-                #         pred_x = pred_loc[0]*50+50+670
-                #         pred_y = pred_loc[1]*50+50
-                #
-                #         #draw agent locations if alive
-                #         if self.env.get_alive_wrapper(i):
-                #             cv2.rectangle(frame,(x,y),(x+50,y+20),self.car2color[i],-1)
-                #         # if pred_loc[0] + pred_loc[1] != 0:
-                #             cv2.rectangle(frame,(pred_x,pred_y),(pred_x+50,pred_y+20),self.car2color[i],-1)
-                #
-                #         #draw key to show agent stats
-                #         key_end= 30+50,460+20  + i*30
-                #         key_start = 30,460 + i*30
-                #         cv2.rectangle(frame,key_start,key_end,self.car2color[i],-1)
-                #
-                #         # print (next_state_[i])
-                #         prev_act = "go" if state_[i][0] == 0 else "brake"
-                #
-                #         curr_act = "go" if actual[0][i] == 0 else "brake"
-                #
-                #         cv2.putText(frame, 'Route ID: ' + str(state_[i][1]) + ", Prev Act: " + str(prev_act) + ", Curr Act: " + str(curr_act),(key_end[0]+10,key_end[1]-3), font, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
-                #
-                #
-                #
-                #         dec_key_end = (30+670+50,460+20  + i*30)
-                #         dec_key_start = (30+670,460 + i*30)
-                #
-                #         dec_prev_act = "go" if player_decoded_prev_actions[i] < 1 else "brake"
-                #         dec_curr_act = "go" if player_decoded_prev_actions[i] < 1 else "brake"
-                #         cv2.rectangle(frame,dec_key_start,dec_key_end,self.car2color[i],-1)
-                #         cv2.putText(frame, 'Route ID: ' + str(np.round(player_decoded_ris[i],3)) + ", Prev Act: " + str(dec_prev_act) + ", Curr Act: " + str(dec_curr_act),(dec_key_end[0]+10,dec_key_end[1]-3), font, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
-                #
-                #         # frame[p[1]*30 + 50:p[1]*30 + 50+frame.shape[0], p[0]*30 + 50:p[0]*30 + 50+frame.shape[1],:] = self.car_imgs[i,:]
-                #     # print (state_)
-                #     # cv2.imshow("frame",frame)
-                #     # cv2.waitKey(0)
-                #     # print ("\n")
-                #     cv2.imwrite("Decoding_tests/episode" + str(self.episonde_n) + "/frame"+str(t)+".png",frame)
-                #
-                #     # assert False
+                    decoded = decoded.detach()
+                    decoded = decoded.squeeze()
+                    player_decoded = decoded[0]
+
+                    player_decoded_locs = player_decoded[0:,2:-2]
+
+                    player_decoded_ris = player_decoded[0:,1].detach().numpy()
+                    player_decoded_prev_actions = player_decoded[0:,0].detach().numpy()
+                    player_decoded_actions = player_decoded[1:,-1].detach().numpy()
+
+                    player_decoded_actions = np.where(player_decoded_actions > 1, 1, 0)
+
+                    # player_decoded_locs = player_decoded_locs.tolist()
+                    # player_decoded_locs_ = player_decoded_locs.clone()
+                    player_decoded_locs = torch.nn.functional.softmax(player_decoded_locs/0.0001,dim=1).tolist()
+
+                    # player_decoded_locs_ = torch.nn.functional.softmax(player_decoded_locs_,dim=1).tolist()
+                    # print (player_decoded_locs_)
+                    # print (sum(player_decoded_locs_[0]))
+                    # assert False
+                    # print (player_decoded_locs_)
+                    # stat["mean_highest_oc_prob"] = np.mean(player_decoded_locs_,axis=1)
+
+                    frame = np.ones((620,1250,3),np.uint8)*255
+
+                    #draw roads
+                    w, h = self.env.env.dims
+                    grid = self.env.get_grid_wrapper()
+                    for grid_i in range(h):
+                        for grid_j in range(w):
+                            if grid[grid_i,grid_j] == 1:
+                                x = grid_i*50+40
+                                y = grid_j*50+40
+                                cv2.rectangle(frame,(x,y),(x+70,y+50),(150,150,150),-1)
+                                cv2.rectangle(frame,(x+670,y),(x+70+670,y+50),(150,150,150),-1)
+
+
+                    font = cv2.FONT_HERSHEY_SIMPLEX
+                    cv2.putText(frame, 'GT State', (170,30), font, 1, (0, 0, 0), 2, cv2.LINE_AA)
+                    cv2.putText(frame, 'Decoded State', (800,30), font, 1, (0, 0, 0), 2, cv2.LINE_AA)
+                    cv2.putText(frame, 'AE Loss: ' + str(np.round(loss_autoencoder,3)), (490,250), font, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
+
+
+                    cv2.rectangle(frame,(40,30+10),(410,390),(0,0,0),3)
+                    cv2.rectangle(frame,(40+670,30+10),(410+670,390),(0,0,0),3)
+                    h, w,_ =  self.car_imgs[i].shape
+                    for i in range(0, len(self.env.env.car_loc)):
+                        player_decoded_locs[i] = np.round(player_decoded_locs[i],0)
+                        print (player_decoded_locs[i])
+
+                        pred_loc = self.env.obs2pos_wrapper(tuple(player_decoded_locs[i]))
+                        if pred_loc is None:
+                            # print (player_decoded_locs[i])
+                            pred_loc = [0,0]
+
+                        state_ = state.squeeze().numpy()
+
+                        # p = self.env.env.car_loc[i]
+                        p = self.env.obs2pos_wrapper(tuple(state_[i][2:-1]))
+
+                        if p is None:
+                            p = [0,0]
+
+                        x = p[0]*50+50
+                        y = p[1]*50+50
+
+
+
+                        pred_x = pred_loc[0]*50+50+670
+                        pred_y = pred_loc[1]*50+50
+
+                        #draw agent locations if alive
+                        if self.env.get_alive_wrapper(i):
+                            cv2.rectangle(frame,(x,y),(x+50,y+20),self.car2color[i],-1)
+                        # if pred_loc[0] + pred_loc[1] != 0:
+                            cv2.rectangle(frame,(pred_x,pred_y),(pred_x+50,pred_y+20),self.car2color[i],-1)
+
+                        #draw key to show agent stats
+                        key_end= 30+50,460+20  + i*30
+                        key_start = 30,460 + i*30
+                        cv2.rectangle(frame,key_start,key_end,self.car2color[i],-1)
+
+                        # print (next_state_[i])
+                        prev_act = "go" if state_[i][0] == 0 else "brake"
+
+                        curr_act = "go" if actual[0][i] == 0 else "brake"
+
+                        cv2.putText(frame, 'Route ID: ' + str(state_[i][1]) + ", Prev Act: " + str(prev_act) + ", Curr Act: " + str(curr_act),(key_end[0]+10,key_end[1]-3), font, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
+
+
+
+                        dec_key_end = (30+670+50,460+20  + i*30)
+                        dec_key_start = (30+670,460 + i*30)
+
+                        dec_prev_act = "go" if player_decoded_prev_actions[i] < 1 else "brake"
+                        dec_curr_act = "go" if player_decoded_prev_actions[i] < 1 else "brake"
+                        cv2.rectangle(frame,dec_key_start,dec_key_end,self.car2color[i],-1)
+                        cv2.putText(frame, 'Route ID: ' + str(np.round(player_decoded_ris[i],3)) + ", Prev Act: " + str(dec_prev_act) + ", Curr Act: " + str(dec_curr_act),(dec_key_end[0]+10,dec_key_end[1]-3), font, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
+
+                        # frame[p[1]*30 + 50:p[1]*30 + 50+frame.shape[0], p[0]*30 + 50:p[0]*30 + 50+frame.shape[1],:] = self.car_imgs[i,:]
+                    # print (state_)
+                    cv2.imshow("frame",frame)
+                    cv2.waitKey(0)
+                    # print ("\n")
+                    # cv2.imwrite("decoding_tests/episode" + str(self.episonde_n) + "/frame"+str(t)+".png",frame)
+
+                    # assert False
 
 
 
@@ -318,6 +370,38 @@ class Evaluator:
             state = next_state
             if done:
                 break
+
+        if self.args.train_fdm:
+
+            del sas_trips[-1]
+
+            fdm_states = torch.tensor([sas[0] for sas in sas_trips])
+            fdm_acts = torch.tensor([sas[1] for sas in sas_trips]).unsqueeze(2)
+            fdm_next_states = torch.tensor([sas[2] for sas in sas_trips])
+
+            fdm_sa_pair = torch.cat((fdm_states, fdm_acts),2)
+
+            fdm_sa_pair = torch.flatten(fdm_sa_pair,end_dim=1)
+            fdm_next_states = torch.flatten(fdm_next_states,end_dim=1)
+
+            pred_next_states = self.policy_net.fdm(fdm_sa_pair)
+
+            fdm_n_correct = 0
+            total_fdm_trials = 0
+            for pred_next_state, fdm_next_state in zip(pred_next_states, fdm_next_states):
+                if sum(fdm_next_state) == 0:
+                    continue
+                pred_next_state = torch.nn.functional.softmax(pred_next_state[2:-1]/0.0001).tolist()
+                pred_next_state = np.round(pred_next_state,0)
+
+                if np.array_equal(pred_next_state, fdm_next_state[2:-1].tolist()):
+                    fdm_n_correct += 1
+
+                total_fdm_trials+=1
+            if total_fdm_trials != 0:
+                print (fdm_n_correct/total_fdm_trials)
+                # stat['fdm_acc'] = (fdm_n_correct/total_fdm_trials)
+
         stat['num_steps'] = t + 1
         stat['steps_taken'] = stat['num_steps']
 

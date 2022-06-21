@@ -195,16 +195,37 @@ parser.add_argument('--remove_null', action='store_true', default=False,
                     help='remove null communications from being communicated')
 parser.add_argument('--null_dict_dir', type=str, default='',
                     help='null dictionary directory')
+parser.add_argument('--no_comm', action='store_true', default=False,
+                help="Allow agents to communicate at eval time")
 
 # starcraft maps
 parser.add_argument('--map_name', type=str, default='3m',
                     help='StarCraft map name')
+
+parser.add_argument('--only_update_decoder', action='store_true', default=False,
+               help="Use a pretrained network and only update the decoder")
+
+parser.add_argument('--pre_trained_network', type=str, default="",
+                help="Use a pretrained network")
 
 # multi-headed attention for communication receiving
 parser.add_argument('--mha_comm', action='store_true', default=False,
                     help='multi-headed attention for communication receiving')
 parser.add_argument('--num_heads', type=int, default=1,
                     help="Number of heads for attention")
+
+#communicating intent
+parser.add_argument('--comm_intent_1', action='store_true', default=False,
+                help="Communicating intent, method 1")
+
+parser.add_argument('--intent_horizon', type=int, default=2,
+                    help='Horizon for communicating intent')
+
+parser.add_argument('--train_fdm', action='store_true', default=False,
+                help="Train forward dynamics model")
+
+parser.add_argument('--fdm_path', type=str, default="",
+                help="Forward dynamics model load path")
 
 # first add environment specific args to the parser
 init_args_for_env(parser)
@@ -389,6 +410,9 @@ def run(num_epochs):
                 v.data.append(epoch)
             else:
                 if k in stat and v.divide_by is not None and stat[v.divide_by] > 0:
+                    # if k == "autoencoder_loss":
+                    #     print (stat[v.divide_by])
+
                     stat[k] = stat[k] / stat[v.divide_by]
                 v.data.append(stat.get(k, 0))
 
@@ -537,6 +561,22 @@ if args.load_pretrain:
     policy_net.load_state_dict(d['policy_net'])
     policy_net.budget = args.budget
     trainer.load_state_dict(d['trainer'])
+
+if args.only_update_decoder or args.train_fdm:
+    load_path = os.path.join(args.load, args.env_name, args.pre_trained_network, "seed" + str(args.seed), "models")
+    print("load directory is "+str(load_path))
+    if 'model.pt' in os.listdir(load_path):
+        model_path = os.path.join(load_path, "model.pt")
+
+    else:
+        all_models = sorted([int(f.split('.pt')[0]) for f in os.listdir(load_path)])
+        model_path = os.path.join(load_path, str(all_models[-1])+".pt")
+
+    d = torch.load(model_path)
+    policy_net.load_state_dict(d['policy_net'],strict=False)
+    # print (d['trainer'])
+    # print ("\n")
+    # trainer.load_state_dict(d['trainer'])
 
 run(args.num_epochs)
 

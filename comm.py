@@ -172,6 +172,27 @@ class CommNetMLP(nn.Module):
             #self.decoderNet = nn.Linear(args.hid_size, num_inputs)
             self.decoderNet = nn.Linear(args.hid_size*self.args.nagents, num_inputs*self.args.nagents)
 
+
+        if self.args.train_fdm:
+            self.fdm_layer = nn.Linear(num_inputs + 1, num_inputs)
+        elif self.args.comm_intent_1:
+            self.fdm_layer = nn.Linear(num_inputs + 1, num_inputs)
+
+            load_path = os.path.join(self.args.load, self.args.env_name, self.args.fdm_path, "seed" + str(self.args.seed), "models")
+            if 'best_model.pt' in os.listdir(load_path):
+                model_path = os.path.join(load_path, "best_model.pt")
+            elif 'model.pt' in os.listdir(load_path):
+                model_path = os.path.join(load_path, "model.pt")
+            else:
+                assert False
+
+            state_dict_temp = torch.load(model_path)
+            with torch.no_grad():
+                self.fdm_layer.weight.copy_(state_dict_temp["policy_net"]['fdm_layer.weight'])
+                self.fdm_layer.bias.copy_(state_dict_temp["policy_net"]['fdm_layer.bias'])
+                self.fdm_layer.requires_grad= False
+            
+
         # remove null messages
         # with open('IC3Net/nulls/'+self.args.pretrain_exp_name+'/seed' + str(self.args.seed) + '/nulls.txt', 'r') as f:
         # with open('/Users/seth/Documents/research/neurips/nulls/tj_easy_proto_soft_minComm_autoencoder/seed' + str(self.args.seed) + '/nulls.txt', 'r') as f:
@@ -199,6 +220,13 @@ class CommNetMLP(nn.Module):
         self.toqueries = nn.Linear(args.hid_size, args.hid_size*self.num_heads)
         self.tovalues = nn.Linear(args.hid_size, args.hid_size*self.num_heads)
         self.unifyheads = nn.Linear(args.hid_size + args.hid_size * self.num_heads, args.hid_size)
+
+    def fdm (self, sa):
+        pred = self.fdm_layer(sa)
+        # print (pred)
+        # pred[:,2:-1] = torch.nn.functional.gumbel_softmax(pred[:,2:-1],hard=True)
+
+        return pred
 
     def get_agent_mask(self, batch_size, info):
         n = self.nagents
@@ -242,21 +270,24 @@ class CommNetMLP(nn.Module):
         y = self.h_state + self.comms_all
 
         y = y.unsqueeze(2)
-        y = y.repeat(1,1,5,1)
+        y = y.repeat(1,1,self.nagents,1)
         target_shape = y.shape
         y = torch.flatten(y,start_dim=2)
 
-        # print (y.shape)
         # print (target_shape)
         # print (self.num_inputs*self.args.nagents + self.args.nagents)
         y = self.decoderNet(y)
 
         if self.args.autoencoder_action:
             y = y.reshape(1,self.nagents,self.nagents,self.num_inputs+1)
+            y = y.squeeze()
+            # y[:,:,2:-2] = torch.nn.functional.gumbel_softmax(y[:,:,2:-2],hard=True)
+
         else:
             y = y.reshape(1,self.nagents,self.nagents,self.num_inputs)
-
-        return y.squeeze()
+            y = y.squeeze()
+            # y[:,:,2:-2] = torch.nn.functional.gumbel_softmax(y[:,:,2:-1],hard=True)
+        return y
 
     # def decode(self):
     #     y = self.h_state + self.comms_all
@@ -385,14 +416,12 @@ class CommNetMLP(nn.Module):
                 comm = self.proto_layer.onehot_step(raw_outputs, self.train_mode)
                 all_comms.append(comm.detach().clone())
                 comm = torch.unsqueeze(comm, 0)
-
             else:
                 # print(f"inside else {hidden_state.size()}")
                 comm = hidden_state
                 # print("before", comm.shape, comm) # (5,32)
                 all_comms.append(torch.squeeze(comm, 0).detach().clone())
                 assert self.args.comm_dim == self.args.hid_size , "If not using protos comm dim should be same as hid"
-
             if self.args.remove_null:
                 null_mask = torch.ones_like(comm)
                 for j in range(self.args.nagents):
@@ -486,6 +515,11 @@ class CommNetMLP(nn.Module):
                 comm_sum = comm.sum(dim=1)
 
                 c = self.C_modules[i](comm_sum)
+
+
+            if self.args.no_comm:
+                c = torch.zeros(c.shape)
+
             if self.args.autoencoder:
                 self.comms_all = c.clone()  # encoded received communciations for autoencoder
 

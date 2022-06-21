@@ -106,6 +106,7 @@ class Trainer(object):
 
         # episode_comm = torch.zeros(self.args.nagents)
         episode_comm = []
+        sas_trips = [] #store state, action, next state triplets
         for t in range(self.args.max_steps):
             # print(t)
             misc = dict()
@@ -125,6 +126,7 @@ class Trainer(object):
                 # episode_comm += comm_action
                 if self.args.autoencoder and not self.args.autoencoder_action:
                     decoded = self.policy_net.decode()
+
                     #x_all = x[0].sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
                     x_all = x[0].expand(self.args.nagents,self.args.nagents, -1)
                     if self.loss_autoencoder == None:
@@ -240,8 +242,22 @@ class Trainer(object):
             # this converts stuff to numpy
             action, actual = translate_action(self.args, self.env, action)
             # decode intent + observation autoencoder
+
+            # is_alive_vector = torch.tensor([1-self.env.get_alive_wrapper(i) for i in range(self.args.nagents)]).unsqueeze(0).T
+            x[0] = x[0].squeeze()
+            # x[0] = torch.cat((x[0],is_alive_vector),dim=1)
+            # #swap last two columns
+            # x[0][:,[-1,-2]] = x[0][:,[-2,-1]]
+
+            sas_trips.append([x[0].tolist(),actual[0].tolist()])
+            if t != 0:
+                sas_trips[t-1].append(x[0].tolist())
+
             if self.args.autoencoder and self.args.autoencoder_action:
                 decoded = self.policy_net.decode()
+
+                # decoded[:,:,2:-2] = torch.nn.functional.gumbel_softmax(decoded[:,:,2:-2],hard=True)
+
                 # x_all = torch.zeros_like(decoded)
                 # x_all[0,:,:-self.args.nagents] = x[0].sum(dim=1).expand(self.args.nagents, -1)
                 # x_all[0,:,-self.args.nagents:] = torch.tensor(actual[0])
@@ -256,6 +272,8 @@ class Trainer(object):
                     self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
                 else:
                     self.loss_autoencoder += torch.nn.functional.mse_loss(decoded, x_all)
+
+
 
             comm_budget = info_comm['comm_budget']
             next_state, reward, done, info = self.env.step(actual)
@@ -311,6 +329,28 @@ class Trainer(object):
                 break
         stat['num_steps'] = t + 1
         stat['steps_taken'] = stat['num_steps']
+
+        if self.args.train_fdm:
+
+            # sas_trips = torch.tensor(sas_trips)
+            # assert False
+
+            #remove last element
+            del sas_trips[-1]
+
+            fdm_states = torch.tensor([sas[0] for sas in sas_trips])
+            fdm_acts = torch.tensor([sas[1] for sas in sas_trips]).unsqueeze(2)
+            fdm_next_states = torch.tensor([sas[2] for sas in sas_trips])
+
+
+            fdm_sa_pair = torch.cat((fdm_states, fdm_acts),2)
+
+            fdm_sa_pair = torch.flatten(fdm_sa_pair,end_dim=1)
+            fdm_next_states = torch.flatten(fdm_next_states,end_dim=1)
+
+            pred_next_states = self.policy_net.fdm(fdm_sa_pair)
+            self.fdm_loss = torch.nn.functional.mse_loss(pred_next_states, fdm_next_states)
+
 
         if self.args.min_comm_loss:
             episode_comm = torch.cat(episode_comm, 0).T
@@ -446,13 +486,37 @@ class Trainer(object):
             stat['regularization_loss'] = self.loss_min_comm.item()
             loss += self.loss_min_comm
         if self.args.autoencoder:
+            # #first 32 outputs are for reinforce, next 32 are for autoencoder
+            # encoder_gradient_mask = torch.zeros(self.args.comm_dim, self.args.num_inputs)
+            # reinforce_gradient_mask = torch.zeros(self.args.comm_dim, self.args.num_inputs)
+            #
+            # encoder_gradient_mask[:,int(self.args.comm_dim/2):] = 1
+            # reinforce_gradient_mask[:,0:int(self.args.comm_dim/2)] = 1
+            # self.policy_net.hidd_encoder.weight.register_hook(lambda grad: grad.mul_(encoder_gradient_mask))
+            # loss.backward(retain_graph=True)
+            # self.policy_net.hidd_encoder.weight.register_hook(lambda grad: grad.mul_(reinforce_gradient_mask))
+            # self.loss_autoencoder.backward()
+
+
             stat['autoencoder_loss'] = self.loss_autoencoder.item()
             # l2_norm = sum(p.pow(2.0).sum() for p in self.policy_net.parameters())
             # loss = 0.5 * loss + 0.5 * self.loss_autoencoder + 0.001*l2_norm
             loss = 0.5 * loss + 0.5 * self.loss_autoencoder
 
+        if self.args.only_update_decoder:
+            for name, param in self.policy_net.named_parameters():
+                if "decoderNet" not in name:
+                    param.requires_grad = False
+
+        if self.args.train_fdm:
+            for name, param in self.policy_net.named_parameters():
+                if "fdm" not in name:
+                    param.requires_grad = False
+
+            stat['fdm_loss'] = self.fdm_loss.item()
+            loss = self.fdm_loss
         loss.backward()
-        print (self.loss_autoencoder)
+        # print (self.loss_autoencoder)
         if self.args.autoencoder:
             self.loss_autoencoder = None
         if self.args.min_comm_loss:

@@ -139,9 +139,29 @@ def get_args():
      parser.add_argument('--null_dict_dir', type=str, default='',
                          help='null dictionary directory')
 
+     parser.add_argument('--no_comm', action='store_true', default=False,
+                        help="Allow agents to communicate at eval time")
+
+     parser.add_argument('--only_update_decoder', action='store_true', default=False,
+                       help="Use a pretrained network and only update the decoder")
+
+     parser.add_argument('--pre_trained_network', type=str, default="",
+                        help="Use a pretrained network and only update the decoder")
+
+
      # multi-headed attention for communication receiving
      parser.add_argument('--mha_comm', action='store_true', default=False,
                          help='multi-headed attention for communication receiving')
      parser.add_argument('--num_heads', type=int, default=1,
                          help="Number of heads for attention")
+
+     parser.add_argument('--comm_intent_1', action='store_true', default=False,
+                help="Communicating intent, method 1")
+
+     parser.add_argument('--train_fdm', action='store_true', default=False,
+                help="Train forward dynamics model")
+
+     parser.add_argument('--fdm_path', action='store_true', default=False,
+                help="Forward dynamics model load path")
+
      return parser
