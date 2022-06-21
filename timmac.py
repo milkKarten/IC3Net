@@ -30,7 +30,7 @@ class TIMMAC(nn.Module):
         self.nagents = args.nagents
         self.hid_size = args.hid_size
         self.comm_passes = args.comm_passes
-        self.max_len = 10
+        self.max_len = args.dim
         self.dropout = 0.
 
         # embedding for one hot encoding of inputs
