@@ -37,7 +37,7 @@ class TIMMAC(nn.Module):
         self.embed = nn.Linear(num_inputs, args.comm_dim)
 
         # encode observation and action (intent)
-        self.attend_obs_intent = SelfAttention(args.num_heads, args.hid_size)
+        self.attend_obs_intent = SelfAttention(args.num_heads, args.hid_size, dropout=self.dropout)
         # self.obs_intent_head = nn.Linear(args.hid_size, args.hid_size)
         if args.recurrent:
             self.init_hidden(args.batch_size)
@@ -47,7 +47,7 @@ class TIMMAC(nn.Module):
 
         # attend to communications to determine relevant information
         if args.mha_comm:
-            self.attend_comm = SelfAttention(args.num_heads, args.comm_dim)
+            self.attend_comm = SelfAttention(args.num_heads, args.comm_dim, dropout=self.dropout)
         self.comm_head = nn.Linear(args.comm_dim, args.comm_dim)
 
         # communication and obs/intent aggregation
@@ -153,8 +153,7 @@ class TIMMAC(nn.Module):
         if self.args.env_name != 'starcraft':
             a = F.log_softmax(a, dim=-1)
         # critic
-        v = self.value_head(x_oa_comm).reshape(1, n, -1)
-        ''' need to add dropout '''
+        v = self.value_head(x_oa_comm + x_oa).reshape(1, n, -1)
         if self.args.recurrent:
             return a, v, (h.clone(), cell.clone()), comm_prob
 
