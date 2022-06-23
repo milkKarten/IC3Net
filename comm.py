@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
+from torch.distributions import Categorical
 import time
 from models import MLP
 from action_utils import select_action, translate_action
@@ -166,7 +167,11 @@ class CommNetMLP(nn.Module):
         # autoencoder decoder
         if self.args.autoencoder_action:
             # self.decoderNet = nn.Linear(args.hid_size, num_inputs+self.args.nagents)
-            self.decoderNet = nn.Linear(args.hid_size*self.args.nagents, num_inputs*self.args.nagents + self.args.nagents)
+            if self.args.comm_intent_1 or self.args.comm_intent_2:
+                self.decoderNet = nn.Linear(args.hid_size*self.args.nagents, num_inputs*self.args.nagents + self.args.intent_horizon * self.args.nagents)
+            else:
+                self.decoderNet = nn.Linear(args.hid_size*self.args.nagents, num_inputs*self.args.nagents + self.args.nagents)
+
 
         elif self.args.autoencoder:
             #self.decoderNet = nn.Linear(args.hid_size, num_inputs)
@@ -175,10 +180,12 @@ class CommNetMLP(nn.Module):
 
         if self.args.train_fdm:
             self.fdm_layer = nn.Linear(num_inputs + 1, num_inputs)
-        elif self.args.comm_intent_1:
+            # self.fdm_layer = nn.Linear(num_inputs + 1, num_inputs*2)
+            # self.fdm_layer_2 = nn.Linear(num_inputs*2, num_inputs)
+        elif self.args.comm_intent_1 or self.args.comm_intent_2:
             self.fdm_layer = nn.Linear(num_inputs + 1, num_inputs)
 
-            load_path = os.path.join(self.args.load, self.args.env_name, self.args.fdm_path, "seed" + str(self.args.seed), "models")
+            load_path = os.path.join(self.args.load, self.args.env_name, self.args.fdm_path, "seed" + str(0), "models")
             if 'best_model.pt' in os.listdir(load_path):
                 model_path = os.path.join(load_path, "best_model.pt")
             elif 'model.pt' in os.listdir(load_path):
@@ -191,7 +198,7 @@ class CommNetMLP(nn.Module):
                 self.fdm_layer.weight.copy_(state_dict_temp["policy_net"]['fdm_layer.weight'])
                 self.fdm_layer.bias.copy_(state_dict_temp["policy_net"]['fdm_layer.bias'])
                 self.fdm_layer.requires_grad= False
-            
+
 
         # remove null messages
         # with open('IC3Net/nulls/'+self.args.pretrain_exp_name+'/seed' + str(self.args.seed) + '/nulls.txt', 'r') as f:
@@ -221,12 +228,63 @@ class CommNetMLP(nn.Module):
         self.tovalues = nn.Linear(args.hid_size, args.hid_size*self.num_heads)
         self.unifyheads = nn.Linear(args.hid_size + args.hid_size * self.num_heads, args.hid_size)
 
+        #gating intent communication setup
+        self.last_recieved_comms = torch.zeros(1,self.args.nagents,self.args.comm_dim)
+        self.last_recieved_ts = torch.zeros(1, self.args.nagents,1) #how many timesteps ago did we last recieve a communication
+        self.remaining_budget = torch.zeros(1, self.args.nagents,1) #number of times we communicated over last n timesteps over number of times we are allowed to communicate over last n timesteps
+
+        self.gating_l1 = nn.Linear(self.args.comm_dim*2 + 2, 1)
+        self.gating_softmax = nn.Softmax(dim=2)
+        self.budget_enforced_t = 10
+        self.budget_measured_t = 0
+
     def fdm (self, sa):
         pred = self.fdm_layer(sa)
+        #pred = self.fdm_layer_2(self.tanh(self.fdm_layer(sa)))
+
         # print (pred)
         # pred[:,2:-1] = torch.nn.functional.gumbel_softmax(pred[:,2:-1],hard=True)
 
         return pred
+
+
+    def gating_func(self,current_comm):
+
+        gating_in = torch.cat((current_comm, self.last_recieved_comms, self.last_recieved_ts,self.remaining_budget),dim=2)
+
+        gating_out = self.gating_l1(gating_in)
+        gating_prob = self.gating_softmax(gating_out)
+        m = Categorical(gating_prob)
+        gating_res = m.sample()
+        gating_res = gating_res.unsqueeze(2)
+
+        gating_res[0][0] = 1
+        gating_res[0][2] = 1
+
+        gated_comm = current_comm*gating_res
+        gating_res_inv = 1-gating_res
+
+        self.last_recieved_ts += gating_res_inv
+        self.last_recieved_ts *= gating_res_inv
+
+
+        comm_indices = torch.nonzero(gating_res)[:,:-1]
+
+        for i in comm_indices:
+            if len(i) != 2:
+                #I have not implemented how to handle this
+                assert False
+            self.last_recieved_comms[i[0]][i[1]] = gated_comm[i[0]][i[1]].detach()
+            self.remaining_budget[i[0]][i[1]] += 1/(self.args.budget*self.budget_enforced_t)
+
+    
+        self.budget_measured_t += 1
+        self.budget_measured_t = self.budget_measured_t % self.budget_enforced_t
+
+        if self.budget_measured_t == 0:
+            self.remaining_budget = torch.ones(1, self.args.nagents,1)
+
+        return gated_comm
 
     def get_agent_mask(self, batch_size, info):
         n = self.nagents
@@ -279,7 +337,10 @@ class CommNetMLP(nn.Module):
         y = self.decoderNet(y)
 
         if self.args.autoencoder_action:
-            y = y.reshape(1,self.nagents,self.nagents,self.num_inputs+1)
+            if self.args.comm_intent_1 or self.args.comm_intent_2:
+                y = y.reshape(1,self.nagents,self.nagents,self.num_inputs+self.args.intent_horizon)
+            else:
+                y = y.reshape(1,self.nagents,self.nagents,self.num_inputs+1)
             y = y.squeeze()
             # y[:,:,2:-2] = torch.nn.functional.gumbel_softmax(y[:,:,2:-2],hard=True)
 
@@ -297,7 +358,7 @@ class CommNetMLP(nn.Module):
     def get_null_action(self):
         return self.null_action
 
-    def forward(self, x, info={}):
+    def forward(self, x, info={},no_comm=False):
         # TODO: Update dimensions
         """Forward function for CommNet class, expects state, previous hidden
         and communication tensor.
@@ -516,12 +577,13 @@ class CommNetMLP(nn.Module):
 
                 c = self.C_modules[i](comm_sum)
 
-
-            if self.args.no_comm:
+            if self.args.no_comm or no_comm:
                 c = torch.zeros(c.shape)
 
             if self.args.autoencoder:
                 self.comms_all = c.clone()  # encoded received communciations for autoencoder
+
+            c = self.gating_func(c)
 
             if self.args.recurrent:
                 if self.args.mha_comm:

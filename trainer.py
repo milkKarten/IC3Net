@@ -84,6 +84,54 @@ class Trainer(object):
         self.loss_min_comm = None
         self.best_model_reward = -np.inf
 
+
+    def policy_rollout(self,first_state, first_act):
+
+        policy_actions = []
+        cur_state = first_state
+        cur_act = first_act.unsqueeze(1)
+        for i in range(self.args.intent_horizon-1):
+            with torch.no_grad():
+                fdm_sa_pair = torch.cat((cur_state, cur_act),1).unsqueeze(0)
+                next_state = self.policy_net.fdm(fdm_sa_pair)
+
+                #set communications to 0
+                prev_hid = torch.zeros(1, self.args.nagents, self.args.hid_size)
+                if self.args.rnn_type == 'LSTM':
+                    prev_hid = self.policy_net.init_hidden(batch_size=1)
+
+                info_comm = dict()
+                info_comm['comm_action'] = np.zeros(self.args.nagents, dtype=int)
+                info_comm['comm_budget'] = np.zeros(self.args.nagents, dtype=int)
+
+
+                x = [next_state, prev_hid]
+
+                action_out, value, prev_hid, comm_prob = self.policy_net(x, info_comm)
+                action = select_action(self.args, action_out)
+                action, actual = translate_action(self.args, self.env, action)
+
+                next_act = actual[0]
+                policy_actions.append(next_act)
+                assert next_act.shape == first_act.shape
+
+                cur_state = next_state.squeeze()
+
+                alive_mask = torch.ones(cur_state.shape)
+                for i in range(self.args.nagents):
+                    if not self.env.get_alive_wrapper(i):
+                        alive_mask[i][2:] *= 0
+
+                #format outputted state - I really do not like the way I am doing this
+                cur_state[:,2:-1] = torch.nn.functional.softmax(cur_state[:,2:-1]/0.0001)
+                cur_state[:,2:-1] = torch.round(cur_state[:,2:-1])
+                cur_state[:,0:2] = torch.round(cur_state[:,0:2])
+                cur_state[:,-1] = torch.round(cur_state[:,-1])
+                cur_state *= alive_mask
+                cur_act = torch.tensor(next_act).unsqueeze(1)
+
+        return policy_actions
+
     def get_episode(self, epoch):
         episode = []
         reset_args = getargspec(self.env.reset).args
@@ -107,6 +155,7 @@ class Trainer(object):
         # episode_comm = torch.zeros(self.args.nagents)
         episode_comm = []
         sas_trips = [] #store state, action, next state triplets
+        prev_decoded = []
         for t in range(self.args.max_steps):
             # print(t)
             misc = dict()
@@ -122,6 +171,8 @@ class Trainer(object):
                     prev_hid = self.policy_net.init_hidden(batch_size=state.shape[0])
 
                 x = [state, prev_hid]
+
+
                 action_out, value, prev_hid, comm_prob = self.policy_net(x, info_comm)
                 # episode_comm += comm_action
                 if self.args.autoencoder and not self.args.autoencoder_action:
@@ -145,6 +196,7 @@ class Trainer(object):
             # mask action if not available
             #print(action_out, '\n', self.env.env.get_avail_actions())
             if hasattr(self.env.env, 'get_avail_actions'):
+                assert False # only cause I do not know what this function does and I want to make sure it is not important
                 avail_actions = np.array(self.env.env.get_avail_actions())
                 action_mask = avail_actions==np.zeros_like(avail_actions)
                 action_out[0, action_mask] = -1e10
@@ -249,12 +301,14 @@ class Trainer(object):
             # #swap last two columns
             # x[0][:,[-1,-2]] = x[0][:,[-2,-1]]
 
+
             sas_trips.append([x[0].tolist(),actual[0].tolist()])
             if t != 0:
                 sas_trips[t-1].append(x[0].tolist())
 
             if self.args.autoencoder and self.args.autoencoder_action:
                 decoded = self.policy_net.decode()
+                prev_decoded.append(decoded)
 
                 # decoded[:,:,2:-2] = torch.nn.functional.gumbel_softmax(decoded[:,:,2:-2],hard=True)
 
@@ -262,17 +316,49 @@ class Trainer(object):
                 # x_all[0,:,:-self.args.nagents] = x[0].sum(dim=1).expand(self.args.nagents, -1)
                 # x_all[0,:,-self.args.nagents:] = torch.tensor(actual[0])
 
-                #dont concatenate observations and actions, instead keep them seperate for each agent
+                #dont sum observations and actions, instead keep them seperate for each agent
                 x_all = x[0].expand(self.args.nagents,self.args.nagents, -1)
+
                 gt_actions = torch.tensor(actual[0]).unsqueeze(1).expand(self.args.nagents,self.args.nagents,-1)
 
-                x_all = torch.cat((x_all,gt_actions),dim=2)
+                if self.args.comm_intent_1:
+                    policy_actions = self.policy_rollout(x[0], torch.tensor(actual[0]))
+                    policy_actions = torch.tensor(policy_actions).squeeze().unsqueeze(1).expand(self.args.nagents,self.args.nagents,self.args.intent_horizon-1)
+                    gt_actions = torch.cat((gt_actions,policy_actions),dim=2)
+                    x_all = torch.cat((x_all,gt_actions),dim=2)
 
-                if self.loss_autoencoder == None:
-                    self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
+                    if self.loss_autoencoder == None:
+                        self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
+                    else:
+                        self.loss_autoencoder += torch.nn.functional.mse_loss(decoded, x_all)
+
+
+                elif self.args.comm_intent_2:
+                    if t >= 1:
+                        if self.args.intent_horizon > 2:
+                            print ("Not implemented yet")
+                            assert False
+                        prev_act = sas_trips[t-1][1]
+                        x_all = torch.tensor(sas_trips[t-1][0]).expand(self.args.nagents,self.args.nagents, -1)
+
+                        curr_act = torch.tensor(actual[0]).unsqueeze(1).expand(self.args.nagents,self.args.nagents,-1)
+                        prev_act = torch.tensor(prev_act).squeeze().unsqueeze(1).expand(self.args.nagents,self.args.nagents,self.args.intent_horizon-1)
+                        gt_actions = torch.cat((prev_act,curr_act),dim=2)
+                        x_all = torch.cat((x_all,gt_actions),dim=2)
+
+                        if self.loss_autoencoder == None:
+                            self.loss_autoencoder = torch.nn.functional.mse_loss(prev_decoded[-2], x_all)
+                        else:
+                            self.loss_autoencoder += torch.nn.functional.mse_loss(prev_decoded[-2], x_all)
+                    else:
+                        self.loss_autoencoder = 0
                 else:
-                    self.loss_autoencoder += torch.nn.functional.mse_loss(decoded, x_all)
+                    x_all = torch.cat((x_all,gt_actions),dim=2)
 
+                    if self.loss_autoencoder == None:
+                        self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
+                    else:
+                        self.loss_autoencoder += torch.nn.functional.mse_loss(decoded, x_all)
 
 
             comm_budget = info_comm['comm_budget']
@@ -515,6 +601,13 @@ class Trainer(object):
 
             stat['fdm_loss'] = self.fdm_loss.item()
             loss = self.fdm_loss
+
+        if self.args.learn_intent_gating:
+            for name, param in self.policy_net.named_parameters():
+                if "gating" not in name:
+                    param.requires_grad = False
+
+
         loss.backward()
         # print (self.loss_autoencoder)
         if self.args.autoencoder:

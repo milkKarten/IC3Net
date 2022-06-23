@@ -218,6 +218,9 @@ parser.add_argument('--num_heads', type=int, default=1,
 parser.add_argument('--comm_intent_1', action='store_true', default=False,
                 help="Communicating intent, method 1")
 
+parser.add_argument('--comm_intent_2', action='store_true', default=False,
+                help="Communicating intent, method 2")
+
 parser.add_argument('--intent_horizon', type=int, default=2,
                     help='Horizon for communicating intent')
 
@@ -226,6 +229,12 @@ parser.add_argument('--train_fdm', action='store_true', default=False,
 
 parser.add_argument('--fdm_path', type=str, default="",
                 help="Forward dynamics model load path")
+
+parser.add_argument('--intent_model_path', type=str, default="",
+                help="Pretrained model that communicates intent")
+
+parser.add_argument('--learn_intent_gating', action='store_true', default=False,
+                help="Learn gating function using intent")
 
 # first add environment specific args to the parser
 init_args_for_env(parser)
@@ -576,6 +585,19 @@ if args.only_update_decoder or args.train_fdm:
     policy_net.load_state_dict(d['policy_net'],strict=False)
     # print (d['trainer'])
     # print ("\n")
+    # trainer.load_state_dict(d['trainer'])
+if args.learn_intent_gating:
+    load_path = os.path.join(args.load, args.env_name, args.intent_model_path, "seed" + str(args.seed), "models")
+    print("load directory is "+str(load_path))
+    if 'model.pt' in os.listdir(load_path):
+        model_path = os.path.join(load_path, "model.pt")
+
+    else:
+        all_models = sorted([int(f.split('.pt')[0]) for f in os.listdir(load_path)])
+        model_path = os.path.join(load_path, str(all_models[-1])+".pt")
+
+    d = torch.load(model_path)
+    policy_net.load_state_dict(d['policy_net'],strict=False)
     # trainer.load_state_dict(d['trainer'])
 
 run(args.num_epochs)

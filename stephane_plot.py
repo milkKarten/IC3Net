@@ -32,22 +32,55 @@ def get_runs_data(method,name,prop,color,n_runs=10):
     # plt.savefig(method + '_'+prop+'.png')
 
     # plt.show()
-
+#
+# prop = "fdm_loss"
+# method_1 = "DECOMP_STATE_tj_tj_train_fdm_easy_fixed_autoencoder_action0.7"
+# name_1 = "paper_models/traffic_junction/" + method_1
+#
+# get_runs_data(method_1,name_1,prop,"red",n_runs=3)
+#
+#
 prop = "autoencoder_loss"
-method_1 = "GUMBEL_STATE_tj_tj_easy_fixed_autoencoder_action0.7"
+# method_1 = "TEST_MLP_6_tj_train_fdm_easy_fixed_autoencoder_action0.7"
+# name_1 = "paper_models/traffic_junction/" + method_1
+#
+# get_runs_data(method_1,name_1,prop,"red",n_runs=3)
+
+# method_1 = "DECOMP_STATE_64_tj_comm_intent_1_easy_fixed_autoencoder_action0.7"
+# name_1 = "paper_models/traffic_junction/" + method_1
+#
+# get_runs_data(method_1,name_1,prop,"blue",n_runs=3)
+
+method_1 = "DECOMP_STATE_128_tj_comm_intent_1_easy_fixed_autoencoder_action0.7"
 name_1 = "paper_models/traffic_junction/" + method_1
 
-get_runs_data(method_1,name_1,prop,"red",n_runs=1)
+# get_runs_data(method_1,name_1,prop,"green",n_runs=10)
 
+method_1 = "DECOMP_STATE_128_tj_comm_intent_2_easy_fixed_autoencoder_action0.7"
+name_1 = "paper_models/traffic_junction/" + method_1
+
+get_runs_data(method_1,name_1,prop,"orange",n_runs=10)
+#
+#
+# method_1 = "DECOMP_STATE_256_tj_comm_intent_1_easy_fixed_autoencoder_action0.7"
+# name_1 = "paper_models/traffic_junction/" + method_1
+#
+# get_runs_data(method_1,name_1,prop,"purple",n_runs=3)
 
 # prop = "autoencoder_loss"
-# method_1 = "DECOMP_STATE_tj_tj_easy_fixed_autoencoder_action0.7"
-# name_1 = "paper_models/traffic_junction/" + method_1
+method_1 = "DECOMP_STATE_tj_tj_easy_fixed_autoencoder_action0.7"
+name_1 = "paper_models/traffic_junction/" + method_1
 #
 # method_2 = "AGG_STATE_tj_tj_easy_fixed_autoencoder_action0.7"
 # name_2 = "paper_models/traffic_junction/" + method_2
 #
-# get_runs_data(method_1,name_1,prop,"red")
+# get_runs_data(method_1,name_1,prop,"red",n_runs=10)
+
+
+method_1 = "DECOMP_STATE_128_tj_easy_fixed_autoencoder_action0.7"
+name_1 = "paper_models/traffic_junction/" + method_1
+#
+# get_runs_data(method_1,name_1,prop,"blue",n_runs=10)
 #
 # get_runs_data(method_2,name_2,prop,"blue")
 plt.show()

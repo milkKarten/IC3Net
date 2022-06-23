@@ -147,9 +147,14 @@ evaluator = Evaluator(args, policy_net, data.init(args.env_name, args))
 
 st_time = time.time()
 
+if args.comm_intent_1 or args.comm_intent_2:
+    intent_horizon = args.intent_horizon
+elif args.autoencoder_action:
+    intent_horizon = 1
+
 all_stats = []
 for i in range(500):
-    ep, stat, all_comms, comms_to_loc, comms_to_act, comms_to_full, comm_action_episode = evaluator.run_episode(i)
+    ep, stat, all_comms, comms_to_loc, comms_to_act, comms_to_full, comm_action_episode = evaluator.run_episode("special_" + str(i) + "_" + str(intent_horizon))
     # evaluator.env.env.save_replay()
     all_stats.append(stat)
 total_episode_time = time.time() - st_time

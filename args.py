@@ -156,12 +156,18 @@ def get_args():
                          help="Number of heads for attention")
 
      parser.add_argument('--comm_intent_1', action='store_true', default=False,
-                help="Communicating intent, method 1")
+                     help="Communicating intent, method 1")
+
+     parser.add_argument('--comm_intent_2', action='store_true', default=False,
+                     help="Communicating intent, method 1")
+
+     parser.add_argument('--intent_horizon', type=int, default=2,
+                         help='Horizon for communicating intent')
 
      parser.add_argument('--train_fdm', action='store_true', default=False,
-                help="Train forward dynamics model")
+                     help="Train forward dynamics model")
 
-     parser.add_argument('--fdm_path', action='store_true', default=False,
-                help="Forward dynamics model load path")
+     parser.add_argument('--fdm_path', type=str, default="",
+                     help="Forward dynamics model load path")
 
      return parser

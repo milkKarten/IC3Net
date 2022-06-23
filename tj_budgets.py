@@ -2,21 +2,26 @@ import os, sys, subprocess
 
 os.environ["OMP_NUM_THREADS"] = "1"
 env = "traffic_junction"
-# seeds = [0,1,2,3,4,5,6,7,8,9,10]
 seeds = [0]
+# seeds = [0,1,2]
 
-# seeds = [1, 2, 3,4]
+# seeds = [1, 2, 3,4,5,6,7,8,9]
 # seeds = [777]
 # seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 # methods = ['hard_soft_minComm_autoencoder', 'easy_soft_minComm_autoencoder'. 'easy_proto_soft_minComm_autoencoder']
-methods = ['tj_comm_intent_1_easy_fixed_autoencoder_action']
+methods = ['tj_learn_intent_gating_easy_fixed_autoencoder_action']
+
+pre_trained_intent_network_fp = "DECOMP_STATE_128_tj_easy_fixed_autoencoder_action0.7"
 pre_trained_network_fp = "DECOMP_STATE_tj_tj_easy_fixed_autoencoder_action0.7"
 fdm_path = "DECOMP_STATE_tj_tj_train_fdm_easy_fixed_autoencoder_action0.7"
 # pretrain_files = ['tj_hard_fixed_autoencoder', 'tj_easy_fixed_autoencoder', 'tj_easy_fixed_proto_autoencoder']
 pretrain_files = ['tj_easy_fixed_autoencoder']
 # for soft_budget in [0.9, 0.5, 0.3, 0.1]:
-for soft_budget in [0.7]:
+#[0.9, 0.7, 0.5, 0.3, 0.1]
+for budget in [0.3]:
+    comm_dim = 128
+    soft_budget = 0.7
     for method,pretrain_exp_name  in zip(methods, pretrain_files):
         if "easy" in method:
             # protos_list = [14, 28, 56]
@@ -32,7 +37,7 @@ for soft_budget in [0.7]:
             # comms_list = [64]
             num_epochs = 1000
         for num_proto in protos_list:
-            exp_name = "DECOMP_STATE_tj_" + method + str(soft_budget)
+            exp_name = ""+method + str(soft_budget)
             # exp_name = "tj_EX_" + method + "_p" + str(num_proto) + "_c" + str(comm_dim)
             vision = 0
             soft_budget = 0.7
@@ -40,7 +45,8 @@ for soft_budget in [0.7]:
             discrete_comm = False
             if "proto" in method:
                 discrete_comm = True
-            hid_size = 64
+            # hid_size = 64
+            hid_size = comm_dim
             save_every = 100
             # g=1. If this is set to true agents will communicate at every step.
             comm_action_one = False
@@ -117,6 +123,13 @@ for soft_budget in [0.7]:
             if "comm_intent_1" in method:
                 run_str += f"--comm_intent_1 "
                 run_str += f"--fdm_path {fdm_path} "
+            if "comm_intent_2" in method:
+                run_str += f"--comm_intent_2 "
+                run_str += f"--fdm_path {fdm_path} "
+            if "learn_intent_gating" in method:
+                run_str += f"--learn_intent_gating "
+                run_str += f"--budget {budget} "
+                run_str += f"--intent_model_path {pre_trained_intent_network_fp} "
 
 
             if "minComm" in method:

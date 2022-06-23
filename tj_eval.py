@@ -7,7 +7,10 @@ seeds = [0]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 # method = "easy_baseline_test_autoencoder_action"
 
-method = "DECOMP_STATE_tj_tj_easy_fixed_autoencoder_action0.7"
+method = "DECOMP_STATE_128_tj_comm_intent_1_easy_fixed_autoencoder_action0.7"
+# method = "DECOMP_STATE_tj_tj_easy_fixed_autoencoder_action0.7"
+
+fdm_path = "DECOMP_STATE_tj_tj_train_fdm_easy_fixed_autoencoder_action0.7"
 pre_trained_network_fp = "DECOMP_STATE_tj_tj_train_fdm_easy_fixed_autoencoder_action0.7"
 # pretrain_exp_name = 'tj_EX_fixed_proto_comm_vs_protos_medium_p112_c64_d'
 if "easy" in method:
@@ -30,7 +33,11 @@ for num_proto in protos_list:
         discrete_comm = False
         if "proto" in method:
             discrete_comm = True
-        hid_size = 64
+
+        if "comm_intent_1" in method or "comm_intent_2" in method:
+            hid_size = 128
+        else:
+            hid_size = 64
         save_every = 100
         # g=1. If this is set to true agents will communicate at every step.
         comm_action_one = False
@@ -119,7 +126,12 @@ for num_proto in protos_list:
         if "train_fdm" in method:
             run_str += f"--train_fdm "
             run_str += f"--pre_trained_network {pre_trained_network_fp} "
-
+        if "comm_intent_1" in method:
+            run_str += f"--comm_intent_1 "
+            run_str += f"--fdm_path {fdm_path} "
+        if "comm_intent_2" in method:
+            run_str += f"--comm_intent_2 "
+            run_str += f"--fdm_path {fdm_path} "
 
         # Important: If you want to restore training just use the --restore tag
         # run for all seeds

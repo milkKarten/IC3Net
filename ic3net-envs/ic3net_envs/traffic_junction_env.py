@@ -50,6 +50,7 @@ class TrafficJunctionEnv(gym.Env):
         self.collision_location = []
         self.pos2enc = None
         self.enc2pos = None
+        self.is_toy_ex = False
 
     def init_curses(self):
         self.stdscr = curses.initscr()
@@ -97,6 +98,7 @@ class TrafficJunctionEnv(gym.Env):
         for key in params:
             setattr(self, key, getattr(args, key))
 
+        self.difficulty = args.difficulty
         self.ncar = args.nagents
         self.dims = dims = (self.dim, self.dim)
         difficulty = args.difficulty
@@ -207,6 +209,49 @@ class TrafficJunctionEnv(gym.Env):
 
         self.car_route_loc = np.full(self.ncar, - 1)
 
+
+        #
+        # if "special" in epoch:
+        #     epoch_ = epoch.split("_")
+        #     epoch = int(epoch_[1])
+            # if self.difficulty != "easy":
+            #     print ("toy env only implemented for easy environment.")
+            #     assert False
+            #
+            # self.is_toy_ex = True
+            # agent_0_idx = 0
+            # agent_1_idx = 1
+            #
+            # self.alive_mask[agent_0_idx] = 1
+            # self.alive_mask[agent_1_idx] = 1
+            #
+            #
+            # #assign agent 0 to route 0 and agent 1 to route 1
+            # agent_0_p_i = 0
+            # agent_1_p_i = 1
+            #
+            # self.route_id[agent_0_idx] = agent_0_p_i
+            # self.route_id[agent_1_idx] = agent_1_p_i
+            #
+            # self.chosen_path[agent_0_idx] = self.routes[agent_0_p_i][0]
+            #
+            # self.chosen_path[agent_1_idx] = self.routes[agent_1_p_i][0]
+            #
+            # #
+            # # self.car_route_loc[agent_0_idx] = 3-int(epoch_[2])-1
+            # # self.car_route_loc[agent_1_idx] = 3-int(epoch_[2])-1
+            # #
+            # # self.car_loc[agent_0_idx] = self.routes[agent_0_p_i][0][3-int(epoch_[2])]
+            # # self.car_loc[agent_1_idx] = self.routes[agent_1_p_i][0][3-int(epoch_[2])]
+            #
+            # self.car_route_loc[agent_0_idx] = 0
+            # self.car_route_loc[agent_1_idx] = 0
+            #
+            # self.car_loc[agent_0_idx] = self.routes[agent_0_p_i][0][0]
+            # self.car_loc[agent_1_idx] = self.routes[agent_1_p_i][0][0]
+            #
+            # self.cars_in_sys += 2
+
         # stat - like success ratio
         self.stat = dict()
 
@@ -241,11 +286,13 @@ class TrafficJunctionEnv(gym.Env):
             episode_over (bool) : Will be true when episode gets over.
             info (dict) : diagnostic information useful for debugging.
         """
+
         if self.episode_over:
             raise RuntimeError("Episode is done")
 
         # Expected shape: either ncar or ncar x 1
         action = np.array(action).squeeze()
+        # print ("taking action: " + str(action))
 
         assert np.all(action <= self.naction), "Actions should be in the range [0,naction)."
 
@@ -254,7 +301,6 @@ class TrafficJunctionEnv(gym.Env):
         # No one is completed before taking action
         self.is_completed = np.zeros(self.ncar)
 
-        # print ("taking actions: " + str(action))
         for i, a in enumerate(action):
             self._take_action(i, a)
         # print ("took actions: " + str(self.car_last_act))
@@ -399,6 +445,9 @@ class TrafficJunctionEnv(gym.Env):
 
 
     def _add_cars(self):
+        if self.is_toy_ex:
+            return
+
         for r_i, routes in enumerate(self.routes):
             if self.cars_in_sys >= self.ncar:
                 return
