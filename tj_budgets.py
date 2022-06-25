@@ -2,10 +2,10 @@ import os, sys, subprocess
 
 os.environ["OMP_NUM_THREADS"] = "1"
 env = "traffic_junction"
-seeds = [0]
+# seeds = [0]
 # seeds = [0,1,2]
 
-# seeds = [1, 2, 3,4,5,6,7,8,9]
+seeds = [0,1,2,3,4,5,6,7,8,9]
 # seeds = [777]
 # seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
@@ -19,9 +19,9 @@ fdm_path = "DECOMP_STATE_tj_tj_train_fdm_easy_fixed_autoencoder_action0.7"
 pretrain_files = ['tj_easy_fixed_autoencoder']
 # for soft_budget in [0.9, 0.5, 0.3, 0.1]:
 #[0.9, 0.7, 0.5, 0.3, 0.1]
-for budget in [0.3]:
+for budget in [0.1]:
     comm_dim = 128
-    soft_budget = 0.7
+    soft_budget = 1
     for method,pretrain_exp_name  in zip(methods, pretrain_files):
         if "easy" in method:
             # protos_list = [14, 28, 56]
@@ -37,10 +37,21 @@ for budget in [0.3]:
             # comms_list = [64]
             num_epochs = 1000
         for num_proto in protos_list:
-            exp_name = ""+method + str(soft_budget)
+
+            if "learn_intent_gating" in method:
+                if budget < 0.3:
+                    lr = 0.0003
+                if budget < 0.5:
+                    lr = 0.003
+                else:
+                    lr = 0.03
+            else:
+                lr = 0.003
+
+            exp_name = "eta_comm_loss=1_"+ str(lr) + "_" + method + str(budget)
             # exp_name = "tj_EX_" + method + "_p" + str(num_proto) + "_c" + str(comm_dim)
             vision = 0
-            soft_budget = 0.7
+            # soft_budget = 0.7
             # discrete comm is true if you want to use learnable prototype based communication.
             discrete_comm = False
             if "proto" in method:
@@ -66,7 +77,7 @@ for budget in [0.3]:
             if "var" in method:
                 variable_gate = True
             nprocesses = 0
-            lr = 0.003
+
             if "medium" in method:
                 nagents = 10
                 max_steps = 40
@@ -130,7 +141,7 @@ for budget in [0.3]:
                 run_str += f"--learn_intent_gating "
                 run_str += f"--budget {budget} "
                 run_str += f"--intent_model_path {pre_trained_intent_network_fp} "
-
+                run_str += "--min_comm_loss --eta_comm_loss 1. "
 
             if "minComm" in method:
                 run_str += "--min_comm_loss --eta_comm_loss 1. "

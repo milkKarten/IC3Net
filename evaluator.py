@@ -94,10 +94,19 @@ class Evaluator:
                 #     x[1] = self.policy_net.init_hidden(batch_size=state.shape[0])
                 #     info_comm['comm_action'] = np.zeros(self.args.nagents, dtype=int)
 
-                if "special" in epoch and t > 0:
+                if "special" in epoch and t > 20:
                     print ("NO MORE COMMUNICATION")
                     action_out, value, prev_hid, proto_comms = self.policy_net(x, info_comm,no_comm=True)
                 else:
+                    # print ("agent mask: ")
+                    # if 'alive_mask' in info:
+                    #     info_comm["alive_mask"] = info["alive_mask"]
+                    #     print (info["alive_mask"])
+                    #     print ([self.env.get_alive_wrapper(i) for i in range(self.args.nagents)])
+                    #     print ("\n")
+                    # else:
+                    #     print ("no alive mask")
+
                     print ("COMMUNICATED NEXT ACTION")
                     print (info_comm)
                     action_out, value, prev_hid, proto_comms = self.policy_net(x, info_comm)
@@ -199,6 +208,7 @@ class Evaluator:
 
             prev_car_loc = self.env.env.car_loc
             prev_state = state.clone()
+
 
             action = select_action(self.args, action_out, eval_mode=True)
             action, actual = translate_action(self.args, self.env, action)

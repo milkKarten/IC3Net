@@ -145,6 +145,7 @@ class Trainer(object):
             self.env.display()
         stat = dict()
         info_comm = dict()
+        info = dict()
         switch_t = -1
 
         # one is used because of the batch size.
@@ -172,8 +173,13 @@ class Trainer(object):
 
                 x = [state, prev_hid]
 
+                #
+                # if 'alive_mask' in info:
+                #     info_comm["alive_mask"] = info["alive_mask"]
 
                 action_out, value, prev_hid, comm_prob = self.policy_net(x, info_comm)
+
+
                 # episode_comm += comm_action
                 if self.args.autoencoder and not self.args.autoencoder_action:
                     decoded = self.policy_net.decode()
@@ -203,6 +209,11 @@ class Trainer(object):
                 action_out = torch.nn.functional.log_softmax(action_out, dim=-1)
             # this is actually giving you actions from logits
             action = select_action(self.args, action_out)
+
+
+            if self.args.learn_intent_gating and self.args.min_comm_loss:
+                episode_comm.append(comm_prob.double().reshape(1,-1))
+
 
             # this is for the gating head penalty
             if not self.args.continuous and not self.args.comm_action_one:
@@ -441,14 +452,43 @@ class Trainer(object):
         if self.args.min_comm_loss:
             episode_comm = torch.cat(episode_comm, 0).T
             episode_comm = episode_comm.mean(1)
+
+            for i in range(self.args.nagents):
+                stat["agent" + str(i) + "_episode_comm"] = episode_comm[i].detach().item()
+
+            # episode_comm = self.policy_net.remaining_budget.squeeze()
             # print(episode_comm)
             comm_losses = torch.zeros_like(episode_comm)
-            ind_budget = np.ones(self.args.nagents) * self.args.max_steps * self.args.soft_budget
+            if self.args.learn_intent_gating:
+                ind_budget = np.ones(self.args.nagents) * self.args.max_steps * self.args.budget
+            else:
+                ind_budget = np.ones(self.args.nagents) * self.args.max_steps * self.args.soft_budget
+
             ind_budget += np.ones(self.args.nagents) * self.policy_net.get_null_action()
             ind_budget = torch.tensor(ind_budget / self.args.max_steps)
+
+            #
+            # print ("episode_comm", episode_comm)
+            # print ("ind_budget",ind_budget)
+            # episode_comm[1] = 1
+
+
+            # episode_comm = torch.ones(episode_comm.shape)*1
+
             comm_losses[episode_comm < ind_budget] = (ind_budget[episode_comm < ind_budget] - episode_comm[episode_comm < ind_budget]) / ind_budget[episode_comm < ind_budget]
             comm_losses[episode_comm >= ind_budget] = (episode_comm[episode_comm >= ind_budget] - ind_budget[episode_comm >= ind_budget]) / (1. - ind_budget[episode_comm >= ind_budget])
             comm_losses = stat['num_steps'] * torch.abs(comm_losses).mean()
+
+            # if comm_losses == 20:
+            #     print ("====================================")
+            #     print (episode_comm)
+            #     print (ind_budget)
+            #     print (comm_losses)
+            #     print ("====================================")
+            #     print ("\n")
+
+            # print ("comm_losses3", comm_losses)
+            # print ("=================")
             # print(episode_comm, ind_budget)
             # comm_losses = torch.nn.functional.mse_loss(episode_comm, ind_budget)
             if self.loss_min_comm == None:
@@ -570,7 +610,10 @@ class Trainer(object):
         if self.args.min_comm_loss:
             self.loss_min_comm *= self.args.eta_comm_loss
             stat['regularization_loss'] = self.loss_min_comm.item()
+            # print (self.loss_min_comm)
+            # print ("\n")
             loss += self.loss_min_comm
+
         if self.args.autoencoder:
             # #first 32 outputs are for reinforce, next 32 are for autoencoder
             # encoder_gradient_mask = torch.zeros(self.args.comm_dim, self.args.num_inputs)
@@ -604,11 +647,18 @@ class Trainer(object):
 
         if self.args.learn_intent_gating:
             for name, param in self.policy_net.named_parameters():
-                if "gating" not in name:
+                if "gating_l" not in name:
                     param.requires_grad = False
 
-
         loss.backward()
+        # print ("\n")
+        # if self.args.learn_intent_gating:
+        #     for name, param in self.policy_net.named_parameters():
+        #         if "gating_l" in name:
+        #             print (name)
+        #             print (param.grad)
+        #     print ("\n")
+
         # print (self.loss_autoencoder)
         if self.args.autoencoder:
             self.loss_autoencoder = None

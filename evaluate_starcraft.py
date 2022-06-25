@@ -58,7 +58,7 @@ def load(path):
         model_path = os.path.join(load_path, "best_model.pt")
 
     else:
-        all_models = sort([int(f.split('.pt')[0]) for f in os.listdir(load_path)])
+        all_models = sorted([int(f.split('.pt')[0]) for f in os.listdir(load_path)])
         model_path = os.path.join(load_path, f"{all_models[-1]}.pt")
     print (model_path)
     d = torch.load(model_path)

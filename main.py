@@ -376,8 +376,9 @@ if not args.restore:
     # if os.path.exists(log_path):
     #     shutil.rmtree(log_path)
     #     print("delete log done")
-    assert os.path.exists(log_path) == False, "The save directory already exists, use load instead if you want to continue" \
-                                              "training"
+    # print (log_path)
+    # assert os.path.exists(log_path) == False, "The save directory already exists, use load instead if you want to continue" \
+    #                                           "training"
     os.makedirs(log_path, exist_ok=True)
     logger = SummaryWriter(log_path)
 

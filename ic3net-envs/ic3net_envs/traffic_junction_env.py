@@ -210,7 +210,7 @@ class TrafficJunctionEnv(gym.Env):
         self.car_route_loc = np.full(self.ncar, - 1)
 
 
-        #
+
         # if "special" in epoch:
         #     epoch_ = epoch.split("_")
         #     epoch = int(epoch_[1])

@@ -233,9 +233,13 @@ class CommNetMLP(nn.Module):
         self.last_recieved_ts = torch.zeros(1, self.args.nagents,1) #how many timesteps ago did we last recieve a communication
         self.remaining_budget = torch.zeros(1, self.args.nagents,1) #number of times we communicated over last n timesteps over number of times we are allowed to communicate over last n timesteps
 
-        self.gating_l1 = nn.Linear(self.args.comm_dim*2 + 2, 1)
+
+
+        self.gating_l1 = nn.Linear(self.args.comm_dim*2 + 2, 2)
+        # self.gating_l1 = nn.Linear(1, 2)
+
         self.gating_softmax = nn.Softmax(dim=2)
-        self.budget_enforced_t = 10
+        self.budget_enforced_t = self.args.max_steps
         self.budget_measured_t = 0
 
     def fdm (self, sa):
@@ -250,41 +254,23 @@ class CommNetMLP(nn.Module):
 
     def gating_func(self,current_comm):
 
-        gating_in = torch.cat((current_comm, self.last_recieved_comms, self.last_recieved_ts,self.remaining_budget),dim=2)
+        if self.budget_measured_t == 0:
+            self.remaining_budget = torch.zeros(1, self.args.nagents,1)
+
+        gating_in = torch.cat((current_comm, self.last_recieved_comms.clone(), self.last_recieved_ts.clone(),self.remaining_budget.clone()),dim=2)
+        # in_ = torch.tensor(self.budget_measured_t).unsqueeze(0).double()
 
         gating_out = self.gating_l1(gating_in)
-        gating_prob = self.gating_softmax(gating_out)
-        m = Categorical(gating_prob)
-        gating_res = m.sample()
-        gating_res = gating_res.unsqueeze(2)
+        comm_prob = F.log_softmax(gating_out, dim=-1)[0]
 
-        gating_res[0][0] = 1
-        gating_res[0][2] = 1
+        # comm_prob = gumbel_softmax(comm_prob, temperature=1, hard=True)
+        comm_prob = nn.functional.gumbel_softmax(comm_prob,hard=True,dim=-1)
+        comm_prob = comm_prob[:, 1].reshape(self.nagents)
 
-        gated_comm = current_comm*gating_res
-        gating_res_inv = 1-gating_res
-
-        self.last_recieved_ts += gating_res_inv
-        self.last_recieved_ts *= gating_res_inv
-
-
-        comm_indices = torch.nonzero(gating_res)[:,:-1]
-
-        for i in comm_indices:
-            if len(i) != 2:
-                #I have not implemented how to handle this
-                assert False
-            self.last_recieved_comms[i[0]][i[1]] = gated_comm[i[0]][i[1]].detach()
-            self.remaining_budget[i[0]][i[1]] += 1/(self.args.budget*self.budget_enforced_t)
-
-    
         self.budget_measured_t += 1
         self.budget_measured_t = self.budget_measured_t % self.budget_enforced_t
 
-        if self.budget_measured_t == 0:
-            self.remaining_budget = torch.ones(1, self.args.nagents,1)
-
-        return gated_comm
+        return comm_prob
 
     def get_agent_mask(self, batch_size, info):
         n = self.nagents
@@ -386,6 +372,7 @@ class CommNetMLP(nn.Module):
         #     x = x.sum(dim=-2)
         #     x = torch.cat([x, maxi], dim=-1)
         #     x = self.tanh(x)
+        # torch.autograd.set_detect_anomaly(True)
 
         x, hidden_state, cell_state = self.forward_state_encoder(x)
         batch_size = x.size()[0]
@@ -440,6 +427,35 @@ class CommNetMLP(nn.Module):
             self.num_comms += num_agents_alive
             comm_action_mask = comm_action.expand(batch_size, n, n).unsqueeze(-1)
             # action 1 is talk, 0 is silent i.e. act as dead for comm purposes.
+            agent_mask = agent_mask * comm_action_mask.double()
+
+        if self.args.learn_intent_gating:
+            h = hidden_state.view(batch_size, n, self.hid_size)
+            comm_prob = self.gating_func(h)
+
+            comm_indices = torch.nonzero(comm_prob).squeeze()
+
+            #TODO: Technically agents do not communicate at the beggining, but this here implies that they do
+            #Not sure if that is a problem or not.
+            for c in range(self.args.nagents):
+                if agent_mask[0,0,c] == 0: continue
+                self.last_recieved_ts[0][c] += (1-comm_prob[c].detach())
+                self.last_recieved_ts[0][c] *= (1-comm_prob[c].detach())
+
+
+            if comm_indices.dim() != 0:
+                for comm_indice in comm_indices:
+                    if agent_mask[0,0,comm_indice] == 0: continue
+                    # print ("agent communicating: " + str(comm_indice))
+
+                    self.remaining_budget[0][comm_indice] += 1/(self.args.budget*self.budget_enforced_t)
+
+            #
+            # print (self.remaining_budget)
+            # print (comm_indices)
+            # print ("\n")
+            comm_action_mask = comm_prob.expand(batch_size, n, n).unsqueeze(-1)
+
             agent_mask = agent_mask * comm_action_mask.double()
 
         info['comm_action'] = comm_action.detach().numpy()
@@ -533,6 +549,8 @@ class CommNetMLP(nn.Module):
             # Mask comm_in
             # Mask communcation from dead agents
             comm = comm * agent_mask
+
+
             # Mask communication to dead agents
             comm = comm * agent_mask_transpose
 
@@ -580,10 +598,21 @@ class CommNetMLP(nn.Module):
             if self.args.no_comm or no_comm:
                 c = torch.zeros(c.shape)
 
+
+            if self.args.learn_intent_gating:
+                if comm_indices.dim() != 0:
+                    for comm_indice in comm_indices:
+                        if agent_mask[0,0,comm_indice] == 0: continue
+                        self.last_recieved_comms[0][comm_indice] = c[0][comm_indice].detach()
+
+                # print ("comm_indices", comm_indices)
+                # print ("remaining_budget", self.remaining_budget)
+                # print ("last_recieved_ts", self.last_recieved_ts)
+                # print ("last_recieved_comms",self.last_recieved_comms)
+                # print ("\n")
+
             if self.args.autoencoder:
                 self.comms_all = c.clone()  # encoded received communciations for autoencoder
-
-            c = self.gating_func(c)
 
             if self.args.recurrent:
                 if self.args.mha_comm:

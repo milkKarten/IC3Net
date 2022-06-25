@@ -7,9 +7,10 @@ seeds = [0]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 # method = "easy_baseline_test_autoencoder_action"
 
-method = "DECOMP_STATE_128_tj_comm_intent_1_easy_fixed_autoencoder_action0.7"
+method = "TEST_tj_learn_intent_gating_easy_fixed_autoencoder_action0.7"
 # method = "DECOMP_STATE_tj_tj_easy_fixed_autoencoder_action0.7"
-
+pre_trained_intent_network_fp = "DECOMP_STATE_128_tj_easy_fixed_autoencoder_action0.7"
+budget = 0.7
 fdm_path = "DECOMP_STATE_tj_tj_train_fdm_easy_fixed_autoencoder_action0.7"
 pre_trained_network_fp = "DECOMP_STATE_tj_tj_train_fdm_easy_fixed_autoencoder_action0.7"
 # pretrain_exp_name = 'tj_EX_fixed_proto_comm_vs_protos_medium_p112_c64_d'
@@ -34,7 +35,7 @@ for num_proto in protos_list:
         if "proto" in method:
             discrete_comm = True
 
-        if "comm_intent_1" in method or "comm_intent_2" in method:
+        if "comm_intent_1" in method or "comm_intent_2" in method or "learn_intent_gating" in method:
             hid_size = 128
         else:
             hid_size = 64
@@ -132,6 +133,11 @@ for num_proto in protos_list:
         if "comm_intent_2" in method:
             run_str += f"--comm_intent_2 "
             run_str += f"--fdm_path {fdm_path} "
+        if "learn_intent_gating" in method:
+            run_str += f"--learn_intent_gating "
+            run_str += f"--budget {budget} "
+            run_str += f"--intent_model_path {pre_trained_intent_network_fp} "
+            run_str += "--min_comm_loss --eta_comm_loss 1. "
 
         # Important: If you want to restore training just use the --restore tag
         # run for all seeds

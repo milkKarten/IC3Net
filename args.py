@@ -148,26 +148,33 @@ def get_args():
      parser.add_argument('--pre_trained_network', type=str, default="",
                         help="Use a pretrained network and only update the decoder")
 
-
      # multi-headed attention for communication receiving
      parser.add_argument('--mha_comm', action='store_true', default=False,
-                         help='multi-headed attention for communication receiving')
+                        help='multi-headed attention for communication receiving')
      parser.add_argument('--num_heads', type=int, default=1,
-                         help="Number of heads for attention")
+                        help="Number of heads for attention")
 
+
+     # multi-headed attention for communication receiving
      parser.add_argument('--comm_intent_1', action='store_true', default=False,
-                     help="Communicating intent, method 1")
+                    help="Communicating intent, method 1")
 
      parser.add_argument('--comm_intent_2', action='store_true', default=False,
-                     help="Communicating intent, method 1")
+                    help="Communicating intent, method 2")
 
      parser.add_argument('--intent_horizon', type=int, default=2,
-                         help='Horizon for communicating intent')
+                        help='Horizon for communicating intent')
 
      parser.add_argument('--train_fdm', action='store_true', default=False,
-                     help="Train forward dynamics model")
+                    help="Train forward dynamics model")
 
      parser.add_argument('--fdm_path', type=str, default="",
-                     help="Forward dynamics model load path")
+                    help="Forward dynamics model load path")
+
+     parser.add_argument('--intent_model_path', type=str, default="",
+                    help="Pretrained model that communicates intent")
+
+     parser.add_argument('--learn_intent_gating', action='store_true', default=False,
+                    help="Learn gating function using intent")
 
      return parser
