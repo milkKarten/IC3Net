@@ -5,14 +5,19 @@ env = "traffic_junction"
 # seeds = [0]
 # seeds = [0,1,2]
 
-seeds = [0,1,2,3,4,5,6,7,8,9]
+seeds = [0,1,2]
 # seeds = [777]
 # seeds = [20]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 # methods = ['hard_soft_minComm_autoencoder', 'easy_soft_minComm_autoencoder'. 'easy_proto_soft_minComm_autoencoder']
 methods = ['tj_learn_intent_gating_easy_fixed_autoencoder_action']
-
 pre_trained_intent_network_fp = "DECOMP_STATE_128_tj_easy_fixed_autoencoder_action0.7"
+
+#
+# methods = ['tj_learn_intent_gating_comm_intent_1_easy_fixed_autoencoder_action']
+# pre_trained_intent_network_fp = "DECOMP_STATE_128_tj_comm_intent_1_easy_fixed_autoencoder_action0.7"
+
+
 pre_trained_network_fp = "DECOMP_STATE_tj_tj_easy_fixed_autoencoder_action0.7"
 fdm_path = "DECOMP_STATE_tj_tj_train_fdm_easy_fixed_autoencoder_action0.7"
 # pretrain_files = ['tj_hard_fixed_autoencoder', 'tj_easy_fixed_autoencoder', 'tj_easy_fixed_proto_autoencoder']
@@ -39,14 +44,13 @@ for budget in [0.1]:
         for num_proto in protos_list:
 
             if "learn_intent_gating" in method:
-                if budget < 0.3:
-                    lr = 0.0003
                 if budget < 0.5:
                     lr = 0.003
                 else:
                     lr = 0.03
             else:
                 lr = 0.003
+
 
             exp_name = "eta_comm_loss=1_"+ str(lr) + "_" + method + str(budget)
             # exp_name = "tj_EX_" + method + "_p" + str(num_proto) + "_c" + str(comm_dim)
