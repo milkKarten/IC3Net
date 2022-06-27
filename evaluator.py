@@ -65,6 +65,9 @@ class Evaluator:
         stat["n_loss_checks"] = 0
         stat["loc_pred_acc"] = 0
         stat["loc_pred_checks"] = 0
+
+        for i in range(self.args.nagents):
+            stat["percent_comm_" + str(i)] = 0
         info_comm = dict()
         info= dict()
         switch_t = -1
@@ -94,8 +97,8 @@ class Evaluator:
                 #     x[1] = self.policy_net.init_hidden(batch_size=state.shape[0])
                 #     info_comm['comm_action'] = np.zeros(self.args.nagents, dtype=int)
 
-                if "special" in epoch and t > 20:
-                    print ("NO MORE COMMUNICATION")
+                if "special" in epoch and t > float("inf"):
+                    # print ("NO MORE COMMUNICATION")
                     action_out, value, prev_hid, proto_comms = self.policy_net(x, info_comm,no_comm=True)
                 else:
                     # print ("agent mask: ")
@@ -107,9 +110,16 @@ class Evaluator:
                     # else:
                     #     print ("no alive mask")
 
-                    print ("COMMUNICATED NEXT ACTION")
-                    print (info_comm)
+                    # print ("COMMUNICATED NEXT ACTION")
+                    # print (info_comm)
                     action_out, value, prev_hid, proto_comms = self.policy_net(x, info_comm)
+
+
+                if self.args.learn_intent_gating:
+                    for i in range(self.args.nagents):
+                        stat["percent_comm_" + str(i)] += proto_comms[i].item()
+
+
                 # print (action_out)
                 # print (x[1])
                 # print ("\n")
@@ -272,7 +282,7 @@ class Evaluator:
                     # print (player_decoded_locs_)
                     # stat["mean_highest_oc_prob"] = np.mean(player_decoded_locs_,axis=1)
 
-                    display_decoded_state = True
+                    display_decoded_state = False
 
                     if display_decoded_state:
 
@@ -374,10 +384,10 @@ class Evaluator:
                         # assert False
 
 
-            print ("going to take action: ")
-            print (actual)
+            # print ("going to take action: ")
+            # print (actual)
             next_state, reward, done, info = self.env.step(actual)
-            print ("\n")
+            # print ("\n")
             done = done or self.env.env.has_failed
             # store comm_action in info for next step
             if self.args.hard_attn and self.args.commnet:
@@ -422,6 +432,11 @@ class Evaluator:
             state = next_state
             if done:
                 break
+
+
+        if self.args.learn_intent_gating:
+            for i in range(self.args.nagents):
+                stat["percent_comm_" + str(i)] /= self.args.max_steps
 
         if self.args.train_fdm:
 

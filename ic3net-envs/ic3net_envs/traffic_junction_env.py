@@ -211,9 +211,9 @@ class TrafficJunctionEnv(gym.Env):
 
 
 
-        # if "special" in epoch:
-        #     epoch_ = epoch.split("_")
-        #     epoch = int(epoch_[1])
+        if "special" in epoch:
+            epoch_ = epoch.split("_")
+            epoch = int(epoch_[1])
             # if self.difficulty != "easy":
             #     print ("toy env only implemented for easy environment.")
             #     assert False

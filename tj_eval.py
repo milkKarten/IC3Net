@@ -3,12 +3,15 @@ import os, sys, subprocess
 os.environ["OMP_NUM_THREADS"] = "1"
 
 env = "traffic_junction"
-seeds = [0]
+seeds = [0,1,2,3,4,5,6,7,8,9]
+# seeds = [0]
+
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 # method = "easy_baseline_test_autoencoder_action"
 
-method = "TEST_tj_learn_intent_gating_easy_fixed_autoencoder_action0.7"
-# method = "DECOMP_STATE_tj_tj_easy_fixed_autoencoder_action0.7"
+
+# method = "done_eta_comm_loss=1_0.003_tj_learn_intent_gating_easy_fixed_autoencoder_action0.1"
+method = "DECOMP_STATE_128_tj_easy_fixed_autoencoder_action0.7"
 pre_trained_intent_network_fp = "DECOMP_STATE_128_tj_easy_fixed_autoencoder_action0.7"
 budget = 0.7
 fdm_path = "DECOMP_STATE_tj_tj_train_fdm_easy_fixed_autoencoder_action0.7"
@@ -35,7 +38,7 @@ for num_proto in protos_list:
         if "proto" in method:
             discrete_comm = True
 
-        if "comm_intent_1" in method or "comm_intent_2" in method or "learn_intent_gating" in method:
+        if "comm_intent_1" in method or "comm_intent_2" in method or "learn_intent_gating" in method or "128" in method:
             hid_size = 128
         else:
             hid_size = 64

@@ -160,11 +160,13 @@ for i in range(500):
 total_episode_time = time.time() - st_time
 average_stat = {}
 
-np.save("saved_actions/actions_no_comm=" + str(args.no_comm) + "_" + str(args.exp_name) + ".npy",evaluator.seed2act)
-np.save("saved_actions/isalive_no_comm=" + str(args.no_comm) + "_" + str(args.exp_name) + ".npy",evaluator.seed2alive)
+# np.save("saved_actions/actions_no_comm=" + str(args.no_comm) + "_" + str(args.exp_name) + ".npy",evaluator.seed2act)
+# np.save("saved_actions/isalive_no_comm=" + str(args.no_comm) + "_" + str(args.exp_name) + ".npy",evaluator.seed2alive)
 
 for key in all_stats[0].keys():
     average_stat[key] = np.mean([stat.get(key) for stat in all_stats])
+
+np.save("eval_logs/" + args.exp_name + "_" + str(args.seed) + ".npy", average_stat)
 print("average stats is: ", average_stat)
 print("time taken per step ", total_episode_time/stat['num_steps'])
 # print('win rate ', average_stat['win_rate'])
