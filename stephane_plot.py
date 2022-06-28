@@ -52,15 +52,15 @@ prop = "success"
 method_1 = "done_eta_comm_loss=1_0.03_tj_learn_intent_gating_easy_fixed_autoencoder_action0.7"
 name_1 = "paper_models/traffic_junction/" + method_1
 get_runs_data(method_1,name_1,prop,"orange",n_runs=10)
-
-method_1 = "done_eta_comm_loss=1_0.03_tj_learn_intent_gating_easy_fixed_autoencoder_action0.5"
-name_1 = "paper_models/traffic_junction/" + method_1
-get_runs_data(method_1,name_1,prop,"green",n_runs=10)
-
-
-method_1 = "done_eta_comm_loss=1_0.03_tj_learn_intent_gating_easy_fixed_autoencoder_action0.9"
-name_1 = "paper_models/traffic_junction/" + method_1
-get_runs_data(method_1,name_1,prop,"blue",n_runs=10)
+#
+# method_1 = "done_eta_comm_loss=1_0.03_tj_learn_intent_gating_easy_fixed_autoencoder_action0.5"
+# name_1 = "paper_models/traffic_junction/" + method_1
+# get_runs_data(method_1,name_1,prop,"green",n_runs=10)
+#
+#
+# method_1 = "done_eta_comm_loss=1_0.03_tj_learn_intent_gating_easy_fixed_autoencoder_action0.9"
+# name_1 = "paper_models/traffic_junction/" + method_1
+# get_runs_data(method_1,name_1,prop,"blue",n_runs=10)
 
 
 # method_1 = "TEST_MLP_6_tj_train_fdm_easy_fixed_autoencoder_action0.7"
