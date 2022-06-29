@@ -30,7 +30,7 @@ class TIMMAC(nn.Module):
         self.nagents = args.nagents
         self.hid_size = args.hid_size
         self.comm_passes = args.comm_passes
-        self.max_len = args.dim
+        self.max_len = min(args.dim, 10)
         self.dropout = 0.
 
         # embedding for one hot encoding of inputs
@@ -253,8 +253,8 @@ class TIMMAC(nn.Module):
     def reset_layers(self):
         # reset output layers
         self.init_layer(self.action_head)
-        self.init_layer(self.value_head)
-        self.init_layer(self.attend_obs_intent.unifyheads)
+        # self.init_layer(self.value_head)
+        # self.init_layer(self.attend_obs_intent.unifyheads)
 
     def init_layer(self, m):
         torch.nn.init.xavier_normal_(m.weight, gain=nn.init.calculate_gain('tanh'))
