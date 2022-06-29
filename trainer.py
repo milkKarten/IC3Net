@@ -288,8 +288,8 @@ class Trainer(object):
                     stat['enemy_comm']  = stat.get('enemy_comm', 0)  + info_comm['comm_action'][self.args.nfriendly:]
 
 
-            if 'alive_mask' in info:
-                misc['alive_mask'] = info['alive_mask'].reshape(reward.shape)
+            if 'alive_mask' in info_comm:
+                misc['alive_mask'] = info_comm['alive_mask'].reshape(reward.shape)
             else:
                 misc['alive_mask'] = np.ones_like(reward)
 

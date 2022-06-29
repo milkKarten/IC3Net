@@ -222,7 +222,7 @@ class TIMMAC(nn.Module):
             comm_action = torch.zeros(self.nagents)
         else:
             x = x.view(self.nagents, self.hid_size)
-            comm_prob = F.log_softmax(self.gating_head(x), dim=-1)[0].exp()
+            comm_prob = F.log_softmax(self.gating_head(x), dim=-1)[0]
             comm_prob = gumbel_softmax(comm_prob, temperature=1, hard=True)
             comm_prob = comm_prob[:, 1].reshape(self.nagents)
             comm_action = comm_prob
