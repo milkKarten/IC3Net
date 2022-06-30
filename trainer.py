@@ -26,8 +26,8 @@ class Trainer(object):
                 lr = args.lrate, alpha=0.97, eps=1e-6)
         elif self.args.optim_name == "Adadelta":
             self.optimizer = optim.Adadelta(policy_net.parameters())#, lr = args.lrate)
-        if self.args.scheduleLR:
-            self.load_scheduler(start_epoch=0)
+        # if self.args.scheduleLR:
+        #     self.load_scheduler(start_epoch=0)
         self.params = [p for p in self.policy_net.parameters()]
         # self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         self.device = torch.device('cpu')
@@ -83,6 +83,9 @@ class Trainer(object):
         self.loss_autoencoder = None
         self.loss_min_comm = None
         self.best_model_reward = -np.inf
+
+        self.args.scheduleLR = True
+        self.scheduler = torch.optim.lr_scheduler.CyclicLR(self.optimizer, max_lr=args.lrate, base_lr=args.lrate/10., step_size_up=args.epoch_size)
 
     def get_episode(self, epoch, random=False):
         episode = []
@@ -513,7 +516,7 @@ class Trainer(object):
                 p._grad.data /= stat['num_steps']
         self.optimizer.step()
         if self.args.scheduleLR:
-            print("LR step")
+            # print("LR step")
             self.scheduler.step()
         return stat
 
@@ -537,8 +540,8 @@ class Trainer(object):
             self.args.comm_action_one = False
             self.args.variable_gate = False
 
-    def load_scheduler(self, start_epoch):
-        print("load_scheduler",start_epoch)
-        self.scheduler1 = optim.lr_scheduler.ConstantLR(self.optimizer, factor=1)
-        self.scheduler2 = optim.lr_scheduler.StepLR(self.optimizer, 500*self.args.epoch_size, gamma=0.1)
-        self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2], milestones=[2500*self.args.epoch_size])
+    # def load_scheduler(self, start_epoch):
+    #     print("load_scheduler",start_epoch)
+    #     self.scheduler1 = optim.lr_scheduler.ConstantLR(self.optimizer, factor=1)
+    #     self.scheduler2 = optim.lr_scheduler.StepLR(self.optimizer, 500*self.args.epoch_size, gamma=0.1)
+    #     self.scheduler = optim.lr_scheduler.SequentialLR(self.optimizer, schedulers=[self.scheduler1, self.scheduler2], milestones=[2500*self.args.epoch_size])
