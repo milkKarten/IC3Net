@@ -8,7 +8,7 @@ from utils import *
 from action_utils import *
 import time
 
-Transition = namedtuple('Transition', ('state', 'action', 'action_out', 'value', 'episode_mask',
+Transition = namedtuple('Transition', ('state', 'action', 'action_out','comm_prob', 'comm_prob_logits', 'value', 'episode_mask',
                                        'episode_mini_mask', 'next_state',
                                        'reward', 'misc'))
 
@@ -110,22 +110,33 @@ class Trainer(object):
         if random:
             inputs = []
         episode_comm = []
+        n_alive_steps = 0
+        n_alive_steps_per_agent = np.zeros(self.args.nagents)
         for t in range(self.args.max_steps):
+
+
             # print(t)
             misc = dict()
+            if t == 0:
+                info_comm["alive_mask"] = np.zeros(self.args.nagents)
+
             if t == 0 and self.args.hard_attn and self.args.commnet and not random:
                 info_comm['comm_action'] = np.zeros(self.args.nagents, dtype=int)
                 # info_comm['comm_budget'] = np.zeros(self.args.nagents, dtype=int)
                 info_comm['step_t'] = t  # episode step for resetting communication budget
                 stat['comm_action'] = np.zeros(self.args.nagents, dtype=int)[:self.args.nfriendly]
 
+
+
+            n_alive_steps_per_agent += info_comm["alive_mask"]
+            n_alive_steps += sum(info_comm["alive_mask"])
             # recurrence over time
             if self.args.recurrent and not random:
                 if self.args.rnn_type == 'LSTM' and t == 0:
                     prev_hid = self.policy_net.init_hidden(batch_size=state.shape[0])
 
                 x = [state, prev_hid]
-                action_out, value, prev_hid, comm_prob = self.policy_net(x, info_comm)
+                action_out, value, prev_hid, comm_prob, comm_prob_logits = self.policy_net(x, info_comm)
                 # episode_comm += comm_action
 
                 # this seems to be limiting how much BPTT happens.
@@ -138,15 +149,17 @@ class Trainer(object):
                 x = state
                 if random:
                     inputs.append(x)
-                action_out, value, comm_prob = self.policy_net(x, info_comm)
+                action_out, value, comm_prob, comm_prob_logits = self.policy_net(x, info_comm)
             if self.args.autoencoder and not self.args.autoencoder_action and not random:
                 decoded = self.policy_net.decode()
                 if self.args.recurrent:
                     # x_all = x[0].reshape(-1).expand_as(decoded)
-                    x_all = x[0].sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
+                    # x_all = x[0].sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
+                    x_all = x[0].expand(self.args.nagents,self.args.nagents, -1)
                 else:
                     # x_all = x.reshape(-1).expand_as(decoded)
-                    x_all = x.sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
+                    # x_all = x.sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
+                    x_all = x.expand(self.args.nagents,self.args.nagents, -1)
                 if self.loss_autoencoder == None:
                     self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
                 else:
@@ -158,8 +171,14 @@ class Trainer(object):
                 action_mask = avail_actions==np.zeros_like(avail_actions)
                 action_out[0, action_mask] = -1e10
                 action_out = torch.nn.functional.log_softmax(action_out, dim=-1)
+
+
+
             # this is actually giving you actions from logits
             action = select_action(self.args, action_out)
+
+            if self.args.learn_intent_gating and self.args.min_comm_loss:
+                episode_comm.append(comm_prob.double().reshape(1,-1))
 
             # this is for the gating head penalty
             if not self.args.continuous and not self.args.comm_action_one:
@@ -256,13 +275,21 @@ class Trainer(object):
                 x_all = torch.zeros_like(decoded)
                 if self.args.recurrent:
                     # x_all[:,:-self.args.nagents] = x[0].sum(dim=1).expand(self.args.nagents, -1)
-                    x_all[0,:,:-self.args.nagents] = x[0].sum(dim=1).expand(1, self.args.nagents, -1)
-                    x_all[0,:,-self.args.nagents:] = torch.tensor(actual[0])
+                    # x_all[0,:,:-self.args.nagents] = x[0].sum(dim=1).expand(1, self.args.nagents, -1)
+                    # x_all[0,:,-self.args.nagents:] = torch.tensor(actual[0])
+                     x_all = x[0].expand(self.args.nagents,self.args.nagents, -1)
+
                 else:
-                    # decoded = decoded.reshape(decoded.shape[0],decoded.shape[1])
-                    x_all[:,:-self.args.nagents] = x.reshape(decoded.shape[0], decoded.shape[1]-self.args.nagents)
-                    # x_all[0,:,:-self.args.nagents] = x.sum(dim=1).expand(self.args.nagents, -1)
-                    x_all[:,-self.args.nagents:] = torch.tensor(actual[0])
+                    # # decoded = decoded.reshape(decoded.shape[0],decoded.shape[1])
+                    # x_all[:,:-self.args.nagents] = x.reshape(decoded.shape[0], decoded.shape[1]-self.args.nagents)
+                    # # x_all[0,:,:-self.args.nagents] = x.sum(dim=1).expand(self.args.nagents, -1)
+                    # x_all[:,-self.args.nagents:] = torch.tensor(actual[0])
+
+                     x_all = x.expand(self.args.nagents,self.args.nagents, -1)
+
+                gt_actions = torch.tensor(actual[0]).unsqueeze(1).expand(self.args.nagents,self.args.nagents,-1)
+                x_all = torch.cat((x_all,gt_actions),dim=2)
+
                 if self.loss_autoencoder == None:
                     self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
                 else:
@@ -290,8 +317,10 @@ class Trainer(object):
 
             if 'alive_mask' in info:
                 misc['alive_mask'] = info['alive_mask'].reshape(reward.shape)
+                info_comm["alive_mask"] = info['alive_mask'].reshape(reward.shape)
             else:
                 misc['alive_mask'] = np.ones_like(reward)
+                info_comm["alive_mask"] = np.ones_like(reward)
 
             # env should handle this make sure that reward for dead agents is not counted
             # reward = reward * misc['alive_mask']
@@ -314,8 +343,12 @@ class Trainer(object):
             if should_display:
                 self.env.display()
 
-            trans = Transition(state, action, action_out, value, episode_mask, episode_mini_mask,
-                               next_state, reward, misc)
+            if self.args.learn_intent_gating:
+                trans = Transition(state, action, action_out, comm_prob.detach().numpy(), comm_prob_logits.detach().numpy(), value, episode_mask, episode_mini_mask,
+                                   next_state, reward, misc)
+            else:
+                trans = Transition(state, action, action_out, None, None, value, episode_mask, episode_mini_mask,
+                                   next_state, reward, misc)
             episode.append(trans)
             state = next_state
             if done:
@@ -324,18 +357,56 @@ class Trainer(object):
         stat['steps_taken'] = stat['num_steps']
 
         if self.args.min_comm_loss:
+            # episode_comm = torch.cat(episode_comm, 0).T
+            # episode_comm = episode_comm.mean(1)
+            #
+            # for i in range(self.args.nagents):
+            #     stat["agent" + str(i) + "_episode_comm"] = episode_comm[i].detach().item()
+            #
+            #
+            # comm_losses = torch.zeros_like(episode_comm)
+            # ind_budget = np.ones(self.args.nagents) * self.args.max_steps * self.args.soft_budget
+            # # ind_budget += np.ones(self.args.nagents) * self.policy_net.get_null_action()
+            # ind_budget = torch.tensor(ind_budget / self.args.max_steps)
+            # comm_losses[episode_comm < ind_budget] = (ind_budget[episode_comm < ind_budget] - episode_comm[episode_comm < ind_budget]) / ind_budget[episode_comm < ind_budget]
+            # comm_losses[episode_comm >= ind_budget] = (episode_comm[episode_comm >= ind_budget] - ind_budget[episode_comm >= ind_budget]) / (1. - ind_budget[episode_comm >= ind_budget])
+            # comm_losses = stat['num_steps'] * torch.abs(comm_losses).mean()
+            #
+
             episode_comm = torch.cat(episode_comm, 0).T
-            episode_comm = episode_comm.mean(1)
-            # print(episode_comm)
+            n_alive_steps_per_agent = torch.tensor(n_alive_steps_per_agent).unsqueeze(1)
+
+            mask = (n_alive_steps_per_agent != 0)
+
+            episode_comm_temp = torch.divide(torch.sum(episode_comm,axis=1)[mask.squeeze()],n_alive_steps_per_agent[mask])
+            episode_comm = torch.zeros(self.args.nagents)
             comm_losses = torch.zeros_like(episode_comm)
-            ind_budget = np.ones(self.args.nagents) * self.args.max_steps * self.args.soft_budget
-            ind_budget += np.ones(self.args.nagents) * self.policy_net.get_null_action()
-            ind_budget = torch.tensor(ind_budget / self.args.max_steps)
+            # ind_budget = np.ones(self.args.nagents) * self.args.max_steps * self.args.soft_budget
+            ind_budget = torch.zeros(self.args.nagents)
+
+            mask_i = 0
+            for i in range(self.args.nagents):
+                if mask[i]:
+                    episode_comm[i] = episode_comm_temp[mask_i]
+                    ind_budget[i] = n_alive_steps * self.args.soft_budget
+                    mask_i += 1
+
+            if n_alive_steps != 0:
+                ind_budget = torch.tensor(ind_budget / n_alive_steps)
+
+            for i in range(self.args.nagents):
+                stat["agent" + str(i) + "_episode_comm"] = episode_comm[i].detach().item()
+                stat["agent" + str(i) + "_episode_budget"] = ind_budget[i].item()
+
+
             comm_losses[episode_comm < ind_budget] = (ind_budget[episode_comm < ind_budget] - episode_comm[episode_comm < ind_budget]) / ind_budget[episode_comm < ind_budget]
             comm_losses[episode_comm >= ind_budget] = (episode_comm[episode_comm >= ind_budget] - ind_budget[episode_comm >= ind_budget]) / (1. - ind_budget[episode_comm >= ind_budget])
-            comm_losses = stat['num_steps'] * torch.abs(comm_losses).mean()
-            # print(episode_comm, ind_budget)
-            # comm_losses = torch.nn.functional.mse_loss(episode_comm, ind_budget)
+            comm_losses = n_alive_steps * torch.abs(comm_losses).mean()
+
+
+            if n_alive_steps == 0:
+                comm_losses = 0
+
             if self.loss_min_comm == None:
                 self.loss_min_comm = comm_losses
             else:
@@ -371,6 +442,10 @@ class Trainer(object):
         episode_mini_masks = torch.Tensor(np.array(batch.episode_mini_mask)).to(self.device)
         actions = torch.Tensor(np.array(batch.action)).to(self.device)
         actions = actions.transpose(1, 2).view(-1, n, dim_actions)
+
+        if self.args.learn_intent_gating:
+            comm_actions = torch.Tensor(np.array(batch.comm_prob)).to(self.device).flatten().unsqueeze(1)
+            comm_actions_logits = torch.Tensor(np.array(batch.comm_prob_logits)).to(self.device).flatten(end_dim=1)
 
         # old_actions = torch.Tensor(np.concatenate(batch.action, 0))
         # old_actions = old_actions.view(-1, n, dim_actions)
@@ -419,14 +494,25 @@ class Trainer(object):
 
             if self.args.advantages_per_action:
                 log_prob = multinomials_log_densities(actions, log_p_a)
+                if self.args.learn_intent_gating:
+                    comm_log_prob = multinomials_log_densities(comm_actions, comm_actions_logits)
             else:
                 log_prob = multinomials_log_density(actions, log_p_a)
+                if self.args.learn_intent_gating:
+                    comm_log_prob = multinomials_log_density(comm_actions, [comm_actions_logits])
+
 
         if self.args.advantages_per_action:
-            action_loss = -advantages.view(-1).unsqueeze(-1) * log_prob
+            if self.args.learn_intent_gating:
+                action_loss = -advantages.view(-1).unsqueeze(-1) * (log_prob + comm_log_prob)
+            else:
+                action_loss = -advantages.view(-1).unsqueeze(-1) * log_prob
             action_loss *= alive_masks.unsqueeze(-1)
         else:
-            action_loss = -advantages.view(-1) * log_prob.squeeze()
+            if self.args.learn_intent_gating:
+                action_loss = -advantages.view(-1) * (log_prob.squeeze() + comm_log_prob.squeeze())
+            else:
+                action_loss = -advantages.view(-1) * log_prob.squeeze()
             action_loss *= alive_masks
 
         action_loss = action_loss.sum()
@@ -460,6 +546,13 @@ class Trainer(object):
         if self.args.autoencoder:
             stat['autoencoder_loss'] = self.loss_autoencoder.item()
             loss = 0.5 * loss + 0.5 * self.loss_autoencoder
+
+        if self.args.learn_intent_gating:
+            for name, param in self.policy_net.named_parameters():
+                if "gating_l" not in name:
+                    param.requires_grad = False
+
+        # loss = self.loss_min_comm
         loss.backward()
         if self.args.autoencoder:
             self.loss_autoencoder = None

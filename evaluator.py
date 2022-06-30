@@ -44,6 +44,10 @@ class Evaluator:
         comms_to_prey_act = {} # record action 1
         comms_to_loc_full = {} # record all
         comm_action_episode = np.zeros(self.args.max_steps)
+        for i in range(self.args.nagents):
+            stat["total_comm_" + str(i)] = 0
+            stat["total_alive_steps_" + str(i)] = 0
+
         for t in range(self.args.max_steps):
             misc = dict()
             info['step_t'] = t
@@ -59,47 +63,47 @@ class Evaluator:
                 x = [state, prev_hid]
                 action_out, value, prev_hid, proto_comms = self.policy_net(x, info_comm)
                 # if isinstance(self.env.env.env, predator_prey_env.PredatorPreyEnv):
-                if self.args.env_name == 'predator_prey':
-                    # tuple_comms = tuple(proto_comms.detach().numpy())
-                    for i in range(0, len(self.env.env.predator_loc)):
-                        p = self.env.env.predator_loc[i]
-                        proto = proto_comms[0][i]
-                        if info_comm['comm_action'][i] == 0 or self.policy_net.get_null_action()[i] == 1:
-                            continue
-                        tuple_comms = tuple(proto)
-                        if comms_to_loc_full.get(tuple_comms) is None:
-                            comms_to_loc_full[tuple_comms] = []
-                        comms_to_loc_full[tuple_comms].append(tuple(p))
-                elif self.args.env_name == 'traffic_junction':
-                    # print("car loc", self.env.env.car_loc)
-                    # print("paths", self.env.env.car_loc)
-                    for i in range(0, len(self.env.env.car_loc)):
-                        p = self.env.env.car_loc[i]
-                        # print(p)
-                        continue
-                        proto = proto_comms[0][i]
-                        action_i = self.env.env.car_last_act[i]
-                        if self.env.env.car_route_loc[i] != -1:
-                            if p[0] == 0 and p[1] == 0 or info_comm['comm_action'][i] == 0 or self.policy_net.get_null_action()[i] == 1:
-                                continue
-                            # print("path", p, proto.shape)
-                            # print(t, "proto", proto, proto.shape)
-                            # print(info_comm['comm_action'][i])
-                            tuple_comms = tuple(proto)
-                            # print("tuple comms", proto.shape)
-                            if comms_to_loc_full.get(tuple_comms) is None:
-                                comms_to_loc_full[tuple_comms] = []
-                            comms_to_loc_full[tuple_comms].append(tuple(p))
-                            # print(action_i)
-                            if action_i == 0:
-                                if comms_to_prey_loc.get(tuple_comms) is None:
-                                    comms_to_prey_loc[tuple_comms] = []
-                                # print("path", self.env.env.chosen_path[0])
-                                comms_to_prey_loc[tuple_comms].append(tuple(p))
-                            else:
-                                if comms_to_prey_act.get(tuple_comms) is None:
-                                    comms_to_prey_act[tuple_comms] = []
-                                comms_to_prey_act[tuple_comms].append(tuple(p))
+                # if self.args.env_name == 'predator_prey':
+                #     # tuple_comms = tuple(proto_comms.detach().numpy())
+                #     for i in range(0, len(self.env.env.predator_loc)):
+                #         p = self.env.env.predator_loc[i]
+                #         proto = proto_comms[0][i]
+                #         if info_comm['comm_action'][i] == 0 or self.policy_net.get_null_action()[i] == 1:
+                #             continue
+                #         tuple_comms = tuple(proto)
+                #         if comms_to_loc_full.get(tuple_comms) is None:
+                #             comms_to_loc_full[tuple_comms] = []
+                #         comms_to_loc_full[tuple_comms].append(tuple(p))
+                # elif self.args.env_name == 'traffic_junction':
+                #     # print("car loc", self.env.env.car_loc)
+                #     # print("paths", self.env.env.car_loc)
+                #     for i in range(0, len(self.env.env.car_loc)):
+                #         p = self.env.env.car_loc[i]
+                #         # print(p)
+                #         continue
+                #         proto = proto_comms[0][i]
+                #         action_i = self.env.env.car_last_act[i]
+                #         if self.env.env.car_route_loc[i] != -1:
+                #             if p[0] == 0 and p[1] == 0 or info_comm['comm_action'][i] == 0 or self.policy_net.get_null_action()[i] == 1:
+                #                 continue
+                #             # print("path", p, proto.shape)
+                #             # print(t, "proto", proto, proto.shape)
+                #             # print(info_comm['comm_action'][i])
+                #             tuple_comms = tuple(proto)
+                #             # print("tuple comms", proto.shape)
+                #             if comms_to_loc_full.get(tuple_comms) is None:
+                #                 comms_to_loc_full[tuple_comms] = []
+                #             comms_to_loc_full[tuple_comms].append(tuple(p))
+                #             # print(action_i)
+                #             if action_i == 0:
+                #                 if comms_to_prey_loc.get(tuple_comms) is None:
+                #                     comms_to_prey_loc[tuple_comms] = []
+                #                 # print("path", self.env.env.chosen_path[0])
+                #                 comms_to_prey_loc[tuple_comms].append(tuple(p))
+                #             else:
+                #                 if comms_to_prey_act.get(tuple_comms) is None:
+                #                     comms_to_prey_act[tuple_comms] = []
+                #                 comms_to_prey_act[tuple_comms].append(tuple(p))
 
 
                 if (t + 1) % self.args.detach_gap == 0:
@@ -109,39 +113,15 @@ class Evaluator:
                         prev_hid = prev_hid.detach()
             else:
                 x = state
-                action_out, value, proto_comms = self.policy_net(x, info_comm)
+                action_out, value, proto_comms,_ = self.policy_net(x, info_comm)
                 # if isinstance(self.env.env.env, predator_prey_env.PredatorPreyEnv):
-                if self.args.env_name == 'predator_prey':
-                    tuple_comms = tuple(proto_comms.detach().numpy())
-                    if comms_to_prey_loc.get(tuple_comms) is None:
-                        comms_to_prey_loc[tuple_comms] = []
-                    comms_to_prey_loc[tuple_comms].append(tuple(self.env.env.env.prey_loc[0]))
-                elif self.args.env_name == 'traffic_junction':
-                    # print("car loc", self.env.env.car_loc)
-                    # print("paths", self.env.env.car_loc)
-                    for i in range(0, len(self.env.env.car_loc)):
-                        p = self.env.env.car_loc[i]
-                        # print(p)
-                        proto = proto_comms[0][i]
-                        action_i = self.env.env.car_last_act[i]
-                        if self.env.env.car_route_loc[i] != -1:
-                            # print("path", p, proto.shape)
-                            tuple_comms = tuple(proto)
-                            # print("tuple comms", proto.shape)
-                            if comms_to_loc_full.get(tuple_comms) is None:
-                                comms_to_loc_full[tuple_comms] = []
-                            comms_to_loc_full[tuple_comms].append(tuple(p))
 
-                            # print(action_i)
-                            if action_i == 0:
-                                if comms_to_prey_loc.get(tuple_comms) is None:
-                                    comms_to_prey_loc[tuple_comms] = []
-                                # print("path", self.env.env.chosen_path[0])
-                                comms_to_prey_loc[tuple_comms].append(tuple(p))
-                            else:
-                                if comms_to_prey_act.get(tuple_comms) is None:
-                                    comms_to_prey_act[tuple_comms] = []
-                                comms_to_prey_act[tuple_comms].append(tuple(p))
+
+            if self.args.learn_intent_gating:
+                for i in range(self.args.nagents):
+                    if 'alive_mask' in info:
+                        stat["total_comm_" + str(i)] += proto_comms[i].item()
+                        stat["total_alive_steps_" + str(i)] += info['alive_mask'].reshape(self.args.nagents)[i]
 
 
             if hasattr(self.env.env, 'get_avail_actions'):
@@ -151,6 +131,47 @@ class Evaluator:
                 action_out = torch.nn.functional.log_softmax(action_out, dim=-1)
             action = select_action(self.args, action_out, eval_mode=True)
             action, actual = translate_action(self.args, self.env, action)
+
+
+            if self.args.env_name == 'predator_prey':
+                tuple_comms = tuple(proto_comms.detach().numpy())
+                if comms_to_prey_loc.get(tuple_comms) is None:
+                    comms_to_prey_loc[tuple_comms] = []
+                comms_to_prey_loc[tuple_comms].append(tuple(self.env.env.env.prey_loc[0]))
+            elif self.args.env_name == 'traffic_junction':
+                # print("car loc", self.env.env.car_loc)
+                # print("paths", self.env.env.car_loc)
+                for i in range(0, len(self.env.env.car_loc)):
+                    p = self.env.env.car_loc[i]
+                    next_a = actual[0][i]
+                    # print(p)
+
+                    if proto_comms[i] == 0: continue
+                    sent_comm = self.policy_net.last_recieved_comms[0].clone().detach().numpy()
+
+                    # proto = proto_comms[0][i]
+                    action_i = self.env.env.car_last_act[i]
+                    if self.env.env.car_route_loc[i] != -1 and self.env.env.alive_mask[i] == 1:
+                        # print("path", p, proto.shape)
+                        tuple_comms = tuple(sent_comm)
+
+                        # print("tuple comms", proto.shape)
+                        if comms_to_loc_full.get(tuple_comms) is None:
+                            comms_to_loc_full[tuple_comms] = []
+                        comms_to_loc_full[tuple_comms].append((tuple(p),next_a))
+
+                        # print(action_i)
+                        if action_i == 0:
+                            if comms_to_prey_loc.get(tuple_comms) is None:
+                                comms_to_prey_loc[tuple_comms] = []
+                            # print("path", self.env.env.chosen_path[0])
+                            comms_to_prey_loc[tuple_comms].append((tuple(p),next_a))
+                        else:
+                            if comms_to_prey_act.get(tuple_comms) is None:
+                                comms_to_prey_act[tuple_comms] = []
+                            comms_to_prey_act[tuple_comms].append((tuple(p),next_a))
+
+
             next_state, reward, done, info = self.env.step(actual)
             if self.args.env_name == 'traffic_junction':
                 done = done or self.env.env.has_failed
@@ -214,4 +235,6 @@ class Evaluator:
 
         if hasattr(self.env, 'get_stat'):
             merge_stat(self.env.get_stat(), stat)
+
+
         return episode, stat, all_comms, comms_to_prey_loc, comms_to_prey_act, comms_to_loc_full, comm_action_episode

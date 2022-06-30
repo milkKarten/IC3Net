@@ -2,7 +2,7 @@ import os, sys, subprocess
 
 os.environ["OMP_NUM_THREADS"] = "1"
 env = "traffic_junction"
-seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
+seeds = [1]
 # seeds = [1, 2, 3]
 # seeds = [777]
 # seeds = [20]
@@ -14,23 +14,24 @@ seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
 # methods = ['hard_fixed', 'hard_fixed_autoencoder']
 # methods = ['baseline_easy_ic3net_autoencoder_action_mha']
 # methods = ['baseline_easy_timmac_autoencoder_action_attend_mha1_pre']
-methods = ['baseline_hard_timmac_mha_autoencoder_action',
-            'baseline_hard_timmac_mha_autoencoder_action_preencode',
-            'baseline_hard_timmac_autoencoder_action',
-            'baseline_hard_ic3net_mha_autoencoder_action']
+methods = ['fixed_easy_learn_intent_gating_timmac_autoencoder_action']
+pre_trained_intent_network_fp = "tj_fixed_easy_timmac_autoencoder_action_heads1"
 # methods = ['hard_fixed_proto', 'hard_fixed_proto_autoencoder']
 # methods = ["easy_proto_soft_minComm_autoencoder_action"]
 pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder'
 # pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder_action'
 # for soft_budget in [.5]:
-for num_heads in [1]:
+# for soft_budget in [0.9,0.7,0.6,0.5,0.4,0.3,0.2,0.1]:
+for soft_budget in [0.9]:
+
+    num_heads = 1
     for method in methods:
         if 'action' in method:
             pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder_action'
         if "easy" in method:
             # protos_list = [14, 28, 56]
             protos_list = [56]
-            num_epochs = 100
+            num_epochs = 200
         elif 'medium' in method:
             # protos_list = [56, 28, 112]
             protos_list = [112] # use 1 layer of redundancy
@@ -42,9 +43,9 @@ for num_heads in [1]:
             # comms_list = [64]
             num_epochs = 2000
         for num_proto in protos_list:
-            exp_name = "tj_" + method + '_heads' + str(num_heads)
+            exp_name = "TEST_eta_comm_loss=1_tj_" + method + '_heads' + str(num_heads) + "_budget=" + str(soft_budget)
             vision = 0
-            soft_budget = 0.7
+
             # discrete comm is true if you want to use learnable prototype based communication.
             discrete_comm = False
             if "proto" in method:
@@ -69,7 +70,10 @@ for num_heads in [1]:
             if "var" in method:
                 variable_gate = True
             nprocesses = 0
-            lr = 0.003
+            if soft_budget < 1:
+                lr = 0.03
+            else:
+                lr = 0.003
             if "medium" in method:
                 nagents = 10
                 max_steps = 40
@@ -101,7 +105,7 @@ for num_heads in [1]:
                       f" --detach_gap 10 --lrate {lr} --vision {vision} "+\
                       f"--save paper_models --load paper_models "+\
                       f"--max_steps {max_steps} --dim {dim} --nagents {nagents} --add_rate_min {add_rate_min} --add_rate_max {add_rate_max} --curr_epochs 1000 --difficulty {difficulty} "+\
-                      f"--exp_name {exp_name} --save_every {save_every} "
+                      f"--exp_name {exp_name} --save_every {save_every} --gamma 1. "
 
             if discrete_comm:
                 run_str += f"--discrete_comm --use_proto --num_proto {num_proto} "
@@ -117,6 +121,10 @@ for num_heads in [1]:
                 run_str += f"--use_tj_curric "
             if 'soft' in method:
                 run_str += f"--load_pretrain --pretrain_exp_name {pretrain_exp_name} "
+            if "learn_intent_gating" in method:
+                run_str += f"--learn_intent_gating "
+                run_str += f"--intent_model_path {pre_trained_intent_network_fp} "
+                run_str += "--min_comm_loss --eta_comm_loss 1. "
 
             if "minComm" in method:
                 run_str += "--min_comm_loss --eta_comm_loss 1. "
@@ -145,9 +153,9 @@ for num_heads in [1]:
                 # run_str += "> runLogs/" + exp_name + "Log.txt 2>&1 &"
                 # cmd_args = run_str[:-1].split(" ")
                 # print(cmd_args)
-                # with open("runLogs/" + exp_name + "Log.txt","wb") as out:
-                #     subprocess.Popen(run_str + f"--seed {seed}", shell=True, stdout=out)#, stderr=out)
-                os.system(run_str + f"--seed {seed}")
+                with open("runLogs/" + exp_name + "Log.txt","wb") as out:
+                    subprocess.Popen(run_str + f"--seed {seed}", shell=True, stdout=out)#, stderr=out)
+                # os.system(run_str + f"--seed {seed}")
             # sys.exit(0)
             # plot the avg and error graphs using multiple seeds.
             # os.system(f"python plot.py --env_name {env} --exp_name {exp_name} --nagents {nagents}")

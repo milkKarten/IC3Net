@@ -20,12 +20,12 @@ def get_args():
      parser.add_argument('--recurrent', action='store_true', default=False,
                          help='make the model recurrent in time')
      # optimization
-     parser.add_argument('--gamma', type=float, default=1.0,
+     parser.add_argument('--gamma', type=float, default=.95,
                          help='discount factor')
      parser.add_argument('--tau', type=float, default=1.0,
                          help='gae (remove?)')
      parser.add_argument('--seed', type=int, default=-1,
-                         help='random seed. Pass -1 for random seed')  # TODO: works in thread?
+                         help='random seed. Pass -1 for random seed') # TODO: works in thread?
      parser.add_argument('--normalize_rewards', action='store_true', default=False,
                          help='normalize rewards in each batch')
      parser.add_argument('--lrate', type=float, default=0.001,
@@ -57,6 +57,7 @@ def get_args():
      parser.add_argument('--display', action="store_true", default=False,
                          help='Display environment state')
 
+
      parser.add_argument('--random', action='store_true', default=False,
                          help="enable random model")
 
@@ -65,6 +66,8 @@ def get_args():
                          help="enable commnet model")
      parser.add_argument('--ic3net', action='store_true', default=False,
                          help="enable commnet model")
+     parser.add_argument('--timmac', action='store_true', default=False,
+                         help="enable transformer model")
      parser.add_argument('--nagents', type=int, default=1,
                          help="Number of agents (used in multiagent)")
      parser.add_argument('--comm_mode', type=str, default='avg',
@@ -79,13 +82,15 @@ def get_args():
                          help='type of rnn to use. [LSTM|MLP]')
      parser.add_argument('--detach_gap', default=10000, type=int,
                          help='detach hidden state and cell state for rnns at this interval.'
-                              + ' Default 10000 (very high)')
+                         + ' Default 10000 (very high)')
      parser.add_argument('--comm_init', default='uniform', type=str,
                          help='how to initialise comm weights [uniform|zeros]')
      parser.add_argument('--hard_attn', default=False, action='store_true',
                          help='Whether to use hard attention: action - talk|silent')
      parser.add_argument('--comm_action_one', default=False, action='store_true',
                          help='Whether to always talk, sanity check for hard attention.')
+     parser.add_argument('--comm_action_zero', default=False, action='store_true',
+                         help='Whether to never talk.')
      parser.add_argument('--advantages_per_action', default=False, action='store_true',
                          help='Whether to multipy log porb for each chosen action with advantages')
      parser.add_argument('--share_weights', default=False, action='store_true',
@@ -105,10 +110,11 @@ def get_args():
      parser.add_argument('--num_proto', type=int, default=6,
                          help="Number of prototypes to use")
      parser.add_argument('--add_comm_noise', default=False, action='store_true',
-                        help='Whether to add noise to communication')
+                         help='Whether to add noise to communication')
 
      parser.add_argument('--comm_dim', type=int, default=128,
                          help="Dimension of the communication vector")
+
 
      # TODO: Formalise this gating head penalty factor
      parser.add_argument('--gating_head_cost_factor', type=float, default=0.0,
@@ -116,8 +122,38 @@ def get_args():
      parser.add_argument('--restore', action='store_true', default=False,
                          help='plot training progress')
 
+     # gating reward curriculum
+     parser.add_argument('--gate_reward_curriculum', action='store_true', default=False,
+                         help='use gated reward curriculum')
+
+     # open gate / variable gate curriculum
+     parser.add_argument('--variable_gate', action='store_true', default=False,
+                         help='use variable gate curriculum')
+     # optimizer
+     parser.add_argument('--optim_name', default='RMSprop', type=str,
+                         help='pytorch optimizer')
+     # learning rate scheduler
+     parser.add_argument('--scheduleLR', action='store_true', default=False,
+                         help='Cyclic learning rate scheduler')
+
+
+
+     # communication maximum budget
      parser.add_argument('--budget', type=float, default=1.0,
                          help='Communication budget')
+
+     parser.add_argument('--use_tj_curric', action='store_true', default=False,
+                         help='Use curric for TJ')
+
+     parser.add_argument('--soft_budget', type=float, default=1.0,
+                         help='Soft comm budget')
+
+     # use a pretrained network
+     parser.add_argument('--load_pretrain', action='store_true', default=False,
+                         help='load old model as pretrain')
+     parser.add_argument('--pretrain_exp_name', type=str,
+                         help='pretrain model name')
+
      # objective function communication regularization terms
      parser.add_argument('--min_comm_loss', action='store_true', default=False,
                          help='minimize communication loss')
@@ -133,15 +169,29 @@ def get_args():
                          help='use autoencoder to learn comms')
      parser.add_argument('--autoencoder_action', action='store_true', default=False,
                          help='use actions intent in autoencoder')
+
      # null comm removal
      parser.add_argument('--remove_null', action='store_true', default=False,
                          help='remove null communications from being communicated')
      parser.add_argument('--null_dict_dir', type=str, default='',
                          help='null dictionary directory')
 
+     # starcraft maps
+     parser.add_argument('--map_name', type=str, default='3m',
+                         help='StarCraft map name')
+
      # multi-headed attention for communication receiving
      parser.add_argument('--mha_comm', action='store_true', default=False,
                          help='multi-headed attention for communication receiving')
      parser.add_argument('--num_heads', type=int, default=1,
                          help="Number of heads for attention")
+     parser.add_argument('--preencode', action='store_true', default=False,
+                         help='pretrain autoencoder')
+
+     # intention based gating
+     parser.add_argument('--learn_intent_gating', action='store_true', default=False,
+                     help="Learn gating function using intent")
+
+     parser.add_argument('--intent_model_path', type=str, default="",
+                     help="Pretrained model that communicates intent")
      return parser

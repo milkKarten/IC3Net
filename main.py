@@ -7,6 +7,7 @@ from tensorboardX import SummaryWriter
 import torch
 # import visdom
 
+
 import data
 from models import *
 from comm import CommNetMLP
@@ -210,6 +211,13 @@ parser.add_argument('--num_heads', type=int, default=1,
                     help="Number of heads for attention")
 parser.add_argument('--preencode', action='store_true', default=False,
                     help='pretrain autoencoder')
+
+# intention based gating
+parser.add_argument('--learn_intent_gating', action='store_true', default=False,
+                help="Learn gating function using intent")
+
+parser.add_argument('--intent_model_path', type=str, default="",
+                help="Pretrained model that communicates intent")
 
 # first add environment specific args to the parser
 init_args_for_env(parser)
@@ -558,7 +566,7 @@ if args.restore and not args.load_pretrain:
         model_path = os.path.join(load_path, str(all_models[-1])+".pt")
 
     d = torch.load(model_path)
-    policy_net.load_state_dict(d['policy_net'])
+    policy_net.load_state_dict(d['policy_net'], strict=False)
 
     # load history as well to continue training.
     for f in os.listdir(log_path):
@@ -567,7 +575,7 @@ if args.restore and not args.load_pretrain:
             history[k] = list(np.load(str(log_path)+"/"+str(k)+".npy"))
             start_epoch = len(history[k])
 
-    trainer.load_state_dict(d['trainer'])
+    # trainer.load_state_dict(d['trainer'])
     if args.scheduleLR:
         trainer.load_scheduler(start_epoch)
 
@@ -588,6 +596,22 @@ if args.load_pretrain:
     policy_net.budget = args.budget
     trainer.load_state_dict(d['trainer'])
 
+if args.learn_intent_gating:
+    load_path = os.path.join(args.load, args.env_name, args.intent_model_path, "seed" + str(1), "models")
+    print("load directory is "+str(load_path))
+    if 'best_model.pt' in os.listdir(load_path):
+        model_path = os.path.join(load_path, "best_model.pt")
+    else:
+        assert False
+        # all_models = sorted([int(f.split('.pt')[0]) for f in os.listdir(load_path)])
+        # model_path = os.path.join(load_path, str(all_models[-1])+".pt")
+
+    d = torch.load(model_path)
+    if 'gating_l1.weight' in d['policy_net']:
+        del d['policy_net']['gating_l1.weight']
+        del d['policy_net']['gating_l1.bias']
+    policy_net.load_state_dict(d['policy_net'],strict=False)
+    # trainer.load_state_dict(d['trainer'])
 
 run(args.num_epochs)
 

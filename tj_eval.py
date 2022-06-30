@@ -3,9 +3,14 @@ import os, sys, subprocess
 os.environ["OMP_NUM_THREADS"] = "1"
 
 env = "traffic_junction"
-seeds = [0]
+seeds = [1]
+num_heads = 1
+soft_budget = 0.9
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
-method = "easy_baseline_test_autoencoder_action"
+method = "TEST_eta_comm_loss=1_tj_fixed_easy_learn_intent_gating_timmac_autoencoder_action_heads" + str(num_heads) + "_budget=" + str(soft_budget)
+# method = "tj_fixed_easy_timmac_autoencoder_action_heads1"
+pre_trained_intent_network_fp = "tj_fixed_easy_timmac_autoencoder_action_heads1"
+
 # pretrain_exp_name = 'tj_EX_fixed_proto_comm_vs_protos_medium_p112_c64_d'
 if "easy" in method:
     protos_list = [56]
@@ -21,13 +26,13 @@ elif 'hard' in method:
     num_epochs = 4000
 for num_proto in protos_list:
     for comm_dim in comms_list:
-        exp_name = 'tj_' + method
+        exp_name = method
         vision = 0
         # discrete comm is true if you want to use learnable prototype based communication.
         discrete_comm = False
         if "proto" in method:
             discrete_comm = True
-        hid_size = 64
+        hid_size = 32
         save_every = 100
         # g=1. If this is set to true agents will communicate at every step.
         comm_action_one = False
@@ -39,7 +44,7 @@ for num_proto in protos_list:
                 gating_head_cost_factor = 0
             comm_action_one = True
         nprocesses = 0
-        lr = 0.001
+        lr = 0.003
         if "medium" in method:
             nagents = 10
             max_steps = 40
@@ -71,25 +76,29 @@ for num_proto in protos_list:
             difficulty = 'easy'
 
 
-        run_str = f"python evaluate_starcraft.py --env_name {env} --nprocesses {nprocesses} "+\
-                  f"--num_epochs {num_epochs} --epoch_size 10 "+\
+        run_str = f"python evaluate_starcraft.py --env_name {env} --nprocesses {nprocesses} --batch_size 500 "+\
+                  f"--num_epochs {num_epochs} --epoch_size 10 --num_heads {num_heads} "+\
                   f"--gating_head_cost_factor {gating_head_cost_factor} "+\
-                  f"--hid_size {hid_size} --comm_dim {hid_size} "+\
-                  f" --detach_gap 10 --lrate {lr} --ic3net --vision {vision} "+\
-                  f"--recurrent --load paper_models "+\
+                  f"--hid_size {hid_size} --comm_dim {hid_size} --soft_budget {soft_budget} "+\
+                  f" --detach_gap 10 --lrate {lr} --vision {vision} "+\
+                  f"--save paper_models --load paper_models "+\
                   f"--max_steps {max_steps} --dim {dim} --nagents {nagents} --add_rate_min {add_rate_min} --add_rate_max {add_rate_max} --curr_epochs 1000 --difficulty {difficulty} "+\
-                  f"--exp_name {exp_name} --save_every {save_every} "
+                  f"--exp_name {exp_name} --save_every {save_every} --gamma 1. "
 
         if discrete_comm:
             run_str += f"--discrete_comm --use_proto --comm_dim {comm_dim} --num_proto {num_proto} "
         if comm_action_one:
             run_str += f"--comm_action_one  "
-        if variable_gate:
-            run_str += f"--variable_gate "
+        # if variable_gate:
+        #     run_str += f"--variable_gate "
         if comm_action_zero:
             run_str += f"--comm_action_zero "
         if 'soft' in method:
             run_str += f"--load_pretrain --pretrain_exp_name {pretrain_exp_name} "
+        if "learn_intent_gating" in method:
+            run_str += f"--learn_intent_gating "
+            run_str += f"--intent_model_path {pre_trained_intent_network_fp} "
+            run_str += "--min_comm_loss --eta_comm_loss 1. "
 
         if "minComm" in method:
             run_str += "--min_comm_loss --eta_comm_loss 1. "
@@ -101,6 +110,12 @@ for num_proto in protos_list:
             run_str += "--autoencoder_action "
         if 'mha' in method:
             run_str += '--mha_comm '
+        if 'timmac' in method:
+            run_str += '--timmac '
+        else:
+            run_str += '--ic3net --recurrent '
+        if 'preencode' in method:
+            run_str += '--preencode '
 
         # Important: If you want to restore training just use the --restore tag
         # run for all seeds

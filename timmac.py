@@ -57,10 +57,13 @@ class TIMMAC(nn.Module):
         # self.attend_decoder = SelfAttention(args.num_heads, args.hid_size)
 
         # Decoder for information maximizing communication
+        self.num_inputs = num_inputs
         if self.args.autoencoder_action:
-            self.decoder_head = nn.Linear(args.hid_size, num_inputs+self.args.nagents)
+            # self.decoder_head = nn.Linear(args.hid_size, num_inputs+self.args.nagents)
+            self.decoder_head = nn.Linear(args.hid_size*self.args.nagents, num_inputs*self.args.nagents + self.args.nagents)
         elif self.args.autoencoder:
-            self.decoder_head = nn.Linear(args.hid_size, num_inputs)
+            # self.decoder_head = nn.Linear(args.hid_size, num_inputs)
+            self.decoder_head = nn.Linear(args.hid_size*self.args.nagents, num_inputs*self.args.nagents)
 
         # attend to latent obs/intent/comm to produce action
         # self.attend_action = SelfAttention(args.num_heads, args.hid_size)
@@ -90,6 +93,39 @@ class TIMMAC(nn.Module):
 
         self.apply(self.init_weights)
         torch.nn.init.zeros_(self.embed.weight)
+
+        #gating intent communication setup
+        self.last_recieved_comms = torch.zeros(self.args.nagents,self.args.comm_dim)
+        self.remaining_budget = torch.zeros(self.args.nagents,1) #number of times we communicated over last n timesteps over number of times we are allowed to communicate over last n timesteps
+        self.gating_l1 = nn.Linear(self.args.comm_dim*2 + 1, 2)
+        # self.gating_l1 = nn.Linear(1, 2)
+        self.gating_softmax = nn.Softmax(dim=2)
+        self.budget_enforced_t = self.args.max_steps
+        self.budget_measured_t = 0
+
+    def inent_gating_func(self,current_comm,agent_mask):
+
+        if self.budget_measured_t == 0:
+            self.remaining_budget = torch.zeros(self.args.nagents,1)
+
+        gating_in = torch.cat((current_comm, self.last_recieved_comms.clone(),self.remaining_budget.clone()),dim=1)
+        # in_ = torch.tensor(self.budget_measured_t).unsqueeze(0).double()
+
+        gating_out = self.gating_l1(gating_in)
+
+        dead_indices = np.where(agent_mask[0] == 0)[0]
+        for i in dead_indices:
+            gating_out[i][1] = -1e10
+
+        comm_prob_logits = F.log_softmax(gating_out, dim=-1)
+        # comm_prob = gumbel_softmax(comm_prob, temperature=1, hard=True)
+        comm_prob = nn.functional.gumbel_softmax(comm_prob_logits,hard=True,dim=-1)
+        comm_prob = comm_prob[:, 1].reshape(self.nagents)
+
+        self.budget_measured_t += 1
+        self.budget_measured_t = self.budget_measured_t % self.budget_enforced_t
+
+        return comm_prob,comm_prob_logits
 
     def forward(self, x, info={}):
         """
@@ -123,7 +159,7 @@ class TIMMAC(nn.Module):
         # self.encoded_info = x_oa.reshape(n, self.args.hid_size)
 
         # combine latent observations with communications
-        comm, comm_prob, comm_mask = self.communicate(x_oa, info)
+        comm, comm_prob, comm_mask, comm_prob_logits, agent_mask = self.communicate(x_oa, info)
         if self.args.mha_comm:
             comm = self.attend_comm(comm.view(n,n,self.args.comm_dim).transpose(1,0), mask=comm_mask, is_comm=True)
             # comm = self.comm_head(comm)
@@ -132,6 +168,15 @@ class TIMMAC(nn.Module):
             comm_sum = comm.sum(dim=0)
             comm = self.comm_head(comm_sum)
             # comm = torch.tanh(comm)
+
+        #update last recieved communication
+        if self.args.learn_intent_gating:
+            comm_indices = torch.nonzero(comm_prob).squeeze()
+            if comm_indices.dim() != 0:
+                for comm_indice in comm_indices:
+                    if agent_mask[0,comm_indice] == 0: continue
+                    self.last_recieved_comms[comm_indice] = comm[comm_indice].detach()
+
         if self.args.recurrent:
             inp = x_oa + comm
             inp = inp.view(n, self.args.comm_dim)
@@ -155,9 +200,9 @@ class TIMMAC(nn.Module):
         # critic
         v = self.value_head(x_oa_comm + x_oa).reshape(1, n, -1)
         if self.args.recurrent:
-            return a, v, (h.clone(), cell.clone()), comm_prob
+            return a, v, (h.clone(), cell.clone()), comm_prob, comm_prob_logits
 
-        return a, v, comm_prob
+        return a, v, comm_prob, comm_prob_logits
 
 
     def communicate(self, comm, info):
@@ -169,7 +214,8 @@ class TIMMAC(nn.Module):
         # 2) Mask communcation from dead agents, 3) communication to dead agents
         num_agents_alive, agent_mask = self.get_agent_mask(self.max_len, info)
         # gating sparsity mask
-        agent_mask, comm_action, comm_prob = self.get_gating_mask(comm, agent_mask)
+        agent_mask, comm_action, comm_prob, comm_prob_logits = self.get_gating_mask(comm, agent_mask)
+
         info['comm_action'] = comm_action.detach().numpy()
 
         # Mask 1) input communication 2) Mask communcation from dead agents, 3) communication to dead agents
@@ -187,7 +233,7 @@ class TIMMAC(nn.Module):
                 and num_agents_alive > 1:
                 comm = comm / (num_agents_alive - 1)
 
-        return comm, comm_prob, comm_out_mask
+        return comm, comm_prob, comm_out_mask, comm_prob_logits, agent_mask
 
     def do_embed(self, x):
         hidden_state, cell_state = None, None
@@ -209,28 +255,63 @@ class TIMMAC(nn.Module):
             x = torch.tanh(x)
         return x, hidden_state, cell_state
 
+    # def decode(self):
+    #     return self.decoder_head(self.encoded_info)
     def decode(self):
-        return self.decoder_head(self.encoded_info)
+        y = self.encoded_info
+
+        y = y.unsqueeze(2)
+        y = y.repeat(1,1,self.nagents,1)
+        target_shape = y.shape
+        y = torch.flatten(y,start_dim=2)
+
+        y = self.decoder_head(y)
+
+        if self.args.autoencoder_action:
+            y = y.reshape(1,self.nagents,self.nagents,self.num_inputs+1)
+            y = y.squeeze()
+
+        else:
+            y = y.reshape(1,self.nagents,self.nagents,self.num_inputs)
+            y = y.squeeze()
+        return y
 
     def get_gating_mask(self, x, agent_mask):
         # Gating
         # Hard Attention - action whether an agent communicates or not
         comm_prob = None
-        if self.args.comm_action_one:
+        comm_prob_logits = None
+        if self.args.learn_intent_gating:
+            x = x.view(self.nagents, self.hid_size)
+            comm_prob,comm_prob_logits = self.inent_gating_func(x,agent_mask)
+            comm_action = comm_prob
+
+            comm_indices = torch.nonzero(comm_prob).squeeze()
+
+            if comm_indices.dim() != 0:
+                for comm_indice in comm_indices:
+                    if agent_mask[0,comm_indice] == 0: continue
+                    self.remaining_budget[comm_indice] += 1/(self.args.soft_budget*self.budget_enforced_t)
+
+        elif self.args.comm_action_one:
             comm_action = torch.ones(self.nagents)
         elif self.args.comm_action_zero:
             comm_action = torch.zeros(self.nagents)
         else:
             x = x.view(self.nagents, self.hid_size)
-            comm_prob = F.log_softmax(self.gating_head(x), dim=-1)[0].exp()
+            comm_prob = F.log_softmax(self.gating_head(x), dim=-1)[0]
             comm_prob = gumbel_softmax(comm_prob, temperature=1, hard=True)
             comm_prob = comm_prob[:, 1].reshape(self.nagents)
             comm_action = comm_prob
 
         comm_action_mask = comm_action.expand(self.nagents, self.nagents)
+
         # action 1 is talk, 0 is silent i.e. act as dead for comm purposes.
+        # agent_mask = agent_mask * comm_action_mask.double()
         agent_mask = agent_mask * comm_action_mask.double()
-        return agent_mask, comm_action, comm_prob
+
+
+        return agent_mask, comm_action, comm_prob, comm_prob_logits
 
     def get_agent_mask(self, batch_size, info):
         n = self.nagents
@@ -238,6 +319,8 @@ class TIMMAC(nn.Module):
         if 'alive_mask' in info:
             agent_mask = torch.from_numpy(info['alive_mask'])
             num_agents_alive = agent_mask.sum()
+            # agent_mask = torch.ones(n)
+            # num_agents_alive = n
         else:
             agent_mask = torch.ones(n)
             num_agents_alive = n

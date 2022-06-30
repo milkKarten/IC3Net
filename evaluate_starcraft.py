@@ -13,6 +13,7 @@ from utils import *
 from action_utils import parse_action_args
 from evaluator import Evaluator
 from args import get_args
+from timmac import TIMMAC
 
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
@@ -53,16 +54,21 @@ def load(path):
     print(f"log dir directory is {log_path}")
     save_path = load_path
 
-    if 'model.pt' in os.listdir(load_path):
+    if 'best_model.pt' in os.listdir(load_path):
         print(load_path)
-        model_path = os.path.join(load_path, "model.pt")
+        model_path = os.path.join(load_path, "best_model.pt")
 
     else:
         all_models = sort([int(f.split('.pt')[0]) for f in os.listdir(load_path)])
         model_path = os.path.join(load_path, f"{all_models[-1]}.pt")
 
     d = torch.load(model_path)
-    policy_net.load_state_dict(d['policy_net'])
+
+    if not args.learn_intent_gating and "gating_l1.weight" in d['policy_net']:
+        del d['policy_net']["gating_l1.weight"]
+        del d['policy_net']["gating_l1.bias"]
+
+    policy_net.load_state_dict(d['policy_net'],strict=False)
 
 parser = get_args()
 init_args_for_env(parser)
@@ -71,6 +77,8 @@ args = parser.parse_args()
 if args.ic3net:
     args.commnet = 1
     args.hard_attn = 1
+    args.mean_ratio = 0
+elif args.timmac:
     args.mean_ratio = 0
 
     # For TJ set comm action to 1 as specified in paper to showcase
@@ -121,7 +129,8 @@ if args.commnet:
     policy_net = CommNetMLP(args, num_inputs, train_mode=False)
 elif args.random:
     policy_net = Random(args, num_inputs)
-
+elif args.timmac:
+    policy_net = TIMMAC(args, num_inputs)
 # this is what we are working with for IC3 Net predator prey.
 elif args.recurrent:
     policy_net = RNN(args, num_inputs)
@@ -146,14 +155,87 @@ evaluator = Evaluator(args, policy_net, data.init(args.env_name, args))
 st_time = time.time()
 
 all_stats = []
-for i in range(500):
+all_comms_to_loc0 = {}
+
+for i in range(100000):
     ep, stat, all_comms, comms_to_loc, comms_to_act, comms_to_full, comm_action_episode = evaluator.run_episode()
     # evaluator.env.env.save_replay()
+
     all_stats.append(stat)
+    for k, v in comms_to_full.items():
+        np_k = k
+        if all_comms_to_loc0.get(np_k) is None:
+            all_comms_to_loc0[np_k] = {}
+        matching_vals = all_comms_to_loc0.get(np_k)
+        for val in v:
+            if val not in matching_vals.keys():
+                matching_vals[val] = 0
+            matching_vals[val] += 1
+
+# print (len(all_comms_to_loc0.keys()))
+np.save("null_comm_eval_data/" + args.exp_name + "_" + str(args.seed) + ".npy",all_comms_to_loc0)
+# #
+# for action_level, all_comms_to_loc in enumerate([all_comms_to_loc0]):
+#     null_protos = []
+#     null_comms = 0
+#     total_comms = 0.
+#     null_str = ''
+#     active_protos = 0
+#     proto_idx = 0
+#     for proto, locs in all_comms_to_loc.items():
+#         print (proto)
+#         print (locs)
+#         print ("================")
+#         # grid = np.zeros((10, 10))
+#         grid = np.zeros((args.dim, args.dim,2)) #2 because that is the # of actions for traffic junction
+#         # print("locs items", locs.items())
+#         total_count = 0
+#         for loc_act, count in locs.items():
+#             total_count += count
+#             loc,act = loc_act
+#
+#             grid[loc[0]-1, loc[1]-1, act] = count
+#         total_comms += total_count
+#
+#         # print("locations:")
+#         grid_sum = grid.sum()
+#         num_locations = 0
+#         for loc_act, count in locs.items():
+#             loc,act = loc_act
+#             percentage = grid[loc[0]-1, loc[1]-1, act] / grid_sum
+#             print (percentage)
+#             print (loc_act)
+#             print (count)
+#             print ("\n")
+#             if percentage > .1:
+#                 num_locations += 1
+#
+#         active_protos += 1
+#         if num_locations > 2:
+#             null_comms += total_count
+#             # found null proto; save data
+#             null_str += str(proto)[1:-1] + '\n'
+#             null_protos.append(proto)
+#             # print("null proto", *proto)
+#
+#         proto_idx += 1
+#
+#
+#     print("% null comms: ", null_comms / total_comms)
+#
+#
+#
+#
+
 total_episode_time = time.time() - st_time
 average_stat = {}
 for key in all_stats[0].keys():
     average_stat[key] = np.mean([stat.get(key) for stat in all_stats])
+
+
+np.save("eval_logs/avg_" + args.exp_name + "_" + str(args.seed) + ".npy", average_stat)
+np.save("eval_logs/" + args.exp_name + "_" + str(args.seed) + ".npy", all_stats)
+
 print("average stats is: ", average_stat)
 print("time taken per step ", total_episode_time/stat['num_steps'])
 # print('win rate ', average_stat['win_rate'])
