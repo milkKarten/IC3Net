@@ -2,22 +2,24 @@ import os, sys, subprocess
 
 os.environ["OMP_NUM_THREADS"] = "1"
 env = "traffic_junction"
-seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
+# seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
 # seeds = [1, 2, 3]
 # seeds = [777]
 # seeds = [20]
-# seeds = [0]
+seeds = [0]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 # methods = ["easy_proto_soft_minComm_autoencoder", "easy_proto_soft_minComm_autoencoder_action"]
 # methods = ["easy_proto_soft_minComm_autoencoder"]
 # methods = ["easy_proto_autoencoder_minComm"]
 # methods = ['hard_fixed', 'hard_fixed_autoencoder']
 # methods = ['baseline_easy_ic3net_autoencoder_action_mha']
-# methods = ['baseline_easy_timmac_autoencoder_action_attend_mha1_pre']
-methods = ['baseline_hard_timmac_mha_autoencoder_action',
-            'baseline_hard_timmac_mha_autoencoder_action_preencode',
-            'baseline_hard_timmac_autoencoder_action',
-            'baseline_hard_ic3net_mha_autoencoder_action']
+methods = ['baseline_medium_timmac_autoencoder_action_schedule_preencode']
+# methods = ['baseline_hard_timmac_autoencoder_action']
+# methods = ['baseline_medium_ic3net_autoencoder_action']
+# methods = ['baseline_hard_timmac_mha_autoencoder_action',
+#             'baseline_hard_timmac_mha_autoencoder_action_preencode',
+#             'baseline_hard_timmac_autoencoder_action',
+#             'baseline_hard_ic3net_mha_autoencoder_action']
 # methods = ['hard_fixed_proto', 'hard_fixed_proto_autoencoder']
 # methods = ["easy_proto_soft_minComm_autoencoder_action"]
 pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder'
@@ -35,12 +37,12 @@ for num_heads in [1]:
             # protos_list = [56, 28, 112]
             protos_list = [112] # use 1 layer of redundancy
             comms_list = [64]
-            num_epochs = 1000
+            num_epochs = 2000
         elif 'hard' in method:
             # protos_list = [144, 72, 288]
             protos_list = [128*2] # single redundancy
             # comms_list = [64]
-            num_epochs = 2000
+            num_epochs = 200
         for num_proto in protos_list:
             exp_name = "tj_" + method + '_heads' + str(num_heads)
             vision = 0
@@ -49,7 +51,6 @@ for num_heads in [1]:
             discrete_comm = False
             if "proto" in method:
                 discrete_comm = True
-            hid_size = 32
             save_every = 100
             # g=1. If this is set to true agents will communicate at every step.
             comm_action_one = False
@@ -68,34 +69,46 @@ for num_heads in [1]:
             variable_gate = False
             if "var" in method:
                 variable_gate = True
-            nprocesses = 0
-            lr = 0.003
+            nprocesses = 1
             if "medium" in method:
+                hid_size = 64
+
+                lr = 0.003
                 nagents = 10
                 max_steps = 40
                 dim = 14
                 add_rate_min = 0.05
                 add_rate_max = 0.2
                 difficulty = 'medium'
+                epoch_size = 100//nprocesses
             elif "hard" in method:
+                hid_size = 64
+
+                lr = 0.001
                 nagents = 20
                 max_steps = 80
                 dim = 18
                 add_rate_min = 0.02
                 add_rate_max = 0.05
                 difficulty = 'hard'
+                epoch_size = 160//nprocesses
             else:
+
+                hid_size = 32
+                lr = 0.003
                 # easy
                 nagents = 5
                 max_steps = 20
                 dim = 6
                 add_rate_min = 0.1
+                # add_rate_min = 0.1
                 add_rate_max = 0.3
                 difficulty = 'easy'
+                epoch_size = 10
 
 
-            run_str = f"python main.py --env_name {env} --nprocesses {nprocesses} --batch_size 500 "+\
-                      f"--num_epochs {num_epochs} --epoch_size 10 --num_heads {num_heads} "+\
+            run_str = f"python main.py --env_name {env} --nprocesses {nprocesses} --batch_size 50 --gamma 1 "+\
+                      f"--num_epochs {num_epochs} --epoch_size {epoch_size} --num_heads {num_heads} "+\
                       f"--gating_head_cost_factor {gating_head_cost_factor} "+\
                       f"--hid_size {hid_size} --comm_dim {hid_size} --soft_budget {soft_budget} "+\
                       f" --detach_gap 10 --lrate {lr} --vision {vision} "+\
