@@ -83,6 +83,7 @@ class Trainer(object):
         self.loss_autoencoder = None
         self.loss_min_comm = None
         self.best_model_reward = -np.inf
+        self.kld_weight = 0.01
 
     def get_episode(self, epoch, random=False):
         episode = []
@@ -151,7 +152,7 @@ class Trainer(object):
                     inputs.append(x)
                 action_out, value, comm_prob, comm_prob_logits = self.policy_net(x, info_comm)
             if self.args.autoencoder and not self.args.autoencoder_action and not random:
-                decoded = self.policy_net.decode()
+                decoded, log_var, mu = self.policy_net.decode()
                 if self.args.recurrent:
                     # x_all = x[0].reshape(-1).expand_as(decoded)
                     # x_all = x[0].sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
@@ -164,6 +165,13 @@ class Trainer(object):
                     self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
                 else:
                     self.loss_autoencoder +=torch.nn.functional.mse_loss(decoded, x_all)
+
+                if self.args.variational_enc:
+                    kld_loss = self.kld_weight*torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1))
+                    self.kld_loss = kld_loss
+                    self.loss_autoencoder += kld_loss
+
+
             # mask action if not available
             #print(action_out, '\n', self.env.env.get_avail_actions())
             if hasattr(self.env.env, 'get_avail_actions'):
@@ -271,7 +279,7 @@ class Trainer(object):
             action, actual = translate_action(self.args, self.env, action)
             # decode intent + observation autoencoder
             if self.args.autoencoder and self.args.autoencoder_action and not random:
-                decoded = self.policy_net.decode()
+                decoded, log_var, mu = self.policy_net.decode()
                 x_all = torch.zeros_like(decoded)
                 if self.args.recurrent:
                     # x_all[:,:-self.args.nagents] = x[0].sum(dim=1).expand(self.args.nagents, -1)
@@ -294,6 +302,11 @@ class Trainer(object):
                     self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
                 else:
                     self.loss_autoencoder += torch.nn.functional.mse_loss(decoded, x_all)
+
+                if self.args.variational_enc:
+                    kld_loss = self.kld_weight*torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 2))
+                    self.kld_loss = kld_loss
+                    self.loss_autoencoder += kld_loss
 
             # comm_budget = info_comm['comm_budget']
             next_state, reward, done, info = self.env.step(actual)
@@ -545,6 +558,8 @@ class Trainer(object):
             loss += self.loss_min_comm
         if self.args.autoencoder:
             stat['autoencoder_loss'] = self.loss_autoencoder.item()
+            if self.args.variational_enc:
+                stat['kld_loss'] = self.kld_loss.item()
             loss = 0.5 * loss + 0.5 * self.loss_autoencoder
 
         if self.args.learn_intent_gating:
@@ -580,6 +595,8 @@ class Trainer(object):
             self.stats['num_episodes'] += 1
             batch += episode
 
+            # self.kld_weight += 1/self.args.batch_size
+
         self.last_step = False
         self.stats['num_steps'] = len(batch)
         self.stats['learning_rate'] = self.get_lr(self.optimizer)
@@ -608,6 +625,7 @@ class Trainer(object):
         if self.args.scheduleLR:
             print("LR step")
             self.scheduler.step()
+
         return stat
 
     def get_lr(self, optimizer):

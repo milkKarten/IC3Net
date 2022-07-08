@@ -9,6 +9,7 @@ from network_utils import gumbel_softmax
 from noise import OUNoise
 import numpy as np
 import os
+import pickle
 
 class TIMMAC(nn.Module):
     """
@@ -35,6 +36,18 @@ class TIMMAC(nn.Module):
 
         # embedding for one hot encoding of inputs
         self.embed = nn.Linear(num_inputs, args.comm_dim)
+        if self.args.variational_enc:
+            self.fc_mu = nn.Linear(args.hid_size, args.hid_size)
+            self.fc_var = nn.Linear(args.hid_size, args.hid_size)
+
+        self.num_inputs = num_inputs
+        if self.args.autoencoder_action:
+            # self.decoder_head = nn.Linear(args.hid_size, num_inputs+self.args.nagents)
+            self.decoder_head = nn.Linear(args.hid_size*self.args.nagents, num_inputs*self.args.nagents + self.args.nagents)
+        elif self.args.autoencoder:
+            # self.decoder_head = nn.Linear(args.hid_size, num_inputs)
+            self.decoder_head = nn.Linear(args.hid_size*self.args.nagents, num_inputs*self.args.nagents)
+
 
         # encode observation and action (intent)
         self.attend_obs_intent = SelfAttention(args.num_heads, args.hid_size, dropout=self.dropout)
@@ -57,14 +70,7 @@ class TIMMAC(nn.Module):
         # self.attend_decoder = SelfAttention(args.num_heads, args.hid_size)
 
         # Decoder for information maximizing communication
-        self.num_inputs = num_inputs
-        if self.args.autoencoder_action:
-            # self.decoder_head = nn.Linear(args.hid_size, num_inputs+self.args.nagents)
-            self.decoder_head = nn.Linear(args.hid_size*self.args.nagents, num_inputs*self.args.nagents + self.args.nagents)
-        elif self.args.autoencoder:
-            # self.decoder_head = nn.Linear(args.hid_size, num_inputs)
-            self.decoder_head = nn.Linear(args.hid_size*self.args.nagents, num_inputs*self.args.nagents)
-
+       
         # attend to latent obs/intent/comm to produce action
         # self.attend_action = SelfAttention(args.num_heads, args.hid_size)
         print(args.num_actions)
@@ -93,22 +99,26 @@ class TIMMAC(nn.Module):
 
         self.apply(self.init_weights)
         torch.nn.init.zeros_(self.embed.weight)
+        if self.args.variational_enc:
+            torch.nn.init.zeros_(self.fc_mu.weight)
+            torch.nn.init.zeros_(self.fc_var.weight)
 
         #gating intent communication setup
         self.last_recieved_comms = torch.zeros(self.args.nagents,self.args.comm_dim)
         self.remaining_budget = torch.zeros(self.args.nagents,1) #number of times we communicated over last n timesteps over number of times we are allowed to communicate over last n timesteps
-        self.gating_l1 = nn.Linear(self.args.comm_dim*2 + 1, 2)
+        self.gating_l1 = nn.Linear(self.args.comm_dim*2, 2)
         # self.gating_l1 = nn.Linear(1, 2)
         self.gating_softmax = nn.Softmax(dim=2)
         self.budget_enforced_t = self.args.max_steps
         self.budget_measured_t = 0
+        self.last_sent_comms = torch.zeros(self.args.nagents,self.args.comm_dim)
 
     def inent_gating_func(self,current_comm,agent_mask):
 
         if self.budget_measured_t == 0:
             self.remaining_budget = torch.zeros(self.args.nagents,1)
 
-        gating_in = torch.cat((current_comm, self.last_recieved_comms.clone(),self.remaining_budget.clone()),dim=1)
+        gating_in = torch.cat((current_comm, self.last_recieved_comms.clone()),dim=1)
         # in_ = torch.tensor(self.budget_measured_t).unsqueeze(0).double()
 
         gating_out = self.gating_l1(gating_in)
@@ -176,6 +186,10 @@ class TIMMAC(nn.Module):
                 for comm_indice in comm_indices:
                     if agent_mask[0,comm_indice] == 0: continue
                     self.last_recieved_comms[comm_indice] = comm[comm_indice].detach()
+        else:
+            for comm_indice in range(self.args.nagents):
+                if agent_mask[0,comm_indice] == 0: continue
+                self.last_recieved_comms[comm_indice] = comm[comm_indice].detach()
 
         if self.args.recurrent:
             inp = x_oa + comm
@@ -186,11 +200,25 @@ class TIMMAC(nn.Module):
             x_oa_comm = x + x_oa + comm # skip connection to aggregate oa with comm
             x_oa_comm = self.f_module(x_oa_comm)
             x_oa_comm = torch.tanh(x_oa_comm)
+
+            if self.args.variational_enc:
+                mu = self.fc_mu(x_oa_comm)
+                log_var = self.fc_var(x_oa_comm)
+                #reperameterize
+                std = torch.exp(0.5 * log_var)
+                eps = torch.randn_like(std)
+                x_oa_comm = eps * std + mu
+
+                self.decoding_mu = mu.squeeze().clone()
+                self.decoding_log_var = log_var.squeeze().clone()
+
+            
         # x = self.aggregate_info(torch.cat((x_oa, comm), -1))
         # self.obs_intent_seq.replace_step(x_oa_comm)
         self.encoded_info = x_oa_comm.reshape(n, self.args.hid_size).clone()
         if self.args.recurrent:
             self.encoded_info = self.encoded_info + comm
+
 
         # choose an action
         # a = self.attend_action(x_oa_comm)
@@ -239,6 +267,9 @@ class TIMMAC(nn.Module):
         hidden_state, cell_state = None, None
 
         if self.args.recurrent:
+            if self.args.variational_enc:
+                print ("NOT IMPLEMENTED YET")
+                assert False
             x, extras = x
 
             # In case of recurrent first take out the actual observation and then encode it.
@@ -253,6 +284,8 @@ class TIMMAC(nn.Module):
             # how to embed positional encoding
             x = self.embed(x)
             x = torch.tanh(x)
+
+            # x = torch.tanh(x)
         return x, hidden_state, cell_state
 
     # def decode(self):
@@ -265,6 +298,18 @@ class TIMMAC(nn.Module):
         target_shape = y.shape
         y = torch.flatten(y,start_dim=2)
 
+        decoding_log_var = None
+        decoding_mu = None
+        if self.args.variational_enc:
+            decoding_log_var = self.decoding_log_var.unsqueeze(2).repeat(1,1,self.nagents,1)
+            decoding_log_var = torch.flatten(decoding_log_var, start_dim=2)
+            decoding_log_var = decoding_log_var.reshape(1,self.nagents,self.nagents,self.args.comm_dim).squeeze()
+
+            decoding_mu = self.decoding_mu.unsqueeze(2).repeat(1,1,self.nagents,1)
+            decoding_mu = torch.flatten(decoding_mu, start_dim=2)
+            decoding_mu = decoding_mu.reshape(1,self.nagents,self.nagents,self.args.comm_dim).squeeze()
+            
+
         y = self.decoder_head(y)
 
         if self.args.autoencoder_action:
@@ -274,7 +319,7 @@ class TIMMAC(nn.Module):
         else:
             y = y.reshape(1,self.nagents,self.nagents,self.num_inputs)
             y = y.squeeze()
-        return y
+        return y, decoding_log_var, decoding_mu
 
     def get_gating_mask(self, x, agent_mask):
         # Gating
@@ -295,14 +340,26 @@ class TIMMAC(nn.Module):
 
         elif self.args.comm_action_one:
             comm_action = torch.ones(self.nagents)
+            comm_prob = comm_action
         elif self.args.comm_action_zero:
             comm_action = torch.zeros(self.nagents)
+            comm_prob =comm_action
         else:
             x = x.view(self.nagents, self.hid_size)
             comm_prob = F.log_softmax(self.gating_head(x), dim=-1)[0]
             comm_prob = gumbel_softmax(comm_prob, temperature=1, hard=True)
             comm_prob = comm_prob[:, 1].reshape(self.nagents)
             comm_action = comm_prob
+
+        self.last_sent_comms = x.view(self.nagents, self.hid_size)
+
+        if self.args.eval_null_coms:
+            possible_null_comms = np.load(self.args.possible_null_comms_fp,allow_pickle=True).item()
+            for i,comm in enumerate(self.last_sent_comms):
+                id_ = possible_null_comms.get(tuple(comm.clone().detach().tolist()))
+                if id_ != None and id_ == self.args.null_ids:
+                    comm_action[i] = 0
+            
 
         comm_action_mask = comm_action.expand(self.nagents, self.nagents)
 
