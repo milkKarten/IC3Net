@@ -130,7 +130,7 @@ class TIMMAC(nn.Module):
                 #reparameterize
                 std = torch.exp(0.5 * log_var)
                 eps = torch.randn_like(std)
-                x_oa_comm = eps * std + mu
+                x_oa = eps * std + mu
 
                 self.decoding_mu = mu.squeeze().clone()
                 self.decoding_log_var = log_var.squeeze().clone()
