@@ -36,6 +36,10 @@ class TIMMAC(nn.Module):
         # embedding for one hot encoding of inputs
         self.embed = nn.Linear(num_inputs, args.comm_dim)
 
+        if self.args.vae:
+            self.fc_mu = nn.Linear(args.hid_size, args.hid_size)
+            self.fc_var = nn.Linear(args.hid_size, args.hid_size)
+
         # encode observation and action (intent)
         self.attend_obs_intent = SelfAttention(args.num_heads, args.hid_size, dropout=self.dropout)
         # self.obs_intent_head = nn.Linear(args.hid_size, args.hid_size)
@@ -58,8 +62,10 @@ class TIMMAC(nn.Module):
 
         # Decoder for information maximizing communication
         if self.args.autoencoder_action:
-            self.decoder_head = nn.Linear(args.hid_size, num_inputs+self.args.nagents)
+            self.decoder_head = nn.Linear(args.hid_size, num_inputs-3 + 4*self.args.nagents)
         elif self.args.autoencoder:
+            self.decoder_head = nn.Linear(args.hid_size, num_inputs)
+        elif self.args.vae:
             self.decoder_head = nn.Linear(args.hid_size, num_inputs)
 
         # attend to latent obs/intent/comm to produce action
@@ -90,6 +96,9 @@ class TIMMAC(nn.Module):
 
         self.apply(self.init_weights)
         torch.nn.init.zeros_(self.embed.weight)
+        if self.args.vae:
+            torch.nn.init.zeros_(self.fc_mu.weight)
+            torch.nn.init.zeros_(self.fc_var.weight)
 
     def forward(self, x, info={}):
         """
@@ -115,7 +124,19 @@ class TIMMAC(nn.Module):
             h, cell = self.f_module(x.view(n, self.args.hid_size), (h, cell))
             x_oa = h
         else:
-            x_oa = self.f_module(x.view(n, self.args.hid_size))
+            if self.args.vae:
+                mu = self.fc_mu(x_oa)
+                log_var = self.fc_var(x_oa)
+                #reparameterize
+                std = torch.exp(0.5 * log_var)
+                eps = torch.randn_like(std)
+                x_oa_comm = eps * std + mu
+
+                self.decoding_mu = mu.squeeze().clone()
+                self.decoding_log_var = log_var.squeeze().clone()
+            else:
+                x_oa = self.f_module(x.view(n, self.args.hid_size))
+
         # x_oa = self.obs_intent_head(x_oa.view(n, self.args.hid_size))
         x_oa = x_oa.reshape(1, n, self.args.hid_size)
         # print(x_oa.shape, x_oa_skip.shape)
@@ -210,6 +231,8 @@ class TIMMAC(nn.Module):
         return x, hidden_state, cell_state
 
     def decode(self):
+        if self.args.vae:
+            return self.decoder_head(self.encoded_info), self.decoding_mu, self.decoding_log_var
         return self.decoder_head(self.encoded_info)
 
     def get_gating_mask(self, x, agent_mask):

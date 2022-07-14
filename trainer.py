@@ -84,8 +84,10 @@ class Trainer(object):
         self.loss_min_comm = None
         self.best_model_reward = -np.inf
 
-        self.args.scheduleLR = True
+        self.args.scheduleLR = False
         self.scheduler = torch.optim.lr_scheduler.CyclicLR(self.optimizer, max_lr=args.lrate, base_lr=args.lrate/10., step_size_up=args.epoch_size)
+        self.beta = 2
+
 
     def get_episode(self, epoch, random=False):
         episode = []
@@ -142,7 +144,18 @@ class Trainer(object):
                 if random:
                     inputs.append(x)
                 action_out, value, comm_prob = self.policy_net(x, info_comm)
-            if self.args.autoencoder and not self.args.autoencoder_action and not random:
+
+            if self.args.vae:
+                decoded, mu, log_var = self.policy_net.decode()
+                if self.loss_autoencoder == None:
+                    self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x[0])
+                else:
+                    self.loss_autoencoder +=torch.nn.functional.mse_loss(decoded, x[0])
+                # add KLD
+                KLD = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim=-1))
+                self.loss_autoencoder += self.beta * KLD
+
+            elif self.args.autoencoder and not self.args.autoencoder_action and not random:
                 decoded = self.policy_net.decode()
                 if self.args.recurrent:
                     # x_all = x[0].reshape(-1).expand_as(decoded)
@@ -460,11 +473,11 @@ class Trainer(object):
             self.loss_min_comm *= self.args.eta_comm_loss
             stat['regularization_loss'] = self.loss_min_comm.item()
             loss += self.loss_min_comm
-        if self.args.autoencoder:
+        if self.args.autoencoder or self.args.vae:
             stat['autoencoder_loss'] = self.loss_autoencoder.item()
             loss = 0.5 * loss + 0.5 * self.loss_autoencoder
         loss.backward()
-        if self.args.autoencoder:
+        if self.args.autoencoder or self.args.vae:
             self.loss_autoencoder = None
         if self.args.min_comm_loss:
             self.loss_min_comm = None

@@ -210,6 +210,9 @@ parser.add_argument('--num_heads', type=int, default=1,
                     help="Number of heads for attention")
 parser.add_argument('--preencode', action='store_true', default=False,
                     help='pretrain autoencoder')
+# use variational autoencoder
+parser.add_argument('--vae', action='store_true', default=False,
+                    help='variational autoencoder')
 
 # first add environment specific args to the parser
 init_args_for_env(parser)
