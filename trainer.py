@@ -8,6 +8,10 @@ from utils import *
 from action_utils import *
 import time
 
+from timmac import TIMMAC
+import os
+
+
 Transition = namedtuple('Transition', ('state', 'action', 'action_out','comm_prob', 'comm_prob_logits', 'value', 'episode_mask',
                                        'episode_mini_mask', 'next_state',
                                        'reward', 'misc'))
@@ -84,6 +88,19 @@ class Trainer(object):
         self.loss_min_comm = None
         self.best_model_reward = -np.inf
         self.kld_weight = 0.01
+        self.recons_weight = 1.
+        self.feature_loss = None
+
+        if self.args.learn_past_comms:
+            self.pretrained_policy_net = TIMMAC(self.args, self.args.num_inputs)
+            load_path = os.path.join(self.args.load, self.args.env_name, self.args.past_comm_model_fp, "seed" + str(self.args.seed), "models")
+            if 'best_model.pt' in os.listdir(load_path):
+                model_path = os.path.join(load_path, "model.pt")
+            else:
+                assert False
+            d = torch.load(model_path)
+            self.pretrained_policy_net.load_state_dict(d['policy_net'], strict=False)
+            self.pretrained_policy_net.eval()
 
     def get_episode(self, epoch, random=False):
         episode = []
@@ -113,9 +130,9 @@ class Trainer(object):
         episode_comm = []
         n_alive_steps = 0
         n_alive_steps_per_agent = np.zeros(self.args.nagents)
+
+
         for t in range(self.args.max_steps):
-
-
             # print(t)
             misc = dict()
             if t == 0:
@@ -152,7 +169,7 @@ class Trainer(object):
                     inputs.append(x)
                 action_out, value, comm_prob, comm_prob_logits = self.policy_net(x, info_comm)
             if self.args.autoencoder and not self.args.autoencoder_action and not random:
-                decoded, log_var, mu = self.policy_net.decode()
+                decoded, log_var, mu, mmd_loss = self.policy_net.decode()
                 if self.args.recurrent:
                     # x_all = x[0].reshape(-1).expand_as(decoded)
                     # x_all = x[0].sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
@@ -161,16 +178,81 @@ class Trainer(object):
                     # x_all = x.reshape(-1).expand_as(decoded)
                     # x_all = x.sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
                     x_all = x.expand(self.args.nagents,self.args.nagents, -1)
-                if self.loss_autoencoder == None:
-                    self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x_all)
+
+    
+                if self.args.learn_past_comms:
+                    self.pretrained_policy_net(x, info_comm)
+                    if self.loss_autoencoder == None:
+                        self.loss_autoencoder = torch.nn.functional.mse_loss(self.policy_net.encoded_info, self.pretrained_policy_net.encoded_info)
+                    else:
+                        self.loss_autoencoder += torch.nn.functional.mse_loss(self.policy_net.encoded_info, self.pretrained_policy_net.encoded_info)
                 else:
-                    self.loss_autoencoder +=torch.nn.functional.mse_loss(decoded, x_all)
+                    #LOG COSH
+                    # self.alpha = 1
+                    # self.beta = 1
+                    # recons_diff = decoded - x_all
+                    # recons_loss = self.alpha * recons_diff + \
+                    #                 torch.log(1. + torch.exp(- 2 * self.alpha * recons_diff)) - \
+                    #                 torch.log(torch.tensor(2.0))
 
-                if self.args.variational_enc:
-                    kld_loss = self.kld_weight*torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1))
-                    self.kld_loss = kld_loss
-                    self.loss_autoencoder += kld_loss
+                    # recons_loss = recons_loss.mean()*(1. / self.alpha)
 
+                    # if self.loss_autoencoder == None:
+                    #     self.loss_autoencoder = recons_loss
+                    # else:
+                    #     self.loss_autoencoder += recons_loss
+
+                    # kld_loss = self.kld_weight*torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1))
+                    # self.kld_loss = kld_loss
+                    # self.loss_autoencoder += kld_loss
+                    # self.mmd_loss = mmd_loss
+
+
+                    # self.alpha = -0.5
+        
+                    # self.reg_weight = 100
+
+                    # self.beta = 1
+
+                    # self.alpha = 1
+                    # self.beta = 1
+                    # recons_diff = self.policy_net.get_features(decoded) - self.policy_net.get_features(x_all)
+                    # recons_loss = self.alpha * recons_diff + \
+                    #                 torch.log(1. + torch.exp(- 2 * self.alpha * recons_diff)) - \
+                    #                 torch.log(torch.tensor(2.0))
+                    # recons_loss = recons_loss.mean()*(1. / self.alpha)
+
+                    if self.loss_autoencoder == None:
+                        if self.args.load_feat_net:
+                            self.loss_autoencoder = self.recons_weight*torch.nn.functional.mse_loss(self.policy_net.get_features(decoded),self.policy_net.get_features(x_all))
+                            # self.loss_autoencoder = recons_loss
+                        else:
+                            self.loss_autoencoder = self.recons_weight*torch.nn.functional.mse_loss(decoded, x_all)
+                        # self.loss_autoencoder = recons_loss
+                    else:
+                        if self.args.load_feat_net:
+                            # self.loss_autoencoder += recons_loss
+                            self.loss_autoencoder += self.recons_weight*torch.nn.functional.mse_loss(self.policy_net.get_features(decoded),self.policy_net.get_features(x_all))
+                        else:
+                            self.loss_autoencoder += self.recons_weight*torch.nn.functional.mse_loss(decoded, x_all)
+                        # self.loss_autoencoder += recons_loss
+
+                    if self.args.variational_enc and not self.args.load_feat_net:
+                        kld_loss = self.kld_weight*torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1))
+                        self.kld_loss = kld_loss
+
+                        # bias_corr = self.args.batch_size * (self.args.batch_size - 1)
+                        self.loss_autoencoder += kld_loss + self.mmd_weight*mmd_loss
+                        self.mmd_loss = mmd_loss
+                        # self.mmd_loss = 0
+                        # self.loss_autoencoder += kld_loss
+                    if self.args.variational_enc and self.args.load_feat_net:
+                        kld_loss = self.kld_weight*torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1))
+                        self.kld_loss = kld_loss
+                        self.loss_autoencoder += kld_loss
+                        self.mmd_loss = mmd_loss
+                    
+                    
 
             # mask action if not available
             #print(action_out, '\n', self.env.env.get_avail_actions())
@@ -369,6 +451,26 @@ class Trainer(object):
         stat['num_steps'] = t + 1
         stat['steps_taken'] = stat['num_steps']
 
+        if self.args.learn_feat_net:
+            ep_states = [trans[0].double() for trans in episode]
+            ep_acts = [torch.tensor(trans[1]).double() for trans in episode]
+
+            # ep_states = [torch.zeros(trans[0].shape) for trans in episode]
+            # ep_acts = [torch.zeros(1,5) for trans in episode]
+
+            decoding_loss, temporal_dist_loss, forward_dyn_loss, inv_dyn_loss = self.policy_net.train_features(ep_states,ep_acts)
+            
+            if self.feature_loss is None:
+                self.feature_loss = decoding_loss + 0.001*temporal_dist_loss + forward_dyn_loss + 0.01*inv_dyn_loss
+            else:
+                self.feature_loss += decoding_loss + 0.001*temporal_dist_loss + forward_dyn_loss + 0.01*inv_dyn_loss
+
+            stat["feat_decoding_loss"] = decoding_loss.item()
+            stat["temporal_dist_loss"] = temporal_dist_loss.item()
+            stat["forward_dyn_loss"] = forward_dyn_loss.item()
+            stat["inv_dyn_loss"] = inv_dyn_loss.item()
+           
+
         if self.args.min_comm_loss:
             # episode_comm = torch.cat(episode_comm, 0).T
             # episode_comm = episode_comm.mean(1)
@@ -558,8 +660,9 @@ class Trainer(object):
             loss += self.loss_min_comm
         if self.args.autoencoder:
             stat['autoencoder_loss'] = self.loss_autoencoder.item()
-            if self.args.variational_enc:
+            if self.args.variational_enc and not self.args.learn_past_comms:
                 stat['kld_loss'] = self.kld_loss.item()
+                stat['mmd_loss'] = self.mmd_loss.item()
             loss = 0.5 * loss + 0.5 * self.loss_autoencoder
 
         if self.args.learn_intent_gating:
@@ -568,9 +671,21 @@ class Trainer(object):
                     param.requires_grad = False
 
         # loss = self.loss_min_comm
+        if self.args.learn_feat_net:
+            feat_net_params = ["feat_layer_1", "feat_decoder", "temporal_dist", "forward_dyn", "inv_dyn"]
+            for name, param in self.policy_net.named_parameters():
+                name_ = name.split(".")
+                if name_[0] not in feat_net_params:
+                    param.requires_grad = False
+
+            loss = self.feature_loss.double()
+
+        # loss = self.loss_autoencoder
         loss.backward()
         if self.args.autoencoder:
             self.loss_autoencoder = None
+            if self.args.learn_feat_net:
+                self.feature_loss = None
         if self.args.min_comm_loss:
             self.loss_min_comm = None
 
