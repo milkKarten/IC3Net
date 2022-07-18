@@ -9,6 +9,7 @@ from action_utils import *
 import time
 
 from timmac import TIMMAC
+from networks import VectorQuantizer
 import os
 
 
@@ -169,7 +170,7 @@ class Trainer(object):
                     inputs.append(x)
                 action_out, value, comm_prob, comm_prob_logits = self.policy_net(x, info_comm)
             if self.args.autoencoder and not self.args.autoencoder_action and not random:
-                decoded, log_var, mu, mmd_loss = self.policy_net.decode()
+                decoded, log_var, mu = self.policy_net.decode()
                 if self.args.recurrent:
                     # x_all = x[0].reshape(-1).expand_as(decoded)
                     # x_all = x[0].sum(dim=1).expand(self.args.nagents, -1).reshape(decoded.shape)
@@ -180,78 +181,30 @@ class Trainer(object):
                     x_all = x.expand(self.args.nagents,self.args.nagents, -1)
 
     
-                if self.args.learn_past_comms:
-                    self.pretrained_policy_net(x, info_comm)
-                    if self.loss_autoencoder == None:
-                        self.loss_autoencoder = torch.nn.functional.mse_loss(self.policy_net.encoded_info, self.pretrained_policy_net.encoded_info)
-                    else:
-                        self.loss_autoencoder += torch.nn.functional.mse_loss(self.policy_net.encoded_info, self.pretrained_policy_net.encoded_info)
+                # if self.args.learn_past_comms:
+                #     self.pretrained_policy_net(x, info_comm)
+                #     if self.loss_autoencoder == None:
+                #         self.loss_autoencoder = torch.nn.functional.mse_loss(self.policy_net.encoded_info, self.pretrained_policy_net.encoded_info)
+                #     else:
+                #         self.loss_autoencoder += torch.nn.functional.mse_loss(self.policy_net.encoded_info, self.pretrained_policy_net.encoded_info)
+                # else:
+                if self.loss_autoencoder == None:
+                    self.loss_autoencoder = self.recons_weight*torch.nn.functional.mse_loss(decoded, x_all)
                 else:
-                    #LOG COSH
-                    # self.alpha = 1
-                    # self.beta = 1
-                    # recons_diff = decoded - x_all
-                    # recons_loss = self.alpha * recons_diff + \
-                    #                 torch.log(1. + torch.exp(- 2 * self.alpha * recons_diff)) - \
-                    #                 torch.log(torch.tensor(2.0))
+                    self.loss_autoencoder += self.recons_weight*torch.nn.functional.mse_loss(decoded, x_all)
 
-                    # recons_loss = recons_loss.mean()*(1. / self.alpha)
+                if self.args.variational_enc and not self.policy_net.use_VQ_VAE:
+                    kld_loss = self.kld_weight*torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1))
+                    self.kld_loss = kld_loss
+                    self.loss_autoencoder += kld_loss 
+                if self.args.variational_enc and self.policy_net.use_VQ_VAE:
+                    self.vq_loss = self.policy_net.vq_loss
+                    self.loss_autoencoder += self.policy_net.vq_loss
 
-                    # if self.loss_autoencoder == None:
-                    #     self.loss_autoencoder = recons_loss
-                    # else:
-                    #     self.loss_autoencoder += recons_loss
-
-                    # kld_loss = self.kld_weight*torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1))
-                    # self.kld_loss = kld_loss
-                    # self.loss_autoencoder += kld_loss
-                    # self.mmd_loss = mmd_loss
-
-
-                    # self.alpha = -0.5
-        
-                    # self.reg_weight = 100
-
-                    # self.beta = 1
-
-                    # self.alpha = 1
-                    # self.beta = 1
-                    # recons_diff = self.policy_net.get_features(decoded) - self.policy_net.get_features(x_all)
-                    # recons_loss = self.alpha * recons_diff + \
-                    #                 torch.log(1. + torch.exp(- 2 * self.alpha * recons_diff)) - \
-                    #                 torch.log(torch.tensor(2.0))
-                    # recons_loss = recons_loss.mean()*(1. / self.alpha)
-
-                    if self.loss_autoencoder == None:
-                        if self.args.load_feat_net:
-                            self.loss_autoencoder = self.recons_weight*torch.nn.functional.mse_loss(self.policy_net.get_features(decoded),self.policy_net.get_features(x_all))
-                            # self.loss_autoencoder = recons_loss
-                        else:
-                            self.loss_autoencoder = self.recons_weight*torch.nn.functional.mse_loss(decoded, x_all)
-                        # self.loss_autoencoder = recons_loss
-                    else:
-                        if self.args.load_feat_net:
-                            # self.loss_autoencoder += recons_loss
-                            self.loss_autoencoder += self.recons_weight*torch.nn.functional.mse_loss(self.policy_net.get_features(decoded),self.policy_net.get_features(x_all))
-                        else:
-                            self.loss_autoencoder += self.recons_weight*torch.nn.functional.mse_loss(decoded, x_all)
-                        # self.loss_autoencoder += recons_loss
-
-                    if self.args.variational_enc and not self.args.load_feat_net:
+                    if self.policy_net.normal_VQ_VAE:
                         kld_loss = self.kld_weight*torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1))
                         self.kld_loss = kld_loss
-
-                        # bias_corr = self.args.batch_size * (self.args.batch_size - 1)
-                        self.loss_autoencoder += kld_loss + self.mmd_weight*mmd_loss
-                        self.mmd_loss = mmd_loss
-                        # self.mmd_loss = 0
-                        # self.loss_autoencoder += kld_loss
-                    if self.args.variational_enc and self.args.load_feat_net:
-                        kld_loss = self.kld_weight*torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1))
-                        self.kld_loss = kld_loss
-                        self.loss_autoencoder += kld_loss
-                        self.mmd_loss = mmd_loss
-                    
+                        self.loss_autoencoder += kld_loss 
                     
 
             # mask action if not available
@@ -661,8 +614,11 @@ class Trainer(object):
         if self.args.autoencoder:
             stat['autoencoder_loss'] = self.loss_autoencoder.item()
             if self.args.variational_enc and not self.args.learn_past_comms:
-                stat['kld_loss'] = self.kld_loss.item()
-                stat['mmd_loss'] = self.mmd_loss.item()
+                if self.policy_net.use_VQ_VAE:
+                    stat["vq_loss"] = self.vq_loss.item()
+                else:
+                    stat['kld_loss'] = self.kld_loss.item()
+                # stat['mmd_loss'] = self.mmd_loss.item()
             loss = 0.5 * loss + 0.5 * self.loss_autoencoder
 
         if self.args.learn_intent_gating:

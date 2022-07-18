@@ -2,55 +2,58 @@ import os, sys, subprocess
 
 os.environ["OMP_NUM_THREADS"] = "1"
 env = "traffic_junction"
-seeds = [1]
-# seeds = [1, 2, 3]
-# seeds = [777]
-# seeds = [20]
-# seeds = [0]
-# your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
-# methods = ["easy_proto_soft_minComm_autoencoder", "easy_proto_soft_minComm_autoencoder_action"]
-# methods = ["easy_proto_soft_minComm_autoencoder"]
-# methods = ["easy_proto_autoencoder_minComm"]
-# methods = ['hard_fixed', 'hard_fixed_autoencoder']
-# methods = ['baseline_easy_ic3net_autoencoder_action_mha']
-# methods = ['baseline_easy_timmac_autoencoder_action_attend_mha1_pre']
-methods = ['fixed_easy_learn_intent_gating_timmac_autoencoder_action']
+# seeds = [4]
+seeds = [1,2,3]
+
+methods = ['var_enc_fixed_easy_timmac_autoencoder']
+# methods = ['fixed_easy_timmac_autoencoder_action']
 pre_trained_intent_network_fp = "tj_fixed_easy_timmac_autoencoder_action_heads1"
+past_comm_model_fp = "tj_fixed_easy_timmac_autoencoder_heads1"
 # methods = ['hard_fixed_proto', 'hard_fixed_proto_autoencoder']
 # methods = ["easy_proto_soft_minComm_autoencoder_action"]
-pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder'
+pretrain_exp_name = 'tj_fixed_easy_timmac_autoencoder_heads1'
+feat_net_path = "tj_learn_feat_net_fixed_easy_timmac_autoencoder_heads1_budget=1"
 # pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder_action'
 # for soft_budget in [.5]:
 # for soft_budget in [0.9,0.7,0.6,0.5,0.4,0.3,0.2,0.1]:
-for soft_budget in [0.9]:
 
+
+#TEST_BUG_tj_fixed_easy_timmac_autoencoder_action_heads1 - uses self attention + pe
+#TEST_EXTRAFCNET_tj_fixed_easy_timmac_autoencoder_action_heads1 - uses self attention + pe + extra linear layer before VAE
+#TEST_kld_weight_=0.1_tj_fixed_easy_timmac_autoencoder_action_heads1 - uses self attention + pe + VAE
+#TEST_tj_fixed_easy_timmac_autoencoder_action_heads1 - uses self attention + pe + VAE
+#TEST_NO_ATTENTION_tj_fixed_easy_timmac_autoencoder_action_heads1 - only linear layer + VAE
+
+
+for soft_budget in [1]:
     num_heads = 1
     for method in methods:
         if 'action' in method:
-            pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder_action'
+            pretrain_exp_name = 'tj_fixed_easy_timmac_autoencoder_action_heads1'
         if "easy" in method:
             # protos_list = [14, 28, 56]
             protos_list = [56]
-            num_epochs = 200
+            num_epochs = 1200
         elif 'medium' in method:
             # protos_list = [56, 28, 112]
             protos_list = [112] # use 1 layer of redundancy
             comms_list = [64]
-            num_epochs = 1000
+            num_epochs = 5000
         elif 'hard' in method:
             # protos_list = [144, 72, 288]
             protos_list = [128*2] # single redundancy
             # comms_list = [64]
-            num_epochs = 2000
+            num_epochs = 10
         for num_proto in protos_list:
-            exp_name = "TEST_eta_comm_loss=1_tj_" + method + '_heads' + str(num_heads) + "_budget=" + str(soft_budget)
+            
+            exp_name = "NORMAL_VQ_VAE_tj_" + method + '_heads' + str(num_heads) + "_budget=" + str(soft_budget)
             vision = 0
 
             # discrete comm is true if you want to use learnable prototype based communication.
             discrete_comm = False
             if "proto" in method:
                 discrete_comm = True
-            hid_size = 32
+            hid_size = 64
             save_every = 100
             # g=1. If this is set to true agents will communicate at every step.
             comm_action_one = False
@@ -69,9 +72,15 @@ for soft_budget in [0.9]:
             variable_gate = False
             if "var" in method:
                 variable_gate = True
-            nprocesses = 0
+
+            if "easy" in method:
+                nprocesses = 0
+            else:
+                nprocesses = 0
             if soft_budget < 1:
                 lr = 0.03
+            elif "var_enc" in method:
+                lr=0.001
             else:
                 lr = 0.003
             if "medium" in method:
@@ -125,6 +134,17 @@ for soft_budget in [0.9]:
                 run_str += f"--learn_intent_gating "
                 run_str += f"--intent_model_path {pre_trained_intent_network_fp} "
                 run_str += "--min_comm_loss --eta_comm_loss 1. "
+            if "var_enc" in method:
+                run_str += f"--variational_enc "
+            if "learn_feat_net" in method:
+                run_str += f"--learn_feat_net "
+                run_str += f"--load_pretrain --pretrain_exp_name {pretrain_exp_name} "
+            if "load_feat_net" in method: 
+                run_str += f"--load_feat_net "
+                run_str += f"--feat_net_path {feat_net_path} "
+            if "learn_past_comms" in method:
+                run_str += f"--learn_past_comms "
+                run_str += f"--past_comm_model_fp {past_comm_model_fp} "
 
             if "minComm" in method:
                 run_str += "--min_comm_loss --eta_comm_loss 1. "

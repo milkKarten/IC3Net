@@ -11,6 +11,9 @@ import numpy as np
 import os
 import pickle
 
+from networks import VectorQuantizer
+
+
 class TIMMAC(nn.Module):
     """
     Transformer Information Maximizing Multi-Agent Communication.
@@ -55,8 +58,11 @@ class TIMMAC(nn.Module):
         if args.recurrent:
             self.init_hidden(args.batch_size)
             self.f_module = nn.LSTMCell(args.comm_dim, args.hid_size)
+            # self.f_module_2 = nn.LSTMCell(args.comm_dim, args.hid_size)
         else:
             self.f_module = nn.Linear(args.hid_size, args.hid_size)
+            # self.f_module_2 = nn.Linear(args.hid_size, args.hid_size)
+            
 
         # attend to communications to determine relevant information
         if args.mha_comm:
@@ -112,7 +118,75 @@ class TIMMAC(nn.Module):
         self.budget_enforced_t = self.args.max_steps
         self.budget_measured_t = 0
         self.last_sent_comms = torch.zeros(self.args.nagents,self.args.comm_dim)
+        self.batchnorm = nn.BatchNorm1d(self.args.nagents,track_running_stats=True)
 
+        self.use_VQ_VAE = True
+        self.normal_VQ_VAE=True
+        if self.use_VQ_VAE:
+            self.vq_vae = VectorQuantizer(num_embeddings=30, embedding_dim=self.args.hid_size)
+
+        if self.args.learn_feat_net or args.load_feat_net:
+            self.feat_layer_1 = nn.Linear(num_inputs, args.comm_dim*2,bias=False).double()
+            self.feat_decoder = nn.Linear(args.comm_dim*2, num_inputs,bias=False).double()
+            self.temporal_dist = nn.Linear(args.comm_dim*4, 1,bias=False).double()
+            self.forward_dyn = nn.Linear(args.comm_dim*2 + 1, num_inputs,bias=False).double()
+            self.inv_dyn = nn.Linear(args.comm_dim*4, 1,bias=False).double()
+
+            if args.load_feat_net:
+                load_path = os.path.join(args.load, args.env_name, args.feat_net_path, "seed" + str(1), "models")
+                if 'model.pt' in os.listdir(load_path):
+                    model_path = os.path.join(load_path, "model.pt")
+                else:
+                    assert False
+                state_dict_temp = torch.load(model_path)
+                with torch.no_grad():
+                    self.feat_layer_1.weight.copy_(state_dict_temp["policy_net"]['feat_layer_1.weight'])
+                    self.feat_layer_1.requires_grad= False
+                    self.feat_decoder.weight.copy_(state_dict_temp["policy_net"]['feat_decoder.weight'])
+                    self.feat_decoder.requires_grad= False
+                    self.temporal_dist.weight.copy_(state_dict_temp["policy_net"]['temporal_dist.weight'])
+                    self.temporal_dist.requires_grad= False
+                    self.forward_dyn.weight.copy_(state_dict_temp["policy_net"]['forward_dyn.weight'])
+                    self.forward_dyn.requires_grad= False
+                    self.inv_dyn.weight.copy_(state_dict_temp["policy_net"]['inv_dyn.weight'])
+                    self.inv_dyn.requires_grad= False
+                     
+        self.double()
+
+
+    def get_features(self,state):
+        return torch.tanh(self.feat_layer_1(state))
+
+    def train_features(self,ep_states, ep_acts):
+        decoding_loss = 0
+        temporal_dist_loss = 0
+        forward_dyn_loss = 0
+        inv_dyn_loss = 0
+        for state_i, state in enumerate(ep_states):
+            state_enc = torch.tanh(self.feat_layer_1(state))
+
+            state_dec = self.feat_decoder(state_enc)
+            decoding_loss += torch.nn.functional.mse_loss(state_dec,state)
+
+            for next_i in range(state_i+1, len(ep_states)):
+                succ_states = torch.cat((state_enc, torch.tanh(self.feat_layer_1(ep_states[next_i]))),dim=2)
+
+                pred_dist = self.temporal_dist(succ_states)
+                pred_action = self.inv_dyn(succ_states).squeeze(2)
+
+                temporal_dist_loss += torch.nn.functional.mse_loss(pred_dist.squeeze(),torch.tensor(next_i-state_i).repeat(5).double())
+                inv_dyn_loss += torch.nn.functional.mse_loss(pred_action,ep_acts[state_i])
+            
+            if state_i+1 < len(ep_states):
+                
+                sa_pair = torch.cat((state_enc,ep_acts[state_i].unsqueeze(2)), dim=2)
+                pred_next_state = self.forward_dyn(sa_pair)
+                forward_dyn_loss += torch.nn.functional.mse_loss(pred_next_state, ep_states[state_i+1])
+
+
+        return decoding_loss, temporal_dist_loss, forward_dyn_loss, inv_dyn_loss
+
+                
     def inent_gating_func(self,current_comm,agent_mask):
 
         if self.budget_measured_t == 0:
@@ -137,6 +211,7 @@ class TIMMAC(nn.Module):
 
         return comm_prob,comm_prob_logits
 
+
     def forward(self, x, info={}):
         """
         Forward function for TIMMAC
@@ -145,28 +220,53 @@ class TIMMAC(nn.Module):
         x, h, cell = self.do_embed(x)
         n = self.nagents
 
-        # update observation_intent sequence
-        self.obs_intent_seq.step(x)
-        x_oa = self.obs_intent_seq.get().transpose(1,0)
+        # # update observation_intent sequence
+        # self.obs_intent_seq.step(x)
+        # x_oa = self.obs_intent_seq.get().transpose(1,0)
 
-        # positional encoding
-        x_oa = self.pe(x_oa)
-        # latent observation space
-        oa_mask = self.obs_intent_seq.mask()
-        # print()
-        # print(x_oa.shape, oa_mask.shape)
-        # x_oa_skip = x_oa.clone()
-        x_oa = self.attend_obs_intent(x_oa,mask=oa_mask) + x
+        # # positional encoding
+        # x_oa = self.pe(x_oa)
+        # # latent observation space
+        # oa_mask = self.obs_intent_seq.mask()
+        # # print()
+        # # print(x_oa.shape, oa_mask.shape)
+        # # x_oa_skip = x_oa.clone()
+        # x_oa = self.attend_obs_intent(x_oa,mask=oa_mask) + x
         if self.args.recurrent:
             h, cell = self.f_module(x.view(n, self.args.hid_size), (h, cell))
             x_oa = h
         else:
             x_oa = self.f_module(x.view(n, self.args.hid_size))
+            # x_oa = x.view(n, self.args.hid_size)
+            if self.args.variational_enc:
+                if self.use_VQ_VAE:
+                    if self.normal_VQ_VAE:
+                        mu = self.fc_mu(x_oa)
+                        log_var = self.fc_var(x_oa)
+                        #reperameterize
+                        std = torch.exp(0.5 * log_var)
+                        eps = torch.randn_like(std)
+                        x_oa = eps * std + mu
+
+                        self.decoding_mu = mu.squeeze().clone()
+                        self.decoding_log_var = log_var.squeeze().clone()
+                    x_oa, vq_loss = self.vq_vae(x_oa)
+                    self.vq_loss = vq_loss
+                else:
+                    mu = self.fc_mu(x_oa)
+                    log_var = self.fc_var(x_oa)
+                    #reperameterize
+                    std = torch.exp(0.5 * log_var)
+                    eps = torch.randn_like(std)
+                    x_oa = eps * std + mu
+
+                    self.decoding_mu = mu.squeeze().clone()
+                    self.decoding_log_var = log_var.squeeze().clone()
+            else:
+                x_oa = self.f_module(x_oa.view(n, self.args.hid_size))
         # x_oa = self.obs_intent_head(x_oa.view(n, self.args.hid_size))
         x_oa = x_oa.reshape(1, n, self.args.hid_size)
-        # print(x_oa.shape, x_oa_skip.shape)
-        # x_oa = x_oa + x_oa_skip     # skip connection
-        # self.encoded_info = x_oa.reshape(n, self.args.hid_size)
+        self.encoded_info = x_oa.reshape(n, self.args.hid_size)
 
         # combine latent observations with communications
         comm, comm_prob, comm_mask, comm_prob_logits, agent_mask = self.communicate(x_oa, info)
@@ -200,31 +300,22 @@ class TIMMAC(nn.Module):
             x_oa_comm = x + x_oa + comm # skip connection to aggregate oa with comm
             x_oa_comm = self.f_module(x_oa_comm)
             x_oa_comm = torch.tanh(x_oa_comm)
-
-            if self.args.variational_enc:
-                mu = self.fc_mu(x_oa_comm)
-                log_var = self.fc_var(x_oa_comm)
-                #reperameterize
-                std = torch.exp(0.5 * log_var)
-                eps = torch.randn_like(std)
-                x_oa_comm = eps * std + mu
-
-                self.decoding_mu = mu.squeeze().clone()
-                self.decoding_log_var = log_var.squeeze().clone()
-
-            
+        
         # x = self.aggregate_info(torch.cat((x_oa, comm), -1))
         # self.obs_intent_seq.replace_step(x_oa_comm)
-        self.encoded_info = x_oa_comm.reshape(n, self.args.hid_size).clone()
-        if self.args.recurrent:
-            self.encoded_info = self.encoded_info + comm
+
+        # self.encoded_info = x_oa_comm.reshape(n, self.args.hid_size).clone()
+        # if self.args.recurrent:
+        #     self.encoded_info = self.encoded_info + comm
 
 
         # choose an action
         # a = self.attend_action(x_oa_comm)
         a = self.action_head(x_oa_comm).reshape(1, n, -1)
+        
         if self.args.env_name != 'starcraft':
             a = F.log_softmax(a, dim=-1)
+        
         # critic
         v = self.value_head(x_oa_comm + x_oa).reshape(1, n, -1)
         if self.args.recurrent:
@@ -290,6 +381,21 @@ class TIMMAC(nn.Module):
 
     # def decode(self):
     #     return self.decoder_head(self.encoded_info)
+    def compute_rbf(self,x1,x2,eps=1e-7):
+        """
+        Computes the RBF Kernel between x1 and x2.
+        Source: https://github.com/AntixK/PyTorch-VAE/blob/a6896b944c918dd7030e7d795a8c13e5c6345ec7/models/info_vae.py#L218
+        :param x1: (Tensor)
+        :param x2: (Tensor)
+        :param eps: (Float)
+        :return:
+        """
+        z_dim = x2.size(-1)
+        sigma = 2. * z_dim * 2
+
+        result = torch.exp(-((x1 - x2).pow(2).mean(-1) / sigma))
+        return result
+        
     def decode(self):
         y = self.encoded_info
 
@@ -300,7 +406,7 @@ class TIMMAC(nn.Module):
 
         decoding_log_var = None
         decoding_mu = None
-        if self.args.variational_enc:
+        if self.args.variational_enc and (not self.use_VQ_VAE or self.normal_VQ_VAE):
             decoding_log_var = self.decoding_log_var.unsqueeze(2).repeat(1,1,self.nagents,1)
             decoding_log_var = torch.flatten(decoding_log_var, start_dim=2)
             decoding_log_var = decoding_log_var.reshape(1,self.nagents,self.nagents,self.args.comm_dim).squeeze()
