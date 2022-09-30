@@ -10,9 +10,9 @@ from noise import OUNoise
 import numpy as np
 import os
 
-class TIMMAC(nn.Module):
+class MAC(nn.Module):
     """
-    Transformer Information Maximizing Multi-Agent Communication.
+    Multi-Agent Communication.
     Uses communication vector to communicate info between agents
     """
     def __init__(self, args, num_inputs, train_mode=True):
@@ -20,12 +20,12 @@ class TIMMAC(nn.Module):
         and weights
 
         Arguments:
-            TIMMAC {object} -- Self
+            MAC {object} -- Self
             args {Namespace} -- Parse args namespace
             num_inputs {number} -- Environment observation dimension for agents
         """
 
-        super(TIMMAC, self).__init__()
+        super(MAC, self).__init__()
         self.args = args
         self.nagents = args.nagents
         self.hid_size = args.hid_size
@@ -34,18 +34,18 @@ class TIMMAC(nn.Module):
         self.dropout = 0.
 
         # embedding for one hot encoding of inputs
-        self.embed = nn.Linear(num_inputs, args.comm_dim)
+        self.embed = nn.Linear(num_inputs, args.hid_size)
 
         if self.args.vae:
-            self.fc_mu = nn.Linear(args.hid_size, args.hid_size)
-            self.fc_var = nn.Linear(args.hid_size, args.hid_size)
+            self.fc_mu = nn.Linear(args.hid_size, args.comm_dim)
+            self.fc_var = nn.Linear(args.hid_size, args.comm_dim)
 
         # encode observation and action (intent)
         self.attend_obs_intent = SelfAttention(args.num_heads, args.hid_size, dropout=self.dropout)
         # self.obs_intent_head = nn.Linear(args.hid_size, args.hid_size)
         if args.recurrent:
             self.init_hidden(args.batch_size)
-            self.f_module = nn.LSTMCell(args.comm_dim, args.hid_size)
+            self.f_module = nn.GRU(args.comm_dim, args.hid_size)
         else:
             self.f_module = nn.Linear(args.hid_size, args.hid_size)
 
@@ -91,8 +91,6 @@ class TIMMAC(nn.Module):
         # sequence data
         self.obs_intent_seq = Sequence(self.max_len)
 
-        # positional encoding
-        self.pe = PositionalEncoding(args.hid_size, self.nagents, self.max_len, dropout=0)
 
         self.apply(self.init_weights)
         torch.nn.init.zeros_(self.embed.weight)
@@ -291,54 +289,3 @@ class TIMMAC(nn.Module):
     def init_weights(self, m):
         if isinstance(m, nn.Linear):
             self.init_layer(m)
-
-class Sequence():
-    def __init__(self, max_len=5):
-        self.sequence = None
-        self.max_len = max_len
-        # self.position = 0
-
-    def step(self, x):
-        if self.sequence is None:
-            self.sequence = [torch.zeros_like(x) for i in range(self.max_len)]
-        # self.sequence[-1] = self.sequence[-1].xdetach()
-        self.sequence.pop(0)
-        self.sequence.append(x.clone())
-
-
-
-    def replace_step(self, x):
-        self.sequence[-1] = x.clone()
-
-    def reset(self):
-        self.sequence = None
-
-    def get(self):
-        return torch.cat(self.sequence)
-
-    def mask(self):
-        out = self.get().transpose(1,0)
-        return (out.sum(-1) != 0).double()
-
-class PositionalEncoding(nn.Module):
-    def __init__(self, dim, nagents, max_len=1000, device='cpu', dropout=0):
-        super(PositionalEncoding, self).__init__()
-        """
-        Inputs:
-          dim: feature dimension of the positional encoding
-        """
-        self.P = torch.zeros((nagents, max_len, dim), device=device)
-        X = torch.arange(0,max_len, device=device).reshape(-1,1) /\
-            torch.pow(10000, torch.arange(0,dim,2,dtype=torch.float32, device=device) / dim)
-        self.P[:,:,0::2] = torch.sin(X)
-        self.P[:,:,1::2] = torch.cos(X)
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, X):
-        """
-        Inputs:
-            X: tensor of size (N, T, D_in)
-        Output:
-            Y: tensor of the same size of X
-        """
-        return self.dropout(X + self.P[:,:X.shape[1],:].requires_grad_(False))

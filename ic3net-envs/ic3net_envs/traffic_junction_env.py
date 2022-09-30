@@ -34,7 +34,7 @@ def nPr(n,r):
 class TrafficJunctionEnv(gym.Env):
     # metadata = {'render.modes': ['human']}
 
-    def __init__(self,):
+    def __init__(self):
         self.__version__ = "0.0.1"
         self.name  = "TrafficJunction"
         #print("init traffic junction", getargspec(self.reset).args)
@@ -47,6 +47,10 @@ class TrafficJunctionEnv(gym.Env):
 
         self.episode_over = False
         self.has_failed = 0
+        # Define what an agent can do -
+        # (0: GAS, 1: BRAKE) i.e. (0: Move 1-step, 1: STAY)
+        self.naction = 2
+        self.action_space = spaces.Discrete(self.naction)
 
     def init_curses(self):
         self.stdscr = curses.initscr()
@@ -86,7 +90,7 @@ class TrafficJunctionEnv(gym.Env):
 
 
     def multi_agent_init(self, args):
-        #print("init tj")
+        print("init tj")
         # General variables defining the environment : CONFIG
         params = ['dim', 'vision', 'add_rate_min', 'add_rate_max', 'curr_start_epoch', 'curr_epochs',
                   'difficulty', 'vocab_type']
@@ -112,10 +116,7 @@ class TrafficJunctionEnv(gym.Env):
         self.exact_rate = self.add_rate = self.add_rate_min
         self.epoch_last_update = 0
 
-        # Define what an agent can do -
-        # (0: GAS, 1: BRAKE) i.e. (0: Move 1-step, 1: STAY)
-        self.naction = 2
-        self.action_space = spaces.Discrete(self.naction)
+
 
         # make no. of dims odd for easy case.
         if difficulty == 'easy' or difficulty == 'longer_easy':
