@@ -7,6 +7,8 @@ import torch.nn as nn
 from utils import *
 from action_utils import *
 import time
+from contrast_comm import Contrastive
+# from pympler.tracker import SummaryTracker
 
 Transition = namedtuple('Transition', ('state', 'action', 'action_out', 'value', 'episode_mask',
                                        'episode_mini_mask', 'next_state',
@@ -86,7 +88,14 @@ class Trainer(object):
 
         self.args.scheduleLR = False
         self.scheduler = torch.optim.lr_scheduler.CyclicLR(self.optimizer, max_lr=args.lrate, base_lr=args.lrate/10., step_size_up=args.epoch_size)
-        self.beta = 2
+        self.beta = 0.01
+
+        if args.contrastive:
+            self.contrast_obj = Contrastive(self.args)
+            self.contrastive_loss_rand = None
+            self.contrastive_loss_future = None
+
+        # self.tracker = SummaryTracker()
 
 
     def get_episode(self, epoch, random=False):
@@ -97,6 +106,9 @@ class Trainer(object):
             state = self.env.reset(epoch, success=self.begin_tj_curric)
         else:
             state = self.env.reset()
+        if self.args.contrastive:
+            self.contrast_obj.reset()
+            self.contrast_obj.random_rollout()
         should_display = self.display and self.last_step
         if should_display:
             self.env.display()
@@ -126,16 +138,18 @@ class Trainer(object):
 
             # recurrence over time
             if self.args.recurrent and not random:
-                if self.args.rnn_type == 'LSTM' and t == 0:
+                if (self.args.rnn_type == 'LSTM' or  self.args.rnn_type == 'GRU') and t == 0:
                     prev_hid = self.policy_net.init_hidden(batch_size=state.shape[0])
 
                 x = [state, prev_hid]
                 action_out, value, prev_hid, comm_prob = self.policy_net(x, info_comm)
+                if self.args.contrastive:
+                    self.contrast_obj.update_policy_rollout(state, self.policy_net.y)
                 # episode_comm += comm_action
 
                 # this seems to be limiting how much BPTT happens.
                 if (t + 1) % self.args.detach_gap == 0:
-                    if self.args.rnn_type == 'LSTM':
+                    if self.args.rnn_type == 'LSTM' or self.args.rnn_type == 'GRU':
                         prev_hid = (prev_hid[0].detach(), prev_hid[1].detach())
                     else:
                         prev_hid = prev_hid.detach()
@@ -145,16 +159,22 @@ class Trainer(object):
                     inputs.append(x)
                 action_out, value, comm_prob = self.policy_net(x, info_comm)
 
-            if self.args.vae:
+            if self.args.vae or self.args.use_vqvib:
                 decoded, mu, log_var = self.policy_net.decode()
                 if self.loss_autoencoder == None:
                     self.loss_autoencoder = torch.nn.functional.mse_loss(decoded, x[0])
                 else:
-                    self.loss_autoencoder +=torch.nn.functional.mse_loss(decoded, x[0])
+                    self.loss_autoencoder += torch.nn.functional.mse_loss(decoded, x[0])
                 # add KLD
                 KLD = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim=-1))
                 self.loss_autoencoder += self.beta * KLD
+            elif self.args.use_compositional:
 
+                comp_loss = self.policy_net.compositional_loss()
+                if self.loss_autoencoder == None:
+                    self.loss_autoencoder = comp_loss
+                else:
+                    self.loss_autoencoder += comp_loss
             elif self.args.autoencoder and not self.args.autoencoder_action and not random:
                 decoded = self.policy_net.decode()
                 if self.args.recurrent:
@@ -338,6 +358,14 @@ class Trainer(object):
                 break
         stat['num_steps'] = t + 1
         stat['steps_taken'] = stat['num_steps']
+        if self.args.contrastive:
+            contrast_rand_loss, contrast_future_loss = self.contrast_obj.get_contrastive_loss(self.policy_net)
+            if self.contrastive_loss_rand == None:
+                self.contrastive_loss_rand = contrast_rand_loss
+                self.contrastive_loss_future = contrast_future_loss
+            else:
+                self.contrastive_loss_rand += contrast_rand_loss
+                self.contrastive_loss_future += contrast_future_loss
 
         if self.args.min_comm_loss:
             episode_comm = torch.cat(episode_comm, 0).T
@@ -372,6 +400,8 @@ class Trainer(object):
             merge_stat(self.env.get_stat(), stat)
         if random:
             return inputs
+
+        # self.tracker.print_diff()
         return (episode, stat)
 
     def compute_grad(self, batch, other_stat=None):
@@ -422,7 +452,6 @@ class Trainer(object):
 
         advantages = returns - values.data
         # print(advantages, returns, values.data,"\n")
-
         if self.args.normalize_rewards:
             advantages = (advantages - advantages.mean()) / advantages.std()
 
@@ -473,14 +502,25 @@ class Trainer(object):
             self.loss_min_comm *= self.args.eta_comm_loss
             stat['regularization_loss'] = self.loss_min_comm.item()
             loss += self.loss_min_comm
-        if self.args.autoencoder or self.args.vae:
+        # print("compute_grad 2.c.")
+        if self.args.autoencoder or self.args.vae or self.args.use_vqvib or self.args.use_compositional:
             stat['autoencoder_loss'] = self.loss_autoencoder.item()
             loss = 0.5 * loss + 0.5 * self.loss_autoencoder
+        if self.args.contrastive:
+            stat['contrastive_loss_rand'] = 0.1*self.contrastive_loss_rand.item()
+            stat['contrastive_loss_future'] = 0.1*self.contrastive_loss_future.item()
+            loss += 0.1*(self.contrastive_loss_rand + self.contrastive_loss_future)
+        # print("compute_grad 2.d.")
         loss.backward()
-        if self.args.autoencoder or self.args.vae:
+        # print("compute_grad 2.e.")
+        if self.args.autoencoder or self.args.vae or self.args.use_vqvib or self.args.use_compositional:
             self.loss_autoencoder = None
+        if self.args.contrastive:
+            self.contrastive_loss_rand = None
+            self.contrastive_loss_future = None
         if self.args.min_comm_loss:
             self.loss_min_comm = None
+        # print("compute_grad 3")
 
         # self.counter = 0
         # self.summer = 0

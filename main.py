@@ -11,6 +11,7 @@ import data
 from models import *
 from comm import CommNetMLP
 from timmac import TIMMAC
+from mac import MAC
 from utils import *
 from action_utils import parse_action_args
 from trainer import Trainer
@@ -91,6 +92,8 @@ parser.add_argument('--ic3net', action='store_true', default=False,
                     help="enable commnet model")
 parser.add_argument('--timmac', action='store_true', default=False,
                     help="enable transformer model")
+parser.add_argument('--mac', action='store_true', default=False,
+                    help="enable multi-agent communication model")
 parser.add_argument('--nagents', type=int, default=1,
                     help="Number of agents (used in multiagent)")
 parser.add_argument('--comm_mode', type=str, default='avg',
@@ -102,7 +105,7 @@ parser.add_argument('--comm_mask_zero', action='store_true', default=False,
 parser.add_argument('--mean_ratio', default=1.0, type=float,
                     help='how much coooperative to do? 1.0 means fully cooperative')
 parser.add_argument('--rnn_type', default='MLP', type=str,
-                    help='type of rnn to use. [LSTM|MLP]')
+                    help='type of rnn to use. [LSTM|MLP|GRU]')
 parser.add_argument('--detach_gap', default=10000, type=int,
                     help='detach hidden state and cell state for rnns at this interval.'
                     + ' Default 10000 (very high)')
@@ -213,6 +216,14 @@ parser.add_argument('--preencode', action='store_true', default=False,
 # use variational autoencoder
 parser.add_argument('--vae', action='store_true', default=False,
                     help='variational autoencoder')
+parser.add_argument('--use_vqvib', action='store_true', default=False,
+                    help='variational autoencoder')
+parser.add_argument('--use_compositional', action='store_true', default=False,
+                    help='compositional messages')
+parser.add_argument('--contrastive', action='store_true', default=False,
+                    help='contrastive communication critic')
+parser.add_argument('--comp_beta', type=float, default=0.01,
+                    help='compositional Communication budget hyperparameter')
 
 # first add environment specific args to the parser
 init_args_for_env(parser)
@@ -225,6 +236,8 @@ if args.ic3net:
     args.hard_attn = 1
     args.mean_ratio = 0
 elif args.timmac:
+    args.mean_ratio = 0
+elif args.mac:
     args.mean_ratio = 0
     # For TJ set comm action to 1 as specified in paper to showcase
     # importance of individual rewards even in cooperative games
@@ -290,6 +303,8 @@ elif args.random:
     policy_net = Random(args, num_inputs)
 elif args.timmac:
     policy_net = TIMMAC(args, num_inputs)
+elif args.mac:
+    policy_net = MAC(args, num_inputs)
 # this is what we are working with for IC3 Net predator prey.
 elif args.recurrent:
     policy_net = RNN(args, num_inputs)
@@ -338,6 +353,8 @@ log['action_loss'] = LogField(list(), True, 'epoch', 'num_steps')
 log['regularization_loss'] = LogField(list(), True, 'epoch', 'num_steps')
 log['entropy'] = LogField(list(), True, 'epoch', 'num_steps')
 log['autoencoder_loss'] = LogField(list(), True, 'epoch', 'num_steps')
+log['contrastive_loss_rand'] = LogField(list(), True, 'epoch', 'num_episodes')
+log['contrastive_loss_future'] = LogField(list(), True, 'epoch', 'num_episodes')
 log['win_rate'] = LogField(list(), True, 'epoch', 'num_episodes')
 # log['autoencoder_epoch'] = LogField(list(), False, None, None)
 
@@ -420,8 +437,6 @@ def run(num_epochs):
     for ep in range(start_epoch, num_epochs):
         epoch_begin_time = time.time()
         stat = dict()
-        if ep % 20 == 0 and args.timmac and False:
-            policy_net.reset_layers()
 
         # added to store stats to numpy array
 
