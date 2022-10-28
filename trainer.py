@@ -175,7 +175,7 @@ class Trainer(object):
                     self.loss_autoencoder = comp_loss
                 else:
                     self.loss_autoencoder += comp_loss
-            elif self.args.autoencoder and not self.args.autoencoder_action and not random:
+            elif self.args.autoencoder:
                 decoded = self.policy_net.decode()
                 if self.args.recurrent:
                     # x_all = x[0].reshape(-1).expand_as(decoded)

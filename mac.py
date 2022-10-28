@@ -32,9 +32,10 @@ class MAC(nn.Module):
         self.nagents = args.nagents
         self.hid_size = args.hid_size
         self.comm_passes = args.comm_passes
-        self.max_len = min(args.dim, 10)
+        # self.max_len = min(args.dim, 10)
+        self.max_len = 10
         self.dropout = 0.
-        self.vocab_size = 32
+        self.vocab_size = args.num_proto
         self.composition_dim = 2
         self.EPISILON = 1e-9
         self.comm_dim = args.comm_dim
@@ -200,7 +201,7 @@ class MAC(nn.Module):
         self.decoding_mu = mu.squeeze().clone()#.reshape((1,n,e))
         self.decoding_log_var = log_var.squeeze().clone()#.reshape((1,n,e))
         # print(self.decoding_mu.shape)
-
+        self.message = out.reshape(self.args.nagents, -1)
         return out
 
     def vqvib_forward(self, hidden_state):
@@ -241,8 +242,9 @@ class MAC(nn.Module):
             # token = eps * token_std + token_mu
             token = token_mu
             # discretization layer
-            token_mse = (token.reshape(batch_size,1,self.composition_dim) - self.message_vocabulary).square()
-            token = torch.min(token_mse, 1)[0]
+            # token_mse = (token.reshape(batch_size,1,self.composition_dim) - self.message_vocabulary).square()
+            # token = self.message_vocabulary[torch.min(token_mse, 1)[1][:,1]]
+            # token = torch.min(token_mse, 1)[0]
             # need to do gumbel here? to pass through argmin to get actual vocab words and pass through gradient
             token = token * mask.reshape(-1,1).clone()    # ignore predictions once EOS already reached
 
@@ -299,6 +301,10 @@ class MAC(nn.Module):
         var_comp = self.decoding_inde_log_var
         # individual message entropy term
         for i, (mu, log_var) in enumerate(zip(self.decoding_mus, self.decoding_log_vars)):
+            # discreteness
+            token_mse = (mu.reshape(self.args.nagents,1,self.composition_dim) - self.message_vocabulary).square()
+            loss += torch.min(token_mse, 1)[0].mean()
+            # nonrandomness
             loss += torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim=-1))
             # indepdence term
             mu_comp_i = mu_comp[:,i*self.composition_dim:(i+1)*self.composition_dim]
@@ -361,8 +367,8 @@ class MAC(nn.Module):
 
     def init_hidden(self, batch_size):
         # dim 0 = num of layers * num of direction
-        return tuple(( torch.zeros(1, batch_size * self.nagents, self.hid_size, requires_grad=True),
-                       torch.zeros(1, batch_size * self.nagents, self.hid_size, requires_grad=True)))
+        return tuple(( torch.zeros(1, self.nagents, self.hid_size, requires_grad=True),
+                       torch.zeros(1, self.nagents, self.hid_size, requires_grad=True)))
 
     def init_weights(self, m):
         if isinstance(m, nn.Linear):

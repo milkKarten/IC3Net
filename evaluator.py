@@ -11,6 +11,9 @@ from ic3net_envs import predator_prey_env
 Transition = namedtuple('Transition', ('state', 'action', 'action_out', 'value', 'episode_mask', 'episode_mini_mask', 'next_state',
                                        'reward', 'misc'))
 
+from math import log10, floor
+def round_sig(x, sig=2):
+    return round(x, sig-int(floor(log10(abs(x))))-1)
 
 class Evaluator:
     def __init__(self, args, policy_net, env):
@@ -19,7 +22,8 @@ class Evaluator:
         self.env = env
         self.display = args.display
         self.last_step = False
-
+        self.total_length = 0
+        self.total = 0
 
     def run_episode(self, epoch=1):
 
@@ -44,6 +48,8 @@ class Evaluator:
         comms_to_prey_act = {} # record action 1
         comms_to_loc_full = {} # record all
         comm_action_episode = np.zeros(self.args.max_steps)
+        total_length = 0
+        total = 0
         for t in range(self.args.max_steps):
             misc = dict()
             info['step_t'] = t
@@ -53,11 +59,12 @@ class Evaluator:
             info['record_comms'] = 1
             # recurrence over time
             if self.args.recurrent:
-                if self.args.rnn_type == 'LSTM' and t == 0:
+                if (self.args.rnn_type == 'LSTM' or  self.args.rnn_type == 'GRU') and t == 0:
                     prev_hid = self.policy_net.init_hidden(batch_size=state.shape[0])
 
                 x = [state, prev_hid]
-                action_out, value, prev_hid, proto_comms = self.policy_net(x, info_comm)
+                action_out, value, prev_hid, prob = self.policy_net(x, info_comm)
+                proto_comms = self.policy_net.message.detach().cpu().numpy()
                 # if isinstance(self.env.env.env, predator_prey_env.PredatorPreyEnv):
                 if self.args.env_name == 'predator_prey':
                     # tuple_comms = tuple(proto_comms.detach().numpy())
@@ -73,23 +80,54 @@ class Evaluator:
                 elif self.args.env_name == 'traffic_junction':
                     # print("car loc", self.env.env.car_loc)
                     # print("paths", self.env.env.car_loc)
+
                     for i in range(0, len(self.env.env.car_loc)):
                         p = self.env.env.car_loc[i]
                         # print(p)
-                        continue
-                        proto = proto_comms[0][i]
+                        # continue
+                        # print(proto_comms.shape, len(self.env.env.car_loc))
+                        proto = proto_comms[i]
                         action_i = self.env.env.car_last_act[i]
                         if self.env.env.car_route_loc[i] != -1:
-                            if p[0] == 0 and p[1] == 0 or info_comm['comm_action'][i] == 0 or self.policy_net.get_null_action()[i] == 1:
+                            # if p[0] == 0 and p[1] == 0 or info_comm['comm_action'][i] == 0 or self.policy_net.get_null_action()[i] == 1:
+                            if p[0] == 0 and p[1] == 0 or info_comm['comm_action'][i] == 0:# or self.policy_net.get_null_action()[i] == 1:
                                 continue
                             # print("path", p, proto.shape)
                             # print(t, "proto", proto, proto.shape)
                             # print(info_comm['comm_action'][i])
-                            tuple_comms = tuple(proto)
-                            # print("tuple comms", proto.shape)
-                            if comms_to_loc_full.get(tuple_comms) is None:
-                                comms_to_loc_full[tuple_comms] = []
-                            comms_to_loc_full[tuple_comms].append(tuple(p))
+                            if self.args.use_compositional:
+                                proto = proto.reshape(-1, self.policy_net.composition_dim)
+                                full_proto_bool = False
+                                if full_proto_bool:
+                                    full_proto = []
+                                    for j in range(len(proto)):
+                                        full_proto.append(round_sig(proto[j][0], sig=2))
+                                        full_proto.append(round_sig(proto[j][1], sig=2))
+                                    tuple_comms = tuple(full_proto)
+                                    if comms_to_loc_full.get(tuple_comms) is None:
+                                        comms_to_loc_full[tuple_comms] = []
+                                    comms_to_loc_full[tuple_comms].append(tuple(p))
+
+                                else:
+                                    unique = {}
+                                    for j in range(len(proto)):
+                                        total += 1
+                                        tuple_comms = tuple([round_sig(proto[j][0], sig=2), round_sig(proto[j][1], sig=2)])
+                                        if unique.get(tuple_comms) is None:
+                                            unique[tuple_comms] = True
+                                            total_length += 1
+                                        # tuple_comms = tuple(proto[j])
+                                        if comms_to_loc_full.get(tuple_comms) is None:
+                                            comms_to_loc_full[tuple_comms] = []
+                                        comms_to_loc_full[tuple_comms].append(tuple(p))
+
+                            else:
+                                for index in range(len(proto)):
+                                    proto[index] = round_sig(proto[index], sig=2)
+                                tuple_comms = tuple(proto)
+                                if comms_to_loc_full.get(tuple_comms) is None:
+                                    comms_to_loc_full[tuple_comms] = []
+                                comms_to_loc_full[tuple_comms].append(tuple(p))
                             # print(action_i)
                             if action_i == 0:
                                 if comms_to_prey_loc.get(tuple_comms) is None:
@@ -101,15 +139,15 @@ class Evaluator:
                                     comms_to_prey_act[tuple_comms] = []
                                 comms_to_prey_act[tuple_comms].append(tuple(p))
 
-
                 if (t + 1) % self.args.detach_gap == 0:
-                    if self.args.rnn_type == 'LSTM':
+                    if (self.args.rnn_type == 'LSTM' or  self.args.rnn_type == 'GRU'):
                         prev_hid = (prev_hid[0].detach(), prev_hid[1].detach())
                     else:
                         prev_hid = prev_hid.detach()
             else:
                 x = state
-                action_out, value, proto_comms = self.policy_net(x, info_comm)
+                action_out, value, h, prob = self.policy_net(x, info_comm)
+                proto_comms = self.policy_net.encoded_info
                 # if isinstance(self.env.env.env, predator_prey_env.PredatorPreyEnv):
                 if self.args.env_name == 'predator_prey':
                     tuple_comms = tuple(proto_comms.detach().numpy())
@@ -197,6 +235,9 @@ class Evaluator:
             state = next_state
             if done:
                 break
+        self.total_length += total_length
+        self.total += total
+
         stat['num_steps'] = t + 1
         stat['steps_taken'] = stat['num_steps']
 

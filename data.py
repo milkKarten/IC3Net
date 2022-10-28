@@ -6,7 +6,8 @@ try:
     from smac.env import StarCraft2Env
 except ImportError as e:
     pass  # starcraft experiments not enabled
-
+from graph_env.env.full import SaturnHuman
+from graph_env.utils import World
 
 
 def init(env_name, args, final_init=True):
@@ -34,7 +35,9 @@ def init(env_name, args, final_init=True):
     elif env_name == 'starcraft':
         env = StarCraft2Env(map_name=args.map_name, seed=args.seed, reward_only_positive=True)
         env = StarcraftWrapper(env)
-
+    elif env_name == 'minecraft':
+        env = SaturnHuman(seed=args.seed)
+        env = MinecraftWrapper(env)
     else:
         raise RuntimeError("wrong env name")
 

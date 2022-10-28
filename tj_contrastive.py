@@ -2,10 +2,11 @@ import os, sys, subprocess
 
 os.environ["OMP_NUM_THREADS"] = "1"
 env = "traffic_junction"
-seeds = [22]
+seeds = [0]
 # your models, graphs and tensorboard logs would be save in trained_models/{exp_name}
 # methods = ['baseline_mac_easy_mha_autoencoder_contrastive1']
-methods = ['baseline_mac_easy_mha_compositional_contrastive1']
+# methods = ['baseline_mac_easy_mha_compositional_contrastive1']
+methods = ['baseline_mac_medium_mha_autoencoder', 'baseline_mac_medium_mha_autoencoder_vqvib']
 pretrain_exp_name = 'tj_easy_fixed_proto_autoencoder'
 for method in methods:
     comp_beta = 0.001
@@ -24,7 +25,7 @@ for method in methods:
         # protos_list = [144, 72, 288]
         protos_list = [128*2] # single redundancy
         # comms_list = [64]
-        num_epochs = 200
+        num_epochs = 3000
     for num_proto in protos_list:
         exp_name = "tj_" + method
         vision = 0
@@ -93,7 +94,7 @@ for method in methods:
 
         run_str = f"python main.py --env_name {env} --nprocesses {nprocesses} --batch_size 100 --gamma 1 "+\
                   f"--num_epochs {num_epochs} --epoch_size {epoch_size} --num_heads 1 "+\
-                  f"--gating_head_cost_factor {gating_head_cost_factor} "+\
+                  f"--gating_head_cost_factor {gating_head_cost_factor} --num_proto {num_proto} "+\
                   f"--hid_size {hid_size} --comm_dim {comm_dim} --soft_budget {soft_budget} "+\
                   f" --detach_gap 10 --lrate {lr} --vision {vision} --comp_beta {comp_beta} "+\
                   f"--save paper_models --load paper_models "+\
@@ -152,9 +153,9 @@ for method in methods:
             # run_str += "> runLogs/" + exp_name + "Log.txt 2>&1 &"
             # cmd_args = run_str[:-1].split(" ")
             # print(cmd_args)
-            # with open("runLogs/" + exp_name + "Log.txt","wb") as out:
-                # subprocess.Popen(run_str + f"--seed {seed}", shell=True, stdout=out)#, stderr=out)
-            os.system(run_str + f"--seed {seed}")
+            with open("runLogs/" + exp_name + "Log.txt","wb") as out:
+                subprocess.Popen(run_str + f"--seed {seed}", shell=True, stdout=out)#, stderr=out)
+            # os.system(run_str + f"--seed {seed}")
         # sys.exit(0)
         # plot the avg and error graphs using multiple seeds.
         # os.system(f"python plot.py --env_name {env} --exp_name {exp_name} --nagents {nagents}")

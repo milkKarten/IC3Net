@@ -211,3 +211,86 @@ class StarcraftWrapper(object):
 
     def get_stat(self):
         return self.env.get_stats()
+
+
+class MinecraftWrapper(object):
+        """
+        for multi-agent
+        """
+        def __init__(self, env):
+            # print("gym init", getfullargspec(env.reset).args)
+            # import traceback
+            # for line in traceback.format_stack():
+            #    print(line.strip())
+            self.env = env
+            self.n_agents = self.env.num_agents
+            self.observation_space = spaces.flatten_space(self.env.observation_space)
+
+        @property
+        def observation_dim(self):
+            '''
+            for multi-agent, this is the obs per agent
+            '''
+            return  self.env.dim_observations
+
+        @property
+        def num_actions(self):
+            return self.env.num_actions
+
+        @property
+        def dim_actions(self):
+            # Discrete => only 1 action takes place at a time.
+            return 1
+
+        @property
+        def action_space(self):
+            return self.env.action_space
+
+        def reset(self, epoch, success=False):
+            obs = self.env.reset()
+            obs = self._flatten_obs(obs)
+            return obs
+
+        def display(self):
+            raise NotImplementedError
+
+        def end_display(self):
+            raise NotImplementedError
+
+        def step(self, action):
+            # TODO: Modify all environments to take list of action
+            # instead of doing this
+
+            if self.dim_actions == 1:
+                # this basically makes sure you are ignoring the gating action.
+                action = action[0]
+            for i in range(len(action)):
+                if not self.env.get_avail_agent_actions(i)[action[i]]:
+                    if self.env.get_avail_agent_actions(i)[0]:
+                        # agent is dead, take no-op
+                        action[i] = 0
+                    else:
+                        action[i] = 1 # stop by default when invalid action
+            # print(action)
+            # print(self.env.get_avail_actions())
+            obs, reward, _done, info = self.env.step(action)
+            done = _done['__all__']
+            reward = np.array([reward[id] for id in reward])
+            obs = self._flatten_obs(obs)
+
+            return (obs, reward, done, info)
+
+        def reward_terminal(self):
+            if hasattr(self.env, 'reward_terminal'):
+                return self.env.reward_terminal()
+            else:
+                return np.zeros(1)
+
+        def _flatten_obs(self, obs):
+            obs = np.array([np.concatenate((obs[agent_id]['obs']['graph'].reshape(-1), obs[agent_id]['obs']['agent'])) for
+                    agent_id in obs])
+            obs = torch.from_numpy(obs).double()
+            return obs
+
+        def get_stat(self):
+            return {'M1' : self.env.metrics_manager.M1 / self.env.max_M1}
